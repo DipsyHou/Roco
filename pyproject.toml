@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "roco-cli"
+version = "1.0.0"
+description = "Roco turn-based spirit battle — local hot-seat CLI"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.scripts]
+roco = "roco.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["roco*"]
