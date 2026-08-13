@@ -3,15 +3,27 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "roco-cli"
+name = "roco"
 version = "1.0.0"
-description = "Roco turn-based spirit battle — local hot-seat CLI"
+description = "Roco timeline-based spirit battle — desktop and online"
 readme = "README.md"
 requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+online = ["websockets>=12.0"]
+test = ["pytest>=8.0"]
 
 [project.scripts]
-roco = "roco.__main__:main"
+roco-desktop = "roco.apps.desktop.game:main"
+roco-online-desktop = "roco.apps.online.desktop:main"
+roco-online-server = "server.server_app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["roco*"]
+include = ["roco*", "server*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

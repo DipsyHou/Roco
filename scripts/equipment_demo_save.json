@@ -1,0 +1,504 @@
+{
+  "equipment": {
+    "a02effb394d444ce8f14cb45b4718b95": {
+      "uid": "a02effb394d444ce8f14cb45b4718b95",
+      "slot": "鞋子",
+      "name": "疾行履",
+      "affixes": [
+        {
+          "stat": "速度",
+          "value": 5.6
+        },
+        {
+          "stat": "物防",
+          "value": 6.0
+        },
+        {
+          "stat": "魔防",
+          "value": 6.0
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "fanying"
+    },
+    "d15513e1eb9d453aab43781ba4780023": {
+      "uid": "d15513e1eb9d453aab43781ba4780023",
+      "slot": "武器",
+      "name": "灵息弓",
+      "affixes": [
+        {
+          "stat": "物攻",
+          "value": 8.799999999999999
+        },
+        {
+          "stat": "物防",
+          "value": 6.0
+        },
+        {
+          "stat": "魔防",
+          "value": 3.2
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "bahamut"
+    },
+    "9dc457348c464fcca1500204d677abe9": {
+      "uid": "9dc457348c464fcca1500204d677abe9",
+      "slot": "头饰",
+      "name": "灵叶箍",
+      "affixes": [
+        {
+          "stat": "生命",
+          "value": 34
+        },
+        {
+          "stat": "物攻",
+          "value": 2.4
+        },
+        {
+          "stat": "速度",
+          "value": 9.6
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "fanying"
+    },
+    "8e8fc1fc3e8c487aa8a1c29df713927a": {
+      "uid": "8e8fc1fc3e8c487aa8a1c29df713927a",
+      "slot": "护甲",
+      "name": "夜纹袍",
+      "affixes": [
+        {
+          "stat": "物防",
+          "value": 2.4
+        },
+        {
+          "stat": "速度",
+          "value": 6.0
+        },
+        {
+          "stat": "生命",
+          "value": 50
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "fanying"
+    },
+    "a259bbfd1d05433ca99c66f5a0e013be": {
+      "uid": "a259bbfd1d05433ca99c66f5a0e013be",
+      "slot": "武器",
+      "name": "灵息弓",
+      "affixes": [
+        {
+          "stat": "物攻",
+          "value": 5.6
+        },
+        {
+          "stat": "魔防",
+          "value": 2.4
+        },
+        {
+          "stat": "速度",
+          "value": 8.8
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "fanying"
+    },
+    "0069f0fa1a2f476896f01b8f4ecb9795": {
+      "uid": "0069f0fa1a2f476896f01b8f4ecb9795",
+      "slot": "头饰",
+      "name": "灵叶箍",
+      "affixes": [
+        {
+          "stat": "生命",
+          "value": 12
+        },
+        {
+          "stat": "物防",
+          "value": 6.0
+        },
+        {
+          "stat": "魔防",
+          "value": 8.799999999999999
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "bahamut"
+    },
+    "009a2a362d8b4b1ba7453e4c93112415": {
+      "uid": "009a2a362d8b4b1ba7453e4c93112415",
+      "slot": "护甲",
+      "name": "鳞甲衣",
+      "affixes": [
+        {
+          "stat": "物防",
+          "value": 2.4
+        },
+        {
+          "stat": "速度",
+          "value": 6.0
+        },
+        {
+          "stat": "魔防",
+          "value": 10.4
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "bahamut"
+    },
+    "7e5eb1f66b08434cb92db1190799c7aa": {
+      "uid": "7e5eb1f66b08434cb92db1190799c7aa",
+      "slot": "鞋子",
+      "name": "沙纹履",
+      "affixes": [
+        {
+          "stat": "速度",
+          "value": 6.800000000000001
+        },
+        {
+          "stat": "魔防",
+          "value": 7.199999999999999
+        },
+        {
+          "stat": "物攻",
+          "value": 2.4
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "bahamut"
+    },
+    "35a593a8909d421aa4418add40416f59": {
+      "uid": "35a593a8909d421aa4418add40416f59",
+      "slot": "头饰",
+      "name": "晨露饰",
+      "affixes": [
+        {
+          "stat": "生命",
+          "value": 18
+        },
+        {
+          "stat": "物攻",
+          "value": 3.6
+        },
+        {
+          "stat": "物防",
+          "value": 12.799999999999999
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "steamdragon"
+    },
+    "9999c9ddce4c4b41b9265b3c15abf194": {
+      "uid": "9999c9ddce4c4b41b9265b3c15abf194",
+      "slot": "武器",
+      "name": "秘仪杖",
+      "affixes": [
+        {
+          "stat": "物攻",
+          "value": 9.200000000000001
+        },
+        {
+          "stat": "魔攻",
+          "value": 6.800000000000001
+        },
+        {
+          "stat": "速度",
+          "value": 3.2
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "steamdragon"
+    },
+    "4f207222a7e145cc8a85c6ef1285b83e": {
+      "uid": "4f207222a7e145cc8a85c6ef1285b83e",
+      "slot": "鞋子",
+      "name": "沙纹履",
+      "affixes": [
+        {
+          "stat": "速度",
+          "value": 6.800000000000001
+        },
+        {
+          "stat": "物攻",
+          "value": 8.8
+        },
+        {
+          "stat": "物防",
+          "value": 3.2
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "steamdragon"
+    },
+    "7e3393edfba9435090a8f24921b5ec70": {
+      "uid": "7e3393edfba9435090a8f24921b5ec70",
+      "slot": "护甲",
+      "name": "藤织甲",
+      "affixes": [
+        {
+          "stat": "魔防",
+          "value": 2.4
+        },
+        {
+          "stat": "生命",
+          "value": 42
+        },
+        {
+          "stat": "物防",
+          "value": 6.0
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "xiaozong"
+    },
+    "1fb7cab1e0ef480482a7af31a82afe84": {
+      "uid": "1fb7cab1e0ef480482a7af31a82afe84",
+      "slot": "武器",
+      "name": "秘仪杖",
+      "affixes": [
+        {
+          "stat": "魔攻",
+          "value": 3.6
+        },
+        {
+          "stat": "生命",
+          "value": 50
+        },
+        {
+          "stat": "物防",
+          "value": 5.6
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "xiaozong"
+    },
+    "39464eaacab34a4db4e219fb3b145670": {
+      "uid": "39464eaacab34a4db4e219fb3b145670",
+      "slot": "鞋子",
+      "name": "沙纹履",
+      "affixes": [
+        {
+          "stat": "速度",
+          "value": 2.8
+        },
+        {
+          "stat": "生命",
+          "value": 34
+        },
+        {
+          "stat": "物防",
+          "value": 7.6
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "xiaozong"
+    },
+    "aa82b3a408344c72be1f9d52e88c0ad2": {
+      "uid": "aa82b3a408344c72be1f9d52e88c0ad2",
+      "slot": "头饰",
+      "name": "蔓绕冠",
+      "affixes": [
+        {
+          "stat": "生命",
+          "value": 50
+        },
+        {
+          "stat": "速度",
+          "value": 2.8
+        },
+        {
+          "stat": "魔攻",
+          "value": 4.8
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "xiaozong"
+    },
+    "04e225ee546d432c91243717a6f7edae": {
+      "uid": "04e225ee546d432c91243717a6f7edae",
+      "slot": "护甲",
+      "name": "藤织甲",
+      "affixes": [
+        {
+          "stat": "物防",
+          "value": 6.0
+        },
+        {
+          "stat": "物攻",
+          "value": 2.8
+        },
+        {
+          "stat": "生命",
+          "value": 48
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "steamdragon"
+    },
+    "1be13a2323e3417a8b487552878e45cd": {
+      "uid": "1be13a2323e3417a8b487552878e45cd",
+      "slot": "鞋子",
+      "name": "疾行履",
+      "affixes": [
+        {
+          "stat": "速度",
+          "value": 8.8
+        },
+        {
+          "stat": "魔攻",
+          "value": 6.4
+        },
+        {
+          "stat": "魔防",
+          "value": 2.8
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "flora"
+    },
+    "76515f71081d40d7b09cedea17dec369": {
+      "uid": "76515f71081d40d7b09cedea17dec369",
+      "slot": "武器",
+      "name": "秘仪杖",
+      "affixes": [
+        {
+          "stat": "魔攻",
+          "value": 10.0
+        },
+        {
+          "stat": "速度",
+          "value": 7.2
+        },
+        {
+          "stat": "生命",
+          "value": 18
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "flora"
+    },
+    "599025db047d4e2db2647db34d9ba1a7": {
+      "uid": "599025db047d4e2db2647db34d9ba1a7",
+      "slot": "头饰",
+      "name": "晨露饰",
+      "affixes": [
+        {
+          "stat": "生命",
+          "value": 34
+        },
+        {
+          "stat": "速度",
+          "value": 6.800000000000001
+        },
+        {
+          "stat": "魔攻",
+          "value": 6.0
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "flora"
+    },
+    "7ae88aa5e25e4667b422946fafac3ded": {
+      "uid": "7ae88aa5e25e4667b422946fafac3ded",
+      "slot": "护甲",
+      "name": "夜纹袍",
+      "affixes": [
+        {
+          "stat": "物防",
+          "value": 6.4
+        },
+        {
+          "stat": "魔攻",
+          "value": 5.6
+        },
+        {
+          "stat": "生命",
+          "value": 30
+        }
+      ],
+      "upgrades_left": 0,
+      "equipped_spirit_id": "flora"
+    }
+  },
+  "loadouts": {
+    "flora": {
+      "头饰": "599025db047d4e2db2647db34d9ba1a7",
+      "护甲": "7ae88aa5e25e4667b422946fafac3ded",
+      "鞋子": "1be13a2323e3417a8b487552878e45cd",
+      "武器": "76515f71081d40d7b09cedea17dec369"
+    },
+    "clawdragon": {
+      "头饰": null,
+      "护甲": null,
+      "鞋子": null,
+      "武器": null
+    },
+    "chaosling": {
+      "头饰": null,
+      "护甲": null,
+      "鞋子": null,
+      "武器": null
+    },
+    "starweaver": {
+      "头饰": null,
+      "护甲": null,
+      "鞋子": null,
+      "武器": null
+    },
+    "steamdragon": {
+      "头饰": "35a593a8909d421aa4418add40416f59",
+      "护甲": "04e225ee546d432c91243717a6f7edae",
+      "鞋子": "4f207222a7e145cc8a85c6ef1285b83e",
+      "武器": "9999c9ddce4c4b41b9265b3c15abf194"
+    },
+    "qiuka": {
+      "头饰": null,
+      "护甲": null,
+      "鞋子": null,
+      "武器": null
+    },
+    "fanying": {
+      "头饰": "9dc457348c464fcca1500204d677abe9",
+      "护甲": "8e8fc1fc3e8c487aa8a1c29df713927a",
+      "鞋子": "a02effb394d444ce8f14cb45b4718b95",
+      "武器": "a259bbfd1d05433ca99c66f5a0e013be"
+    },
+    "tita": {
+      "头饰": null,
+      "护甲": null,
+      "鞋子": null,
+      "武器": null
+    },
+    "guifashi": {
+      "头饰": null,
+      "护甲": null,
+      "鞋子": null,
+      "武器": null
+    },
+    "cuiding": {
+      "头饰": null,
+      "护甲": null,
+      "鞋子": null,
+      "武器": null
+    },
+    "xiaozong": {
+      "头饰": "aa82b3a408344c72be1f9d52e88c0ad2",
+      "护甲": "7e3393edfba9435090a8f24921b5ec70",
+      "鞋子": "39464eaacab34a4db4e219fb3b145670",
+      "武器": "1fb7cab1e0ef480482a7af31a82afe84"
+    },
+    "bahamut": {
+      "头饰": "0069f0fa1a2f476896f01b8f4ecb9795",
+      "护甲": "009a2a362d8b4b1ba7453e4c93112415",
+      "鞋子": "7e5eb1f66b08434cb92db1190799c7aa",
+      "武器": "d15513e1eb9d453aab43781ba4780023"
+    },
+    "huxian": {
+      "头饰": null,
+      "护甲": null,
+      "鞋子": null,
+      "武器": null
+    }
+  }
+}
