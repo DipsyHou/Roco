@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from tests.conftest import P1, P2, by_template, cast_skill, effects_of, normal_attack
 from roco.core.battle.types import EffectType
 from roco.core.spirits.qiuka import QiukaLogic
@@ -40,7 +42,7 @@ def test_virulent_adds_poison_and_triggers_damage_without_decreasing(engine_fact
     assert cast_skill(engine, qiuka, "qiuka_skill2", enemy)
 
     poison = effects_of(enemy, EffectType.debuff_poison)[0]
-    assert poison.stacks == 3
+    assert poison.stacks == 4
     assert enemy.current_hp < hp_before
 
 
@@ -76,5 +78,29 @@ def test_poison_claw_counts_at_most_ten_stacks(engine_factory):
     with patch.object(QiukaLogic, "_hit_physical", spy):
         QiukaLogic()._skill_poison_claw(engine, P1, qiuka, {"targetId": enemy.unique_id})
 
-    # 痛苦被动在 _hit_physical 内再 ×1.3，技能侧传入倍率应封顶为 1.0 + 0.15×10
-    assert ratios == [2.5]
+    # 痛苦被动在 _hit_physical 内再 ×1.25，技能侧传入倍率应封顶为 0.8 + 0.16×10
+    assert ratios == [pytest.approx(2.4)]
+
+
+def test_poison_claw_triggers_poison_after_hit(engine_factory):
+    engine = engine_factory(("qiuka", "flora", "clawdragon", "chaosling", "starweaver"))
+    qiuka = by_template(engine, P1, "qiuka")
+    enemy = engine.get_active_spirits(P2)[0]
+    from roco.core.battle.effects import apply_poison_stacks
+    from roco.core.battle.utils import get_poison_stacks
+
+    apply_poison_stacks(enemy, qiuka.unique_id, 4)
+    stacks_before = get_poison_stacks(enemy)
+    hp_before = enemy.current_hp
+
+    # 直接调技能逻辑，避开行动结束时中毒减层
+    QiukaLogic()._skill_poison_claw(engine, P1, qiuka, {"targetId": enemy.unique_id})
+
+    assert get_poison_stacks(enemy) == stacks_before
+    assert enemy.current_hp < hp_before
+    assert any(
+        e.data
+        and e.data.get("effectType") == EffectType.debuff_poison.value
+        and e.data.get("targetId") == enemy.unique_id
+        for e in engine.state.battle_log
+    )

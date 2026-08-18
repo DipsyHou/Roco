@@ -91,10 +91,8 @@ def test_crit_applies_to_base_before_damage_modifiers(standard_engine):
     )
 
     with patch("roco.core.battle.damage.random.random", return_value=0.0):
-        crit = calculate_damage(200, DamageType.physical, attacker, defender, can_crit=True)
-        normal = calculate_damage(200, DamageType.physical, attacker, defender, can_crit=False)
+        crit = calculate_damage(200, DamageType.physical, attacker, defender)
 
-    assert normal == 100
     assert crit == 200
 
 
@@ -104,7 +102,21 @@ def test_crit_default_is_no_bonus_without_buffs(standard_engine):
     defender.base_stats.def_ = 200
 
     with patch("roco.core.battle.damage.random.random", return_value=0.0):
-        assert calculate_damage(200, DamageType.physical, attacker, defender, can_crit=True) == 100
+        assert calculate_damage(200, DamageType.physical, attacker, defender) == 100
+
+
+def test_crit_rate_zero_skips_roll(standard_engine):
+    """Most damage has 0% crit rate; pipeline still runs but never multiplies."""
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    defender.base_stats.def_ = 200
+    attacker.effects.append(
+        make_effect(EffectType.buff_crit_damage, "a", duration_turns=1, value=100)
+    )
+
+    with patch("roco.core.battle.damage.random.random", return_value=0.0) as roll:
+        assert calculate_damage(200, DamageType.physical, attacker, defender) == 100
+    roll.assert_not_called()
 
 
 def test_effective_stat_modifiers_still_work_after_field_split(standard_engine):

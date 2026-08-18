@@ -9,6 +9,15 @@ from ..battle.utils import apply_poison_stacks, get_poison_stacks, process_poiso
 from ._combat import deal_atk_ratio, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
+PAIN_DAMAGE_MULT = 1.25
+STING_HITS = 5
+STING_RATIO = 0.25
+STING_POISON = 2
+VIRULENT_POISON = 4
+CLAW_BASE_RATIO = 0.80
+CLAW_PER_STACK = 0.16
+CLAW_STACK_CAP = 10
+
 
 class QiukaLogic(SpiritLogic):
     template_id = "qiuka"
@@ -40,11 +49,11 @@ class QiukaLogic(SpiritLogic):
         ratio: float,
         verb: str,
     ) -> int:
-        """Physical hit with +30% ratio against poisoned targets."""
+        """Physical hit with pain bonus against poisoned targets."""
         if not target.is_alive:
             return 0
         if get_poison_stacks(target) > 0:
-            ratio *= 1.3
+            ratio *= PAIN_DAMAGE_MULT
         return deal_atk_ratio(
             ctx,
             actor,
@@ -84,13 +93,13 @@ class QiukaLogic(SpiritLogic):
     ) -> None:
         del action
         opponent_id = ctx.get_opponent_id(player_id)
-        for _ in range(7):
+        for _ in range(STING_HITS):
             enemies = ctx.get_active_spirits(opponent_id)
             if not enemies:
                 return
             target = ctx.next_rng("qiuka_sting", actor.unique_id).choice(enemies)
-            self._hit_physical(ctx, actor, target, 0.20, "用毒刺对")
-            self._add_poison(ctx, actor, target, 1)
+            self._hit_physical(ctx, actor, target, STING_RATIO, "用毒刺对")
+            self._add_poison(ctx, actor, target, STING_POISON)
 
     def _skill_virulent(
         self,
@@ -102,7 +111,7 @@ class QiukaLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        self._add_poison(ctx, actor, target, 3)
+        self._add_poison(ctx, actor, target, VIRULENT_POISON)
         process_poison_damage(ctx, target, decrease=False)
 
     def _skill_poison_claw(
@@ -115,8 +124,16 @@ class QiukaLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        stacks = min(10, get_poison_stacks(target))
-        self._hit_physical(ctx, actor, target, 1.0 + 0.15 * stacks, "用毒爪对")
+        stacks = min(CLAW_STACK_CAP, get_poison_stacks(target))
+        self._hit_physical(
+            ctx,
+            actor,
+            target,
+            CLAW_BASE_RATIO + CLAW_PER_STACK * stacks,
+            "用毒爪对",
+        )
+        if target.is_alive:
+            process_poison_damage(ctx, target, decrease=False)
 
 
 qiuka_logic = QiukaLogic()

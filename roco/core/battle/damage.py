@@ -181,13 +181,12 @@ def _apply_crit_to_base(
     base: float,
     attacker: BattleSpirit,
     *,
-    can_crit: bool,
     target: Optional[BattleSpirit] = None,
     crit_flag: Optional[List[bool]] = None,
     rng: Optional[random.Random] = None,
 ) -> Tuple[float, bool]:
-    """Return (result, was_crit)."""
-    if not can_crit or base <= 0:
+    """Return (result, was_crit). All damage uses crit rate / crit damage; rate 0 skips."""
+    if base <= 0:
         return base, False
     crit_rate, crit_damage_percent = get_crit_stats(attacker, target)
     if crit_rate <= 0:
@@ -223,7 +222,6 @@ def calculate_damage(
     attacker: BattleSpirit,
     defender: BattleSpirit,
     *,
-    can_crit: bool = False,
     crit_flag: Optional[List[bool]] = None,
     rng: Optional[random.Random] = None,
 ) -> int:
@@ -242,7 +240,7 @@ def calculate_damage(
         base = (raw_damage * 100 / def_val) if def_val > 0 else raw_damage * 100
 
     result, _was_crit = _apply_crit_to_base(
-        base, attacker, can_crit=can_crit, target=defender, crit_flag=crit_flag, rng=rng
+        base, attacker, target=defender, crit_flag=crit_flag, rng=rng
     )
 
     att_pi, att_mi, att_fi, att_pd, att_md, att_fd = get_damage_modifiers(attacker)

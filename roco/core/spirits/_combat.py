@@ -97,7 +97,6 @@ def deal_damage(
     describe: DamageMessage,
     *,
     source: DamageSource = DamageSource.attack,
-    can_crit: bool = False,
     crit_rng=None,
     on_crit: Optional[Callable[[], None]] = None,
 ) -> int:
@@ -110,7 +109,6 @@ def deal_damage(
         damage_type,
         actor,
         target,
-        can_crit=can_crit,
         crit_flag=crit_flag,
         rng=crit_rng,
     )
@@ -140,7 +138,6 @@ def deal_atk_ratio(
     describe: DamageMessage,
     *,
     source: DamageSource = DamageSource.attack,
-    can_crit: bool = False,
     crit_rng=None,
     on_crit: Optional[Callable[[], None]] = None,
 ) -> int:
@@ -154,7 +151,6 @@ def deal_atk_ratio(
         DamageType.physical,
         describe,
         source=source,
-        can_crit=can_crit,
         crit_rng=crit_rng,
         on_crit=on_crit,
     )
@@ -168,7 +164,6 @@ def deal_mag_ratio(
     describe: DamageMessage,
     *,
     source: DamageSource = DamageSource.skill,
-    can_crit: bool = False,
     crit_rng=None,
     on_crit: Optional[Callable[[], None]] = None,
 ) -> int:
@@ -182,7 +177,6 @@ def deal_mag_ratio(
         DamageType.magical,
         describe,
         source=source,
-        can_crit=can_crit,
         crit_rng=crit_rng,
         on_crit=on_crit,
     )

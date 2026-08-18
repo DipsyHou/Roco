@@ -30,8 +30,8 @@ ZHENSHA_CAP = 2
 ZHAOJIA_CAP = 5
 ZHAOJIA_POLICY_ID = "bahamut_zhaojia"
 
-CHEJIA_CRIT_RATE = {2: 0.30, 3: 0.40, 4: 0.60}
-CHEJIA_CRIT_DMG = {2: 50.0, 3: 50.0, 4: 80.0}
+CHEJIA_CRIT_RATE = {2: 0.25, 3: 0.50, 4: 0.50}
+CHEJIA_CRIT_DMG = {2: 40.0, 3: 40.0, 4: 80.0}
 ZHAOJIA_DR_PER_STACK = 0.05
 
 
@@ -248,10 +248,6 @@ class BahamutLogic(SpiritLogic):
         quxie = _get_stacks(target, EffectType.state_quxie)
         return CHEJIA_CRIT_DMG.get(quxie, 0.0)
 
-    def _can_crit_vs(self, target: BattleSpirit) -> bool:
-        """彻甲：目标有驱邪时为可暴击伤害（1 层暴击率为 0，不掷暴击）。"""
-        return _get_stacks(target, EffectType.state_quxie) >= 1
-
     def _log_crit(self, ctx: BattleContext, attacker: BattleSpirit, target: BattleSpirit) -> None:
         ctx.add_log(
             BattleLogType.damage_dealt,
@@ -274,7 +270,7 @@ class BahamutLogic(SpiritLogic):
         self._try_apply_route_mark(ctx, actor, target)
         self._deal_physical(
             ctx, actor, target, get_effective_stat(actor, StatType.atk) * 1.0,
-            "普通攻击", can_crit=self._can_crit_vs(target),
+            "普通攻击",
         )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -294,7 +290,6 @@ class BahamutLogic(SpiritLogic):
             return
         self._try_apply_route_mark(ctx, actor, target)
         atk = get_effective_stat(actor, StatType.atk)
-        can_crit = self._can_crit_vs(target)
         for i in range(3):
             if not target.is_alive:
                 break
@@ -308,7 +303,6 @@ class BahamutLogic(SpiritLogic):
                     f"{actor.name} 的疾风拳第{n}段对 {target.name} 造成了 {a} 点物理伤害！"
                 ),
                 source=DamageSource.skill,
-                can_crit=can_crit,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
                 on_crit=lambda: self._log_crit(ctx, actor, target),
             )
@@ -375,7 +369,6 @@ class BahamutLogic(SpiritLogic):
             return
         self._try_apply_route_mark(ctx, actor, target)
         atk = get_effective_stat(actor, StatType.atk)
-        can_crit = self._can_crit_vs(target)
         for i in range(stacks):
             if not target.is_alive:
                 break
@@ -389,7 +382,6 @@ class BahamutLogic(SpiritLogic):
                     f"{actor.name} 的截拳第{n}段对 {target.name} 造成了 {a} 点物理伤害！"
                 ),
                 source=DamageSource.skill,
-                can_crit=can_crit,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
                 on_crit=lambda: self._log_crit(ctx, actor, target),
             )
@@ -421,7 +413,6 @@ class BahamutLogic(SpiritLogic):
             DamageType.physical,
             lambda a: f"{actor.name} 的反扑对 {target.name} 造成了 {a} 点物理伤害！",
             source=DamageSource.skill,
-            can_crit=self._can_crit_vs(target),
             crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
             on_crit=lambda: self._log_crit(ctx, actor, target),
         )
@@ -444,7 +435,6 @@ class BahamutLogic(SpiritLogic):
                     f"{actor.name} 的反扑弹射第{n}段对 {t.name} 造成了 {a} 点物理伤害！"
                 ),
                 source=DamageSource.skill,
-                can_crit=self._can_crit_vs(bounce_target),
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
                 on_crit=lambda t=bounce_target: self._log_crit(ctx, actor, t),
             )
@@ -485,8 +475,6 @@ class BahamutLogic(SpiritLogic):
         target: BattleSpirit,
         raw: float,
         verb: str,
-        *,
-        can_crit: bool = False,
     ) -> int:
         return deal_damage(
             ctx,
@@ -496,7 +484,6 @@ class BahamutLogic(SpiritLogic):
             DamageType.physical,
             lambda a: f"{actor.name} 的{verb}对 {target.name} 造成了 {a} 点物理伤害！",
             source=DamageSource.attack,
-            can_crit=can_crit,
             crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
             on_crit=lambda: self._log_crit(ctx, actor, target),
         )

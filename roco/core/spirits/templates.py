@@ -330,12 +330,12 @@ QIUKA = SpiritTemplate(
     passive_skill=PassiveSkillDef(
         id="qiuka_passive",
         name="痛苦",
-        description="造成伤害时，若目标有中毒，此次伤害提升30%。",
+        description="造成伤害时，若目标有中毒，此次伤害提升25%。",
     ),
     normal_attack=SkillDef(
         id="qiuka_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（100%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（100%自身物攻）物理伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -344,7 +344,9 @@ QIUKA = SpiritTemplate(
         SkillDef(
             id="qiuka_skill1",
             name="毒刺",
-            description="能量 3。重复7次：对敌方随机目标造成（20%自身物攻）点物理伤害，并赋予1层中毒。",
+            description=(
+                "能量 3。重复5次：对敌方随机目标造成（25%自身物攻）物理伤害，并赋予2层中毒。"
+            ),
             cooldown=0,
             target_type=TargetType.all_enemies,
             energy_cost=3,
@@ -353,7 +355,7 @@ QIUKA = SpiritTemplate(
         SkillDef(
             id="qiuka_skill2",
             name="厉毒",
-            description="能量 2。指定一名敌方精灵，赋予3层中毒并使其触发一次中毒效果。",
+            description="能量 2。指定一名敌方精灵，赋予4层中毒并使其触发一次中毒效果。",
             cooldown=0,
             target_type=TargetType.single_enemy,
             energy_cost=2,
@@ -362,8 +364,9 @@ QIUKA = SpiritTemplate(
             id="qiuka_skill3",
             name="毒爪",
             description=(
-                "能量 3。对一名敌方精灵造成（100%自身物攻）点物理伤害；"
-                "目标每层中毒使此次伤害倍率+15%自身物攻，最多计入10层。"
+                "能量 3。对一名敌方精灵造成（80%自身物攻）物理伤害；"
+                "目标每层中毒使此次伤害倍率+16%自身物攻，最多计入10层；"
+                "然后使其触发一次中毒效果。"
             ),
             cooldown=0,
             target_type=TargetType.single_enemy,
@@ -807,7 +810,7 @@ SHENGYU = SpiritTemplate(
     id="shengyu",
     name="圣域祭司",
     description="圣域祭司",
-    base_stats=BaseStats(hp=700, atk=120, mag_atk=130, def_=120, mag_def=120, speed=100),
+    base_stats=BaseStats(hp=500, atk=110, mag_atk=140, def_=130, mag_def=150, speed=100),
     passive_skill=PassiveSkillDef(
         id="shengyu_passive",
         name="月盈",
@@ -869,7 +872,7 @@ DEERLE = SpiritTemplate(
     id="deerle",
     name="梅花德尔勒",
     description="梅花德尔勒",
-    base_stats=BaseStats(hp=600, atk=120, mag_atk=100, def_=130, mag_def=120, speed=140),
+    base_stats=BaseStats(hp=550, atk=120, mag_atk=100, def_=130, mag_def=130, speed=140),
     passive_skill=PassiveSkillDef(
         id="deerle_passive",
         name="看破",
@@ -956,7 +959,7 @@ TENGJIAO = SpiritTemplate(
     skills=[
         SkillDef(
             id="tengjiao_skill1",
-            name="浇油！",
+            name="浇油",
             description="获得5层“火力”；提升自身20%物攻，持续3回合。",
             cooldown=0,
             target_type=TargetType.self,
@@ -964,7 +967,7 @@ TENGJIAO = SpiritTemplate(
         ),
         SkillDef(
             id="tengjiao_skill2",
-            name="炝锅！",
+            name="炝锅",
             description=(
                 "延长场上所有菜品效果（辣子鸡、水煮鱼、毛血旺）持续时间1回合，"
                 "但不会超过该效果原本的持续时间。"
