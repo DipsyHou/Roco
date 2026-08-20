@@ -17,6 +17,7 @@ from .fanying import FANYING
 from .tita import TITA
 from .cuiding import CUIDING
 from .guifashi import GUIFASHI
+from .guagua import GUAGUA
 from .xiaozong import XIAOZONG
 from .bahamut import BAHAMUT
 from .daermao import DAERMAO
@@ -37,6 +38,7 @@ ALL_SPIRITS: List[SpiritTemplate] = [
     TITA,
     CUIDING,
     GUIFASHI,
+    GUAGUA,
     XIAOZONG,
     BAHAMUT,
     DAERMAO,
@@ -57,5 +59,5 @@ __all__ = [
     'ALL_SPIRITS',
     'SPIRIT_BY_ID',
     'get_spirit_template',
-    'FLORA', 'CLAWDRAGON', 'PARSAS', 'CHAOSLING', 'STARWEAVER', 'STEAMDRAGON', 'QIUKA', 'FANYING', 'TITA', 'CUIDING', 'GUIFASHI', 'XIAOZONG', 'BAHAMUT', 'DAERMAO', 'HUXIAN', 'SHENGYU', 'DEERLE', 'TENGJIAO',
+    'FLORA', 'CLAWDRAGON', 'PARSAS', 'CHAOSLING', 'STARWEAVER', 'STEAMDRAGON', 'QIUKA', 'FANYING', 'TITA', 'CUIDING', 'GUIFASHI', 'GUAGUA', 'XIAOZONG', 'BAHAMUT', 'DAERMAO', 'HUXIAN', 'SHENGYU', 'DEERLE', 'TENGJIAO',
 ]

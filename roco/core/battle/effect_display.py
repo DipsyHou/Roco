@@ -216,6 +216,10 @@ def _resolve_display_name(eff: BattleEffect) -> str:
         return "破绽"
     if t == EffectType.state_huoli:
         return "火力"
+    if t == EffectType.state_shifu:
+        return "师傅"
+    if t == EffectType.state_xueshen:
+        return "学神"
     if t == EffectType.buff_laziji:
         return "辣子鸡"
     if t == EffectType.buff_shuizhuyu:
@@ -353,6 +357,8 @@ def _format_one(eff: BattleEffect, source_names: Dict[str, str]) -> str:
         EffectType.state_zhaojia,
         EffectType.state_jianwu,
         EffectType.state_huoli,
+        EffectType.state_shifu,
+        EffectType.state_xueshen,
     ):
         total = max(0, eff.stacks)
         mult = f" * {total}"

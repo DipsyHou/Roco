@@ -1,0 +1,371 @@
+"""呱呱 — 师傅 / 学会了 / 学神。"""
+
+from __future__ import annotations
+
+from typing import Any, ClassVar, Dict, List, Optional
+
+from ..battle.events import DamageSource
+from ..battle.types import (
+    BattleLogType,
+    BattleSpirit,
+    DamageType,
+    EffectType,
+    StatType,
+)
+from ..battle.utils import get_effective_stat, make_effect
+from ._combat import deal_atk_ratio, deal_damage, target_ally, target_enemy
+from ..spirit_logic import BattleContext, SpiritLogic
+
+TEMPLATE_ID = "guagua"
+LEARNED_USED_KEY = "guagua_learned_used"
+BIYOUWOSHI_TAG = "guagua_biyouwoshi"
+PASSIVE_ATK_BONUS = 0.12
+PASSIVE_CRIT_RATE_BONUS = 0.30
+PASSIVE_CRIT_DAMAGE_BONUS = 60.0
+LEARNED_RATIO = 0.50
+BAIJIA_RATIO = 1.00
+XUESHEN_RATIO = 0.30
+SPEED_BUFF = 0.10
+
+
+def _has_effect(spirit: BattleSpirit, eff_type: EffectType) -> bool:
+    return any(effect.type == eff_type for effect in spirit.effects)
+
+
+def _remove_effects(spirit: BattleSpirit, eff_type: EffectType) -> None:
+    spirit.effects = [effect for effect in spirit.effects if effect.type != eff_type]
+
+
+def _apply_state_once(
+    spirit: BattleSpirit,
+    eff_type: EffectType,
+    source_id: str,
+    *,
+    display_name: str,
+    duration_turns: int | None = None,
+) -> None:
+    existing = next((effect for effect in spirit.effects if effect.type == eff_type), None)
+    if existing:
+        existing.source_id = source_id
+        existing.duration_turns = duration_turns
+        existing.display_name = display_name
+        return
+    spirit.effects.append(
+        make_effect(
+            eff_type,
+            source_id,
+            duration_turns=duration_turns,
+            display_name=display_name,
+        )
+    )
+
+
+def _refresh_biyouwoshi(master: BattleSpirit, source_id: str, duration_turns: int = 2) -> None:
+    """Refresh the temporary buff package learned by the master."""
+    master.effects = [effect for effect in master.effects if effect.effect_tag != BIYOUWOSHI_TAG]
+    for stat in (StatType.atk, StatType.mag_atk):
+        master.effects.append(
+            make_effect(
+                EffectType.buff_stat_percent_boost,
+                source_id,
+                duration_turns=duration_turns,
+                stat_type=stat,
+                value=PASSIVE_ATK_BONUS,
+                effect_tag=BIYOUWOSHI_TAG,
+                display_name="必有我师",
+            )
+        )
+    master.effects.append(
+        make_effect(
+            EffectType.buff_crit_rate,
+            source_id,
+            duration_turns=duration_turns,
+            value=PASSIVE_CRIT_RATE_BONUS,
+            effect_tag=BIYOUWOSHI_TAG,
+            display_name="必有我师：暴击率提升30%",
+        )
+    )
+    master.effects.append(
+        make_effect(
+            EffectType.buff_crit_damage,
+            source_id,
+            duration_turns=duration_turns,
+            value=PASSIVE_CRIT_DAMAGE_BONUS,
+            effect_tag=BIYOUWOSHI_TAG,
+            display_name="必有我师：暴击效果提升60%",
+        )
+    )
+
+
+def _master_on_team(ctx: BattleContext, owner_id: str) -> Optional[BattleSpirit]:
+    for ally in ctx.get_all_spirits(owner_id):
+        if ally.is_alive and _has_effect(ally, EffectType.state_shifu):
+            return ally
+    return None
+
+
+def _bound_master(spirit: BattleSpirit) -> Optional[BattleSpirit]:
+    ctx = getattr(spirit, "_stat_engine", None)
+    if ctx is None:
+        return None
+    return _master_on_team(ctx, spirit.owner_id)
+
+
+def _master_power(master: BattleSpirit) -> float:
+    return max(get_effective_stat(master, StatType.atk), get_effective_stat(master, StatType.mag_atk))
+
+
+class GuaguaLogic(SpiritLogic):
+    template_id = TEMPLATE_ID
+    SKILLS: ClassVar[Dict[str, str]] = {
+        "guagua_learned": "_skill_learned_manual",
+        "guagua_skill1": "_skill_serve_tea",
+        "guagua_skill2": "_skill_baijia",
+        "guagua_skill3": "_skill_xueshen",
+    }
+
+    def on_unit_created(self, spirit: BattleSpirit) -> None:
+        if spirit.template_id == TEMPLATE_ID:
+            spirit.sync_attrs.setdefault(LEARNED_USED_KEY, 0)
+
+    def on_battle_start(self, ctx: BattleContext, spirit: BattleSpirit) -> None:
+        if spirit.template_id != TEMPLATE_ID:
+            return
+        spirit.sync_attrs[LEARNED_USED_KEY] = 0
+        first = next((ally for ally in ctx.get_all_spirits(spirit.owner_id) if ally.slot == 1), None)
+        if first is None:
+            return
+        _apply_state_once(first, EffectType.state_shifu, spirit.unique_id, display_name="师傅")
+        ctx.add_log(
+            BattleLogType.passive_triggered,
+            f"{spirit.name} 开局拜 {first.name} 为师傅！",
+            {"sourceId": spirit.unique_id, "targetId": first.unique_id},
+        )
+
+    def on_turn_start(self, ctx: BattleContext, actor: BattleSpirit) -> None:
+        del ctx
+        if actor.template_id == TEMPLATE_ID:
+            actor.sync_attrs[LEARNED_USED_KEY] = 0
+
+    def get_stat_percent_bonus(self, spirit: BattleSpirit, stat: StatType) -> float:
+        if spirit.template_id != TEMPLATE_ID or stat not in (StatType.atk, StatType.mag_atk):
+            return 0.0
+        return PASSIVE_ATK_BONUS if _bound_master(spirit) is not None else 0.0
+
+    def get_crit_rate_bonus(
+        self, spirit: BattleSpirit, target: Optional[BattleSpirit] = None
+    ) -> float:
+        del target
+        if spirit.template_id != TEMPLATE_ID:
+            return 0.0
+        return PASSIVE_CRIT_RATE_BONUS if _bound_master(spirit) is not None else 0.0
+
+    def get_crit_damage_bonus(
+        self, spirit: BattleSpirit, target: Optional[BattleSpirit] = None
+    ) -> float:
+        del target
+        if spirit.template_id != TEMPLATE_ID:
+            return 0.0
+        return PASSIVE_CRIT_DAMAGE_BONUS if _bound_master(spirit) is not None else 0.0
+
+    def execute_normal_attack(
+        self,
+        ctx: BattleContext,
+        player_id: str,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+    ) -> bool:
+        target = target_enemy(ctx, player_id, action.get("targetId"))
+        if not target:
+            return True
+        deal_atk_ratio(
+            ctx,
+            actor,
+            target,
+            1.0,
+            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            source=DamageSource.attack,
+            crit_rng=ctx.next_rng("guagua_normal_crit", actor.unique_id, target.unique_id),
+        )
+        if target.is_alive:
+            actor.last_attack_target_id = target.unique_id
+        return True
+
+    def on_ally_attack(
+        self,
+        ctx: BattleContext,
+        observer: BattleSpirit,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+        targets: List[BattleSpirit],
+    ) -> None:
+        del action
+        if observer.template_id != TEMPLATE_ID or not observer.is_alive:
+            return
+        if int(observer.sync_attrs.get(LEARNED_USED_KEY, 0)) >= 1:
+            return
+        master = _master_on_team(ctx, observer.owner_id)
+        if master is None or master.unique_id != actor.unique_id:
+            return
+        live_targets = [target for target in targets if target.is_alive]
+        if not live_targets:
+            return
+        target = ctx.next_rng("guagua_learned_target", observer.unique_id, actor.unique_id).choice(live_targets)
+        observer.sync_attrs[LEARNED_USED_KEY] = 1
+        ctx.add_log(
+            BattleLogType.passive_triggered,
+            f"{observer.name} 观察师傅出手，自动使用「学会了！」！",
+            {"sourceId": observer.unique_id, "teacherId": actor.unique_id, "targetId": target.unique_id},
+        )
+        self._cast_learned(ctx, observer, target)
+
+    def on_attack(
+        self,
+        ctx: BattleContext,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+        targets: List[BattleSpirit],
+    ) -> None:
+        del action
+        if actor.template_id != TEMPLATE_ID or not _has_effect(actor, EffectType.state_xueshen):
+            return
+        master = _master_on_team(ctx, actor.owner_id)
+        if master is None:
+            return
+        live_targets = [target for target in targets if target.is_alive]
+        if not live_targets:
+            return
+        target = ctx.next_rng("guagua_xueshen_target", actor.unique_id).choice(live_targets)
+        raw = _master_power(master) * XUESHEN_RATIO
+        dealt = deal_damage(
+            ctx,
+            master,
+            target,
+            raw,
+            DamageType.physical,
+            lambda a: f"{actor.name} 的「学神」使师傅 {master.name} 追击 {target.name}，造成了 {a} 点物理附加伤害！",
+            source=DamageSource.additional,
+            crit_rng=ctx.next_rng("guagua_xueshen_crit", master.unique_id, target.unique_id),
+        )
+        if dealt > 0:
+            ctx.add_log(
+                BattleLogType.passive_triggered,
+                f"{actor.name} 的「学神不学形」触发！",
+                {"sourceId": actor.unique_id, "teacherId": master.unique_id, "targetId": target.unique_id},
+            )
+
+    def _skill_learned_manual(
+        self,
+        ctx: BattleContext,
+        player_id: str,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+    ) -> None:
+        target = target_enemy(ctx, player_id, action.get("targetId"))
+        if target:
+            self._cast_learned(ctx, actor, target)
+
+    def _cast_learned(self, ctx: BattleContext, actor: BattleSpirit, target: BattleSpirit) -> None:
+        deal_atk_ratio(
+            ctx,
+            actor,
+            target,
+            LEARNED_RATIO,
+            lambda a: f"{actor.name} 使用「学会了！」对 {target.name} 造成了 {a} 点物理伤害！",
+            source=DamageSource.skill,
+            crit_rng=ctx.next_rng("guagua_learned_crit", actor.unique_id, target.unique_id),
+        )
+        master = _master_on_team(ctx, actor.owner_id)
+        if master is None:
+            return
+        _refresh_biyouwoshi(master, actor.unique_id, duration_turns=2)
+        ctx.add_log(
+            BattleLogType.effect_applied,
+            f"{master.name} 获得「必有我师」加成，持续2回合！",
+            {"sourceId": actor.unique_id, "targetId": master.unique_id},
+        )
+
+    def _skill_serve_tea(
+        self,
+        ctx: BattleContext,
+        player_id: str,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+    ) -> None:
+        target = target_ally(ctx, player_id, action.get("targetId"))
+        if not target or target.unique_id == actor.unique_id:
+            allies = [ally for ally in ctx.get_active_spirits(player_id) if ally.unique_id != actor.unique_id]
+            if not allies:
+                return
+            target = allies[0]
+        for ally in ctx.get_all_spirits(player_id):
+            _remove_effects(ally, EffectType.state_shifu)
+        _apply_state_once(target, EffectType.state_shifu, actor.unique_id, display_name="师傅")
+        actor.effects.append(
+            make_effect(
+                EffectType.buff_stat_percent_boost,
+                actor.unique_id,
+                duration_turns=2,
+                stat_type=StatType.speed,
+                value=SPEED_BUFF,
+                display_name="师傅请喝茶",
+            )
+        )
+        ctx.add_log(
+            BattleLogType.effect_applied,
+            f"{actor.name} 请 {target.name} 喝茶，改拜其为师傅，并使自身速度提高10%！",
+            {"sourceId": actor.unique_id, "targetId": target.unique_id},
+        )
+
+    def _skill_baijia(
+        self,
+        ctx: BattleContext,
+        player_id: str,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+    ) -> None:
+        target = target_enemy(ctx, player_id, action.get("targetId"))
+        if not target:
+            return
+        deal_atk_ratio(
+            ctx,
+            actor,
+            target,
+            BAIJIA_RATIO,
+            lambda a: f"{actor.name} 使用「百家拳法」对 {target.name} 造成了 {a} 点物理伤害！",
+            source=DamageSource.skill,
+            crit_rng=ctx.next_rng("guagua_baijia_crit", actor.unique_id, target.unique_id),
+        )
+        if not target.is_alive:
+            return
+        master = _master_on_team(ctx, actor.owner_id)
+        if master is None:
+            return
+        deal_damage(
+            ctx,
+            actor,
+            target,
+            _master_power(master),
+            DamageType.physical,
+            lambda a: f"{actor.name} 借师傅 {master.name} 之长，对 {target.name} 追加造成了 {a} 点物理伤害！",
+            source=DamageSource.skill,
+            crit_rng=ctx.next_rng("guagua_baijia_extra_crit", actor.unique_id, target.unique_id),
+        )
+
+    def _skill_xueshen(
+        self,
+        ctx: BattleContext,
+        player_id: str,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+    ) -> None:
+        del player_id, action
+        _apply_state_once(actor, EffectType.state_xueshen, actor.unique_id, display_name="学神")
+        ctx.add_log(
+            BattleLogType.effect_applied,
+            f"{actor.name} 获得「学神」状态！",
+            {"sourceId": actor.unique_id, "targetId": actor.unique_id},
+        )
+
+
+guagua_logic = GuaguaLogic()

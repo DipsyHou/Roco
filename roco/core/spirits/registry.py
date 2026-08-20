@@ -12,6 +12,7 @@ from .fanying import fanying_logic
 from .cuiding import cuiding_logic
 from .daermao import daermao_logic
 from .guifashi import guifashi_logic
+from .guagua import guagua_logic
 from .huxian import huxian_logic
 from .deerle import deerle_logic
 from .parsas import parsas_logic
@@ -35,6 +36,7 @@ _REGISTRY: Dict[str, SpiritLogic] = {
     fanying_logic.template_id: fanying_logic,
     tita_logic.template_id: tita_logic,
     guifashi_logic.template_id: guifashi_logic,
+    guagua_logic.template_id: guagua_logic,
     huxian_logic.template_id: huxian_logic,
     cuiding_logic.template_id: cuiding_logic,
     daermao_logic.template_id: daermao_logic,
