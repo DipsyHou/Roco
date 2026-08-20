@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, Optional, Tuple
 
-from .stats import get_effective_stat
-from .types import BattleSpirit, DamageType, EffectType, StatType
-
-DEFAULT_CRIT_DAMAGE_PERCENT = 100.0
+from .types import BattleSpirit, DamageType, EffectType
 
 
 def _match_damage_type(
@@ -148,33 +145,6 @@ def get_damage_caps(spirit: BattleSpirit) -> Dict[DamageType, float]:
     return caps
 
 
-def get_crit_stats(
-    attacker: BattleSpirit, target: Optional[BattleSpirit] = None
-) -> Tuple[float, float]:
-    """Return (crit_rate capped 0~1, crit_damage_percent). Base crit damage is 100%."""
-    from ..spirits import get_spirit_logic
-
-    crit_rate = 0.0
-    crit_damage_percent = DEFAULT_CRIT_DAMAGE_PERCENT
-
-    for effect in attacker.effects:
-        if effect.value is None:
-            continue
-        if effect.type == EffectType.buff_crit_rate:
-            crit_rate += effect.value
-        elif effect.type == EffectType.buff_crit_damage:
-            crit_damage_percent += effect.value
-
-    logic = get_spirit_logic(attacker.template_id)
-    if logic:
-        crit_rate += logic.get_crit_rate_bonus(attacker, target)
-        crit_damage_percent += logic.get_crit_damage_bonus(attacker, target)
-
-    crit_rate = min(1.0, max(0.0, crit_rate))
-    crit_damage_percent = max(0.0, crit_damage_percent)
-    return crit_rate, crit_damage_percent
-
-
 def get_def_pierce(attacker: BattleSpirit, damage_type: DamageType) -> float:
     """Sum of the attacker's ``buff_def_pierce`` effects matching ``damage_type``."""
     total = 0.0
@@ -184,27 +154,3 @@ def get_def_pierce(attacker: BattleSpirit, damage_type: DamageType) -> float:
         if _match_damage_type(effect.damage_type, damage_type):
             total += effect.value
     return total
-
-
-def _apply_crit_to_base(
-    base: float,
-    attacker: BattleSpirit,
-    *,
-    target: Optional[BattleSpirit] = None,
-    crit_flag: Optional[list[bool]] = None,
-    rng: Optional[object] = None,
-) -> Tuple[float, bool]:
-    """Return (result, was_crit). All damage checks crit; 0% rate skips RNG."""
-    import random as _random
-
-    if base <= 0:
-        return base, False
-    crit_rate, crit_damage_percent = get_crit_stats(attacker, target)
-    if crit_rate <= 0:
-        return base, False
-    roll = rng.random() if rng is not None else _random.random()
-    if roll < crit_rate:
-        if crit_flag is not None:
-            crit_flag.append(True)
-        return base * (crit_damage_percent / 100.0), True
-    return base, False

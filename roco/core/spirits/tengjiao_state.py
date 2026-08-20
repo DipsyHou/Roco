@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from ..battle.effect_meta import stack_count
 from ..battle.types import BattleSpirit, EffectType
 from ..battle.utils import make_effect
 
@@ -47,7 +48,7 @@ def set_committed_dish(spirit: BattleSpirit, dish: Optional[str]) -> None:
 
 def huoli_stacks(spirit: BattleSpirit) -> int:
     eff = next((e for e in spirit.effects if e.type == EffectType.state_huoli), None)
-    return max(0, eff.stacks) if eff else 0
+    return stack_count(eff) if eff else 0
 
 
 def set_huoli(spirit: BattleSpirit, stacks: int) -> None:

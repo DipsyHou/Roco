@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from roco.core.battle.effect_meta import normalize_stacks, uses_stacks
 from roco.core.battle.extra_action import ExtraActionSlot
 from roco.core.battle.types import (
     BaseStats,
@@ -97,7 +98,7 @@ def effect_from_dict(d: Dict[str, Any]) -> BattleEffect:
     dmg_raw = d.get("damageType")
     effect_type = EffectType(d["type"])
     duration_turns = d.get("durationTurns", d.get("duration_turns"))
-    stacks = d.get("stacks", 0)
+    stacks_raw = d["stacks"] if "stacks" in d else (0 if uses_stacks(effect_type) else None)
     old_remaining = d.get("remainingTurns", d.get("remaining_turns"))
     if old_remaining is not None and "durationTurns" not in d and "duration_turns" not in d:
         if effect_type in {
@@ -107,7 +108,7 @@ def effect_from_dict(d: Dict[str, Any]) -> BattleEffect:
             EffectType.state_shunt,
             EffectType.state_expansion,
         }:
-            stacks = old_remaining
+            stacks_raw = old_remaining
             duration_turns = None
         else:
             old_value = int(old_remaining)
@@ -117,7 +118,7 @@ def effect_from_dict(d: Dict[str, Any]) -> BattleEffect:
         type=effect_type,
         source_id=d.get("sourceId") or d.get("source_id", ""),
         duration_turns=int(duration_turns) if duration_turns is not None else None,
-        stacks=int(stacks or 0),
+        stacks=normalize_stacks(stacks_raw) if uses_stacks(effect_type) else None,
         stat_type=StatType(stat_raw) if stat_raw else None,
         value=d.get("value"),
         damage_type=DamageType(dmg_raw) if dmg_raw else None,

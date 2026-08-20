@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from .effect_meta import effect_category, stack_count
 from .types import BattleSpirit, EffectType, StatType
 
 # Set by BattleEngine so live conversion buffs can resolve source / aura carriers.
@@ -15,18 +16,18 @@ def bind_spirit_stat_engine(spirit: BattleSpirit, engine: Any) -> None:
 
 
 def is_buff_effect(effect_type: EffectType) -> bool:
-    """Return whether an effect type is a positive buff by naming convention."""
-    return effect_type.value.startswith("buff_")
+    """Return whether an effect type is a positive buff."""
+    return effect_category(effect_type) == "buff"
 
 
 def is_debuff_effect(effect_type: EffectType) -> bool:
-    """Return whether an effect type is negative by naming convention."""
-    return effect_type.value.startswith("debuff_")
+    """Return whether an effect type is negative."""
+    return effect_category(effect_type) == "debuff"
 
 
 def is_state_effect(effect_type: EffectType) -> bool:
-    """Return whether an effect type is a neutral state by naming convention."""
-    return effect_type.value.startswith("state_")
+    """Return whether an effect type is a state effect."""
+    return effect_category(effect_type) == "state"
 
 
 def count_state_effects(spirit: BattleSpirit) -> int:
@@ -42,7 +43,7 @@ def count_state_effects(spirit: BattleSpirit) -> int:
 def get_state_stack_count(spirit: BattleSpirit, eff_type: EffectType) -> int:
     """Return stack count for stack-based effects."""
     effect = next((e for e in spirit.effects if e.type == eff_type), None)
-    return max(0, effect.stacks) if effect else 0
+    return stack_count(effect) if effect else 0
 
 
 def _stat_base(spirit: BattleSpirit, stat: StatType) -> int:

@@ -79,3 +79,37 @@ def test_baijia_and_xueshen_use_teacher_power(engine_factory):
     assert normal_attack(engine, guagua, target)
     assert target.current_hp < before_xueshen
     assert any("学神不学形" in log.message for log in engine.state.battle_log)
+
+
+def test_guagua_conditional_passive_bonus_is_not_displayed(engine_factory):
+    from roco.core.battle.effect_display import format_spirit_effects
+
+    engine = engine_factory(("flora", "guagua"), ("qiuka", "fanying"))
+    guagua = by_template(engine, P1, "guagua")
+
+    lines = format_spirit_effects(guagua.effects, {}, spirit=guagua)
+
+    assert not any("物攻提升12%" in line for line in lines)
+    assert not any("魔攻提升12%" in line for line in lines)
+    assert not any("暴击率提升30%" in line for line in lines)
+    assert not any("暴击效果提升60%" in line for line in lines)
+
+
+def test_learned_teacher_bonuses_display_as_plain_real_buffs(engine_factory):
+    from roco.core.battle.effect_display import format_spirit_effects
+
+    engine = engine_factory(("flora", "guagua"), ("qiuka", "fanying"))
+    flora = by_template(engine, P1, "flora")
+    guagua = by_template(engine, P1, "guagua")
+    target = by_template(engine, P2, "qiuka")
+
+    assert normal_attack(engine, flora, target)
+    assert submit(engine, guagua, ActionType.use_skill.value, skillId="guagua_learned")
+
+    lines = format_spirit_effects(flora.effects, {}, spirit=flora)
+
+    assert "[buff]物攻提升12%(1回合)" in lines
+    assert "[buff]魔攻提升12%(1回合)" in lines
+    assert "[buff]暴击率提升30%(1回合)" in lines
+    assert "[buff]暴击效果提升60%(1回合)" in lines
+    assert not any("必有我师：" in line for line in lines)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle.effect_meta import stack_count
 from ..battle.types import BattleLogType, BattleSpirit, EffectType
 from ..battle.utils import (
     add_warmup_stacks,
@@ -49,7 +50,7 @@ class SteamdragonLogic(SpiritLogic):
             return
         if apply_burn_stacks(target, actor.unique_id, stacks):
             total = sum(
-                e.stacks
+                stack_count(e)
                 for e in target.effects
                 if e.type == EffectType.debuff_burn and e.source_id == actor.unique_id
             )

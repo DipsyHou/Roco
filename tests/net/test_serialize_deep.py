@@ -20,7 +20,6 @@ def test_state_roundtrip_preserves_runtime_fields(engine_factory):
             EffectType.buff_damage_percent_boost,
             "src",
             duration_turns=2,
-            stacks=0,
             damage_type=DamageType.physical,
             value=0.2,
             display_name="test",
@@ -40,7 +39,7 @@ def test_state_roundtrip_preserves_runtime_fields(engine_factory):
     restored_spirit = next(s for s in restored.players[P1].spirits if s.unique_id == guifashi.unique_id)
 
     assert raw["players"][P1]["spirits"][0]["effects"][0]["durationTurns"] == 2
-    assert raw["players"][P1]["spirits"][0]["effects"][0]["stacks"] == 0
+    assert raw["players"][P1]["spirits"][0]["effects"][0]["stacks"] is None
     assert restored.phase == BattlePhase.finished
     assert restored.winner_id == "p1"
     assert len(restored.extra_action_queue) == 1
@@ -84,7 +83,7 @@ def test_legacy_remaining_turns_maps_to_duration_for_duration_effects():
     )
 
     assert effect.duration_turns == 2
-    assert effect.stacks == 0
+    assert effect.stacks is None
 
 
 def test_legacy_remaining_turns_maps_to_stacks_for_stack_effects():

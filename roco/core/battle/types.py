@@ -114,7 +114,8 @@ class BattleEffect:
     type: EffectType
     source_id: str
     duration_turns: Optional[int] = None
-    stacks: int = 0
+    # None 表示这个效果没有层数语义；有层数的效果使用非负整数。
+    stacks: Optional[int] = None
     stat_type: Optional[StatType] = None
     value: Optional[float] = None
     damage_type: Optional[DamageType] = None

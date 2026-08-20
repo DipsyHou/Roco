@@ -212,6 +212,7 @@ class GuaguaLogic(SpiritLogic):
         return PASSIVE_CRIT_DAMAGE_BONUS if _bound_master(spirit) is not None else 0.0
 
 
+
     def can_use_skill(self, spirit: BattleSpirit, skill) -> Optional[tuple]:
         if spirit.template_id == TEMPLATE_ID and skill.id == "guagua_learned":
             if spirit.sync_attrs.get(LEARNED_TARGET_KEY):

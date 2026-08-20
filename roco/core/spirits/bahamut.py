@@ -221,12 +221,6 @@ class BahamutLogic(SpiritLogic):
         quxie = get_stacks(target, EffectType.state_quxie)
         return CHEJIA_CRIT_DMG.get(quxie, 0.0)
 
-    def _log_crit(self, ctx: BattleContext, attacker: BattleSpirit, target: BattleSpirit) -> None:
-        ctx.add_log(
-            BattleLogType.damage_dealt,
-            f"暴击！{attacker.name} 对 {target.name} 的伤害触发了暴击！",
-            {"attackerId": attacker.unique_id, "targetId": target.unique_id},
-        )
 
     # ===== normal attack ======================================================
 
@@ -277,7 +271,6 @@ class BahamutLogic(SpiritLogic):
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
-                on_crit=lambda: self._log_crit(ctx, actor, target),
             )
 
     # --- 迎击 ---
@@ -356,7 +349,6 @@ class BahamutLogic(SpiritLogic):
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
-                on_crit=lambda: self._log_crit(ctx, actor, target),
             )
         remove_effect(actor, EffectType.state_zhaojia)
 
@@ -387,7 +379,6 @@ class BahamutLogic(SpiritLogic):
             lambda a: f"{actor.name} 的反扑对 {target.name} 造成了 {a} 点物理伤害！",
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
-            on_crit=lambda: self._log_crit(ctx, actor, target),
         )
 
         enemies = ctx.get_active_spirits(opponent_id)
@@ -409,7 +400,6 @@ class BahamutLogic(SpiritLogic):
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
-                on_crit=lambda t=bounce_target: self._log_crit(ctx, actor, t),
             )
 
         remove_effect(actor, EffectType.state_zhaojia)
@@ -458,7 +448,6 @@ class BahamutLogic(SpiritLogic):
             lambda a: f"{actor.name} 的{verb}对 {target.name} 造成了 {a} 点物理伤害！",
             source=DamageSource.attack,
             crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
-            on_crit=lambda: self._log_crit(ctx, actor, target),
         )
 
 

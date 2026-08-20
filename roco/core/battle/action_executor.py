@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .actions import ActionDict
+from .crit import log_critical_hit
 from .damage import calculate_damage
 from .events import DamageSource
 from .hp import apply_damage
@@ -245,8 +246,18 @@ class ActionExecutor:
     def _apply_hit(self, actor: BattleSpirit, target: BattleSpirit) -> None:
         eng = self._eng
         atk = get_effective_stat(actor, StatType.atk)
-        phys = calculate_damage(atk, DamageType.physical, actor, target)
+        crit_flag: List[bool] = []
+        phys = calculate_damage(
+            atk,
+            DamageType.physical,
+            actor,
+            target,
+            crit_flag=crit_flag,
+            rng=eng.next_rng("normal_attack_crit", actor.unique_id, target.unique_id),
+        )
         actual = apply_damage(target, phys, ctx=eng)
+        if crit_flag:
+            log_critical_hit(eng, actor, target)
         eng.add_log(
             BattleLogType.damage_dealt,
             msg.physical_hit(actor.name, target.name, actual),

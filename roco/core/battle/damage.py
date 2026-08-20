@@ -5,11 +5,9 @@ from __future__ import annotations
 import random
 from typing import List, Optional
 
+from .crit import DEFAULT_CRIT_DAMAGE_PERCENT, apply_crit_to_base, get_crit_stats
 from .damage_modifiers import (
-    DEFAULT_CRIT_DAMAGE_PERCENT,
-    _apply_crit_to_base,
     _match_damage_type,
-    get_crit_stats,
     get_damage_caps,
     get_damage_modifiers,
     get_def_pierce,
@@ -44,7 +42,7 @@ def calculate_damage(
         )
         base = (raw_damage * 100 / def_val) if def_val > 0 else raw_damage * 100
 
-    result, _was_crit = _apply_crit_to_base(
+    result, _was_crit = apply_crit_to_base(
         base, attacker, target=defender, crit_flag=crit_flag, rng=(rng or random)
     )
 

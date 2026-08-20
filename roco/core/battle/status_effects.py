@@ -6,6 +6,7 @@ import random
 import uuid
 from typing import List, Optional
 
+from .effect_meta import normalize_stacks, stack_count, uses_stacks
 from .stats import is_buff_effect, is_debuff_effect
 from .types import BattleEffect, BattleSpirit, DamageType, EffectType, StatType
 
@@ -17,7 +18,7 @@ def make_effect(
     source_id: str,
     *,
     duration_turns: Optional[int] = None,
-    stacks: int = 0,
+    stacks: Optional[int] = None,
     stat_type: Optional[StatType] = None,
     value: Optional[float] = None,
     damage_type: Optional[DamageType] = None,
@@ -31,7 +32,7 @@ def make_effect(
         type=eff_type,
         source_id=source_id,
         duration_turns=duration_turns,
-        stacks=stacks,
+        stacks=normalize_stacks(stacks) if uses_stacks(eff_type) else None,
         stat_type=stat_type,
         value=value,
         damage_type=damage_type,
@@ -208,7 +209,7 @@ def get_warmup_effect(spirit: BattleSpirit) -> Optional[BattleEffect]:
 
 def get_warmup_stacks(spirit: BattleSpirit) -> int:
     effect = get_warmup_effect(spirit)
-    return effect.stacks if effect else 0
+    return stack_count(effect) if effect else 0
 
 
 
@@ -217,7 +218,7 @@ def add_warmup_stacks(spirit: BattleSpirit, source_id: str, stacks: int) -> None
         return
     effect = get_warmup_effect(spirit)
     if effect:
-        effect.stacks += stacks
+        effect.stacks = stack_count(effect) + stacks
     else:
         spirit.effects.append(
             make_effect(
@@ -233,8 +234,8 @@ def tick_warmup_stacks(spirit: BattleSpirit, amount: int = 1) -> None:
     effect = get_warmup_effect(spirit)
     if not effect:
         return
-    effect.stacks = max(0, effect.stacks - amount)
-    if effect.stacks <= 0:
+    effect.stacks = max(0, stack_count(effect) - amount)
+    if stack_count(effect) <= 0:
         spirit.effects = [e for e in spirit.effects if e.type != EffectType.state_warmup]
 
 
@@ -245,7 +246,7 @@ def get_burn_effects(spirit: BattleSpirit) -> List[BattleEffect]:
 
 
 def get_total_burn_stacks(spirit: BattleSpirit) -> int:
-    return sum(effect.stacks for effect in get_burn_effects(spirit))
+    return sum(stack_count(effect) for effect in get_burn_effects(spirit))
 
 
 
@@ -265,7 +266,7 @@ def apply_burn_stacks(
         None,
     )
     if existing:
-        existing.stacks += stacks
+        existing.stacks = stack_count(existing) + stacks
     else:
         target.effects.append(
             make_effect(EffectType.debuff_burn, source_id, stacks=stacks)
@@ -284,7 +285,7 @@ def get_poison_effect(spirit: BattleSpirit) -> Optional[BattleEffect]:
 
 def get_poison_stacks(spirit: BattleSpirit) -> int:
     effect = get_poison_effect(spirit)
-    return max(0, effect.stacks) if effect else 0
+    return stack_count(effect) if effect else 0
 
 
 
@@ -297,7 +298,7 @@ def apply_poison_stacks(
         return False
     existing = get_poison_effect(target)
     if existing:
-        existing.stacks += stacks
+        existing.stacks = stack_count(existing) + stacks
     else:
         target.effects.append(
             make_effect(EffectType.debuff_poison, source_id, stacks=stacks)
@@ -316,7 +317,7 @@ def get_freeze_effect(spirit: BattleSpirit) -> Optional[BattleEffect]:
 
 def get_freeze_stacks(spirit: BattleSpirit) -> int:
     effect = get_freeze_effect(spirit)
-    return max(0, effect.stacks) if effect else 0
+    return stack_count(effect) if effect else 0
 
 
 
@@ -329,7 +330,7 @@ def apply_freeze_stacks(
         return False
     existing = get_freeze_effect(target)
     if existing:
-        existing.stacks += stacks
+        existing.stacks = stack_count(existing) + stacks
         existing.source_id = source_id
     else:
         target.effects.append(

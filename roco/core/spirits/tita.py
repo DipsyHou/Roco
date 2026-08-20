@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle.effect_meta import stack_count
 from ..battle.types import BattleLogType, BattleSpirit, EffectType, StatType
 from ..battle.utils import get_state_stack_count, is_debuff_immune, make_effect
 from ._combat import deal_atk_ratio, deal_mag_ratio, target_enemy
@@ -56,8 +57,8 @@ class TitaLogic(SpiritLogic):
         eff = next((e for e in spirit.effects if e.type == EffectType.state_shunt), None)
         if not eff:
             return
-        eff.stacks -= 1
-        if eff.stacks <= 0:
+        eff.stacks = stack_count(eff) - 1
+        if stack_count(eff) <= 0:
             spirit.effects = [e for e in spirit.effects if e.id != eff.id]
             ctx.add_log(
                 BattleLogType.effect_removed,

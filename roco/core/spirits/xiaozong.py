@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, Optional
 
+from ..battle.effect_meta import stack_count
 from ..battle.types import (
     BattleLogType,
     BattleSpirit,
@@ -42,7 +43,7 @@ def _get_lingqi_effect(spirit: BattleSpirit):
 
 def get_lingqi_stacks(spirit: BattleSpirit) -> int:
     eff = _get_lingqi_effect(spirit)
-    return max(0, eff.stacks) if eff else 0
+    return stack_count(eff) if eff else 0
 
 
 def add_lingqi(spirit: BattleSpirit, amount: int) -> None:
@@ -51,7 +52,7 @@ def add_lingqi(spirit: BattleSpirit, amount: int) -> None:
     cap = _lingqi_cap(spirit)
     eff = _get_lingqi_effect(spirit)
     if eff:
-        eff.stacks = min(cap, eff.stacks + amount)
+        eff.stacks = min(cap, stack_count(eff) + amount)
     else:
         spirit.effects.append(
             make_effect(
@@ -66,8 +67,8 @@ def consume_lingqi(spirit: BattleSpirit, amount: int) -> None:
     eff = _get_lingqi_effect(spirit)
     if not eff:
         return
-    eff.stacks -= amount
-    if eff.stacks <= 0:
+    eff.stacks = stack_count(eff) - amount
+    if stack_count(eff) <= 0:
         spirit.effects = [e for e in spirit.effects if e.type != EffectType.state_lingqi]
 
 

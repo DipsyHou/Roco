@@ -6,6 +6,7 @@ New code should import from the narrower modules:
 
 from __future__ import annotations
 
+from .crit import DEFAULT_CRIT_DAMAGE_PERCENT, get_crit_stats, log_critical_hit
 from .damage import (
     calculate_damage,
     get_damage_caps,
@@ -57,8 +58,10 @@ __all__ = [
     "apply_heal",
     "apply_poison_stacks",
     "calculate_damage",
+    "DEFAULT_CRIT_DAMAGE_PERCENT",
     "count_state_effects",
     "get_burn_effects",
+    "get_crit_stats",
     "get_damage_caps",
     "get_damage_modifiers",
     "get_effective_speed",
@@ -77,6 +80,7 @@ __all__ = [
     "is_debuff_immune",
     "is_state_effect",
     "is_stunned",
+    "log_critical_hit",
     "make_effect",
     "process_burn_on_action_end",
     "process_poison_damage",

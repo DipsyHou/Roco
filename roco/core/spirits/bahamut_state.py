@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..battle.effect_meta import stack_count
 from ..battle.types import BattleSpirit, EffectType
 from ..battle.utils import make_effect
 
@@ -12,7 +13,7 @@ def has_effect(spirit: BattleSpirit, eff_type: EffectType) -> bool:
 
 def get_stacks(spirit: BattleSpirit, eff_type: EffectType) -> int:
     eff = next((e for e in spirit.effects if e.type == eff_type), None)
-    return max(0, eff.stacks) if eff else 0
+    return stack_count(eff) if eff else 0
 
 
 def add_stacks(
@@ -26,7 +27,7 @@ def add_stacks(
         return
     eff = next((e for e in spirit.effects if e.type == eff_type), None)
     if eff:
-        eff.stacks = min(cap, eff.stacks + amount)
+        eff.stacks = min(cap, stack_count(eff) + amount)
     else:
         spirit.effects.append(
             make_effect(eff_type, source_id or spirit.unique_id, stacks=min(cap, amount))
@@ -38,9 +39,9 @@ def remove_stacks(spirit: BattleSpirit, eff_type: EffectType, amount: int) -> in
     eff = next((e for e in spirit.effects if e.type == eff_type), None)
     if not eff:
         return 0
-    removed = min(eff.stacks, amount)
-    eff.stacks -= removed
-    if eff.stacks <= 0:
+    removed = min(stack_count(eff), amount)
+    eff.stacks = stack_count(eff) - removed
+    if stack_count(eff) <= 0:
         spirit.effects = [e for e in spirit.effects if e.type != eff_type]
     return removed
 

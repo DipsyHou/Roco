@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List
 
+from ..battle.effect_meta import stack_count
 from ..battle.types import (
     BattleLogType,
     BattleSpirit,
@@ -105,7 +106,7 @@ class DeerleLogic(SpiritLogic):
         eff = _get_jianwu(spirit)
         if not eff:
             return 0.0
-        stacks = max(0, eff.stacks)
+        stacks = stack_count(eff)
         if stat == StatType.atk:
             return stacks * JIANWU_ATK_PER_STACK
         if stat == StatType.speed:
@@ -116,7 +117,7 @@ class DeerleLogic(SpiritLogic):
         if spirit.template_id != self.template_id:
             return None
         eff = _get_jianwu(spirit)
-        stacks = max(0, eff.stacks) if eff else 0
+        stacks = stack_count(eff) if eff else 0
         return ("梅花德尔勒", f"{stacks}/{JIANWU_CAP}")
 
     # --- 破绽施加 ---
@@ -236,7 +237,7 @@ class DeerleLogic(SpiritLogic):
         # 仅叠层；剑舞过期后需剑花重新开启，普攻不重建
         eff = _get_jianwu(actor)
         if eff:
-            eff.stacks = min(JIANWU_CAP, eff.stacks + 1)
+            eff.stacks = min(JIANWU_CAP, stack_count(eff) + 1)
         return True
 
     # --- 技能 ---
@@ -252,7 +253,7 @@ class DeerleLogic(SpiritLogic):
         eff = _get_jianwu(actor)
         if eff:
             eff.duration_turns = JIANWU_DURATION
-            eff.stacks = min(JIANWU_CAP, eff.stacks + 1)
+            eff.stacks = min(JIANWU_CAP, stack_count(eff) + 1)
         else:
             eff = make_effect(
                 EffectType.state_jianwu,
