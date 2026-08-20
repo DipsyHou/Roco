@@ -6,7 +6,7 @@ import argparse
 import asyncio
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 try:
     import websockets
@@ -18,14 +18,13 @@ from roco.net.protocol import (
     MSG_CREATE_ROOM,
     MSG_JOIN_ROOM,
     MSG_READY,
+    MSG_ROOM_JOINED,
     MSG_SUBMIT_ACTION,
     MSG_SYNC_TURN,
-    MSG_ROOM_JOINED,
     err,
 )
-
 from roco.net.transport import send_json as _send_json
-from server.room_manager import Room, RoomManager
+from .room_manager import Room, RoomManager
 
 # 战斗计算在线程池执行；主线程需能响应 WebSocket 心跳
 WS_PING_INTERVAL = 30
@@ -156,10 +155,7 @@ async def handle_message(ws: Any, state: ConnectionState, raw: str) -> None:
     if mtype == MSG_SUBMIT_ACTION:
         action = msg.get("action") or {}
         result = await room.handle_submit_action(slot, action)
-        if result.get("type") == "error":
-            await _send_json(ws, result)
-        else:
-            await _send_json(ws, result)
+        await _send_json(ws, result)
         return
 
     await _send_json(ws, err(f"未知消息类型: {mtype}"))

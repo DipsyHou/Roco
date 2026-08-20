@@ -15,9 +15,12 @@ try:
 except ImportError as exc:  # pragma: no cover
     raise SystemExit("请先安装 websockets：pip install websockets") from exc
 
-from server.ws_server import serve_until_stopped
+from .ws_server import serve_until_stopped
 
-UI_FONT = ("Microsoft YaHei UI", 10)
+UI_FONT = (
+    "Microsoft YaHei UI",
+    10,
+)
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = "8765"
 
@@ -112,7 +115,6 @@ class ServerDesktopApp(tk.Tk):
         self.port_var = tk.StringVar(value=DEFAULT_PORT)
         self._port_entry = ttk.Entry(cfg, textvariable=self.port_var, width=10)
         self._port_entry.grid(row=1, column=1, sticky="w", pady=(8, 0))
-
 
         btn_row = ttk.Frame(wrap)
         btn_row.pack(fill=tk.X, pady=(12, 0))

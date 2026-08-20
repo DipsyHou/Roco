@@ -37,47 +37,20 @@ ZHAOJIA_DR_PER_STACK = 0.05
 
 # --------------- helpers ---------------
 
-def _has_effect(spirit: BattleSpirit, eff_type: EffectType) -> bool:
-    return any(e.type == eff_type for e in spirit.effects)
+from .bahamut_state import (
+    add_stacks,
+    get_stacks,
+    has_effect,
+    remove_effect,
+    remove_stacks,
+)
 
-
-def _get_stacks(spirit: BattleSpirit, eff_type: EffectType) -> int:
-    eff = next((e for e in spirit.effects if e.type == eff_type), None)
-    return max(0, eff.stacks) if eff else 0
-
-
-def _add_stacks(
-    spirit: BattleSpirit,
-    eff_type: EffectType,
-    amount: int,
-    cap: int,
-    source_id: str = "",
-) -> None:
-    if amount <= 0:
-        return
-    eff = next((e for e in spirit.effects if e.type == eff_type), None)
-    if eff:
-        eff.stacks = min(cap, eff.stacks + amount)
-    else:
-        spirit.effects.append(
-            make_effect(eff_type, source_id or spirit.unique_id, stacks=min(cap, amount))
-        )
-
-
-def _remove_stacks(spirit: BattleSpirit, eff_type: EffectType, amount: int) -> int:
-    """Remove stacks and return actual amount removed; delete effect if zero."""
-    eff = next((e for e in spirit.effects if e.type == eff_type), None)
-    if not eff:
-        return 0
-    removed = min(eff.stacks, amount)
-    eff.stacks -= removed
-    if eff.stacks <= 0:
-        spirit.effects = [e for e in spirit.effects if e.type != eff_type]
-    return removed
-
-
-def _remove_effect(spirit: BattleSpirit, eff_type: EffectType) -> None:
-    spirit.effects = [e for e in spirit.effects if e.type != eff_type]
+# Back-compat aliases for old imports/tests.
+_add_stacks = add_stacks
+_get_stacks = get_stacks
+_has_effect = has_effect
+_remove_effect = remove_effect
+_remove_stacks = remove_stacks
 
 
 # --------------- policy ---------------
@@ -117,7 +90,7 @@ class BahamutLogic(SpiritLogic):
     def on_battle_start(self, ctx: BattleContext, spirit: BattleSpirit) -> None:
         if spirit.template_id != TEMPLATE_ID:
             return
-        _add_stacks(spirit, EffectType.state_gangqi, GANGQI_CAP, GANGQI_CAP)
+        add_stacks(spirit, EffectType.state_gangqi, GANGQI_CAP, GANGQI_CAP)
         if spirit.slot == 1:
             spirit.effects.append(make_effect(EffectType.state_chejia, spirit.unique_id))
             ctx.add_log(
@@ -145,7 +118,7 @@ class BahamutLogic(SpiritLogic):
             return
         if is_action_blocked(actor):
             return
-        zhaojia = _get_stacks(actor, EffectType.state_zhaojia)
+        zhaojia = get_stacks(actor, EffectType.state_zhaojia)
         if zhaojia <= 0:
             return
         ctx.add_log(
@@ -173,23 +146,23 @@ class BahamutLogic(SpiritLogic):
         """每使用一次普攻/技能，消耗 1 罡气给主目标叠 1 层 驱邪/镇煞。"""
         if not attacker.is_alive or not target.is_alive:
             return
-        gangqi = _get_stacks(attacker, EffectType.state_gangqi)
+        gangqi = get_stacks(attacker, EffectType.state_gangqi)
         if gangqi <= 0:
             return
 
-        if _has_effect(attacker, EffectType.state_chejia):
-            quxie = _get_stacks(target, EffectType.state_quxie)
+        if has_effect(attacker, EffectType.state_chejia):
+            quxie = get_stacks(target, EffectType.state_quxie)
             if quxie >= QUXIE_CAP:
                 return
-            _remove_stacks(attacker, EffectType.state_gangqi, 1)
-            _add_stacks(target, EffectType.state_quxie, 1, QUXIE_CAP, attacker.unique_id)
+            remove_stacks(attacker, EffectType.state_gangqi, 1)
+            add_stacks(target, EffectType.state_quxie, 1, QUXIE_CAP, attacker.unique_id)
 
-        elif _has_effect(attacker, EffectType.state_cunjin):
-            zhensha = _get_stacks(target, EffectType.state_zhensha)
+        elif has_effect(attacker, EffectType.state_cunjin):
+            zhensha = get_stacks(target, EffectType.state_zhensha)
             if zhensha >= ZHENSHA_CAP:
                 return
-            _remove_stacks(attacker, EffectType.state_gangqi, 1)
-            _add_stacks(target, EffectType.state_zhensha, 1, ZHENSHA_CAP, attacker.unique_id)
+            remove_stacks(attacker, EffectType.state_gangqi, 1)
+            add_stacks(target, EffectType.state_zhensha, 1, ZHENSHA_CAP, attacker.unique_id)
 
     # ===== damage hooks ======================================================
 
@@ -203,24 +176,24 @@ class BahamutLogic(SpiritLogic):
         if event.damage <= 0:
             return
 
-        cur = _get_stacks(spirit, EffectType.state_zhaojia)
+        cur = get_stacks(spirit, EffectType.state_zhaojia)
 
         # 已有招架时，受到伤害自动 +1（招架自增强）
         if 0 < cur < ZHAOJIA_CAP:
-            _add_stacks(spirit, EffectType.state_zhaojia, 1, ZHAOJIA_CAP)
+            add_stacks(spirit, EffectType.state_zhaojia, 1, ZHAOJIA_CAP)
 
         # 寸劲路线：镇煞满 2 层的敌人造成伤害时，获得 1 层招架（初始来源）
-        if _has_effect(spirit, EffectType.state_cunjin):
+        if has_effect(spirit, EffectType.state_cunjin):
             attacker = event.attacker
             if attacker and attacker.is_alive:
-                if _get_stacks(attacker, EffectType.state_zhensha) >= ZHENSHA_CAP:
-                    if _get_stacks(spirit, EffectType.state_zhaojia) < ZHAOJIA_CAP:
-                        _add_stacks(spirit, EffectType.state_zhaojia, 1, ZHAOJIA_CAP)
+                if get_stacks(attacker, EffectType.state_zhensha) >= ZHENSHA_CAP:
+                    if get_stacks(spirit, EffectType.state_zhaojia) < ZHAOJIA_CAP:
+                        add_stacks(spirit, EffectType.state_zhaojia, 1, ZHAOJIA_CAP)
 
     def get_damage_reduction(self, spirit: BattleSpirit) -> float:
         if spirit.template_id != TEMPLATE_ID:
             return 0.0
-        return _get_stacks(spirit, EffectType.state_zhaojia) * ZHAOJIA_DR_PER_STACK
+        return get_stacks(spirit, EffectType.state_zhaojia) * ZHAOJIA_DR_PER_STACK
 
     # ===== crit hooks (彻甲) ==================================================
 
@@ -229,11 +202,11 @@ class BahamutLogic(SpiritLogic):
     ) -> float:
         if spirit.template_id != TEMPLATE_ID:
             return 0.0
-        if not _has_effect(spirit, EffectType.state_chejia):
+        if not has_effect(spirit, EffectType.state_chejia):
             return 0.0
         if target is None:
             return 0.0
-        quxie = _get_stacks(target, EffectType.state_quxie)
+        quxie = get_stacks(target, EffectType.state_quxie)
         return CHEJIA_CRIT_RATE.get(quxie, 0.0)
 
     def get_crit_damage_bonus(
@@ -241,11 +214,11 @@ class BahamutLogic(SpiritLogic):
     ) -> float:
         if spirit.template_id != TEMPLATE_ID:
             return 0.0
-        if not _has_effect(spirit, EffectType.state_chejia):
+        if not has_effect(spirit, EffectType.state_chejia):
             return 0.0
         if target is None:
             return 0.0
-        quxie = _get_stacks(target, EffectType.state_quxie)
+        quxie = get_stacks(target, EffectType.state_quxie)
         return CHEJIA_CRIT_DMG.get(quxie, 0.0)
 
     def _log_crit(self, ctx: BattleContext, attacker: BattleSpirit, target: BattleSpirit) -> None:
@@ -316,9 +289,9 @@ class BahamutLogic(SpiritLogic):
         action: Dict[str, Any],
     ) -> None:
         del ctx, player_id, action
-        if _get_stacks(actor, EffectType.state_zhaojia) >= ZHAOJIA_CAP:
+        if get_stacks(actor, EffectType.state_zhaojia) >= ZHAOJIA_CAP:
             return
-        _add_stacks(actor, EffectType.state_zhaojia, 1, ZHAOJIA_CAP)
+        add_stacks(actor, EffectType.state_zhaojia, 1, ZHAOJIA_CAP)
 
     # --- 龙之舞 ---
     def _skill_longzhiwu(
@@ -361,7 +334,7 @@ class BahamutLogic(SpiritLogic):
         actor: BattleSpirit,
         action: Dict[str, Any],
     ) -> None:
-        stacks = _get_stacks(actor, EffectType.state_zhaojia)
+        stacks = get_stacks(actor, EffectType.state_zhaojia)
         if stacks <= 0:
             return
         target = target_enemy(ctx, player_id, action.get("targetId"))
@@ -385,7 +358,7 @@ class BahamutLogic(SpiritLogic):
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
                 on_crit=lambda: self._log_crit(ctx, actor, target),
             )
-        _remove_effect(actor, EffectType.state_zhaojia)
+        remove_effect(actor, EffectType.state_zhaojia)
 
     # --- 反扑（招架额外行动专用）---
     def _skill_fanpu(
@@ -395,7 +368,7 @@ class BahamutLogic(SpiritLogic):
         actor: BattleSpirit,
         action: Dict[str, Any],
     ) -> None:
-        stacks = _get_stacks(actor, EffectType.state_zhaojia)
+        stacks = get_stacks(actor, EffectType.state_zhaojia)
         if stacks <= 0:
             return
         target = target_enemy(ctx, player_id, action.get("targetId"))
@@ -439,7 +412,7 @@ class BahamutLogic(SpiritLogic):
                 on_crit=lambda t=bounce_target: self._log_crit(ctx, actor, t),
             )
 
-        _remove_effect(actor, EffectType.state_zhaojia)
+        remove_effect(actor, EffectType.state_zhaojia)
 
     # ===== action validation ==================================================
 

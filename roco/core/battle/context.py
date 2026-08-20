@@ -15,11 +15,10 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, List, Optional, Protocol
 
+from .actions import ActionDict
 from .events import DamageSource
 from .extra_action import ExtraActionSlot
 from .types import BattleLogType, BattleSpirit, BattleState, DamageType
-
-ActionDict = Dict[str, Any]
 
 
 class BattleContext(Protocol):

@@ -8,9 +8,11 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 
-from roco.core.battle.types import ActionType, BattlePhase, player_action_from_dict
-from roco.core.battle.rules import MAX_DEAD_ACTOR_SKIPS, MAX_TEAM_SIZE, MIN_TEAM_SIZE
 from roco.core.battle.engine import BattleEngine
+from roco.core.battle.rules import MAX_DEAD_ACTOR_SKIPS, MAX_TEAM_SIZE, MIN_TEAM_SIZE
+from roco.core.battle.types import ActionType, BattlePhase, player_action_from_dict
+from roco.core.spirits import get_spirit_template
+from roco.core.spirits.templates import SpiritTemplate
 from roco.net.protocol import (
     MSG_ACTION_RESULT,
     MSG_BATTLE_STARTED,
@@ -21,9 +23,6 @@ from roco.net.protocol import (
 )
 from roco.net.serialize import state_to_dict
 from roco.net.transport import send_json as _send_json
-from roco.core.spirits import get_spirit_template
-from roco.core.spirits.templates import SpiritTemplate
-
 
 PLAYER_IDS = ("p1", "p2")
 SLOT_TO_PLAYER = {"p1": PLAYER_IDS[0], "p2": PLAYER_IDS[1]}
@@ -225,8 +224,5 @@ class RoomManager:
                 if sock is ws:
                     room.slots.pop(slot, None)
                     room.ready.discard(slot)
-            # An empty room is unreachable — no socket can rejoin it — so it must
-            # be recycled regardless of status. Previously "battling" rooms were
-            # kept, leaking one BattleEngine per abandoned match.
             if not room.slots:
                 self.rooms.pop(room_id, None)

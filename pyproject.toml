@@ -17,7 +17,7 @@ test = ["pytest>=8.0"]
 [project.scripts]
 roco-desktop = "roco.apps.desktop.game:main"
 roco-online-desktop = "roco.apps.online.desktop:main"
-roco-online-server = "server.server_app:main"
+roco-online-server = "roco.server.server_app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -2,12 +2,14 @@
 
 Resolves the *effect* of a submitted action. Turn sequencing, timeline, and
 energy accounting live elsewhere; this module only performs the action itself.
+It is the place to look when a legal action has the wrong concrete result.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from .actions import ActionDict
 from .damage import calculate_damage
 from .events import DamageSource
 from .hp import apply_damage
@@ -32,7 +34,7 @@ class ActionExecutor:
     def __init__(self, engine: "BattleEngine") -> None:
         self._eng = engine
 
-    def execute_action(self, player_id: str, action: Dict[str, Any]) -> None:
+    def execute_action(self, player_id: str, action: ActionDict) -> None:
         eng = self._eng
         at = action.get("type")
         if at == ActionType.normal_attack.value:
@@ -67,7 +69,7 @@ class ActionExecutor:
             )
 
     def _enemy_attack_targets(
-        self, actor: BattleSpirit, action: Dict[str, Any]
+        self, actor: BattleSpirit, action: ActionDict
     ) -> Optional[List[BattleSpirit]]:
         """Enemy targets if this action launches an attack; else ``None``."""
         eng = self._eng
@@ -115,7 +117,7 @@ class ActionExecutor:
         return None
 
     def _snapshot_attack_launch_targets(
-        self, player_id: str, action: Dict[str, Any]
+        self, player_id: str, action: ActionDict
     ) -> Optional[List[BattleSpirit]]:
         """Resolve launch targets before damage so KO mid-action does not erase the list."""
         eng = self._eng
@@ -127,7 +129,7 @@ class ActionExecutor:
     def _notify_attack_launch(
         self,
         player_id: str,
-        action: Dict[str, Any],
+        action: ActionDict,
         targets: Optional[List[BattleSpirit]],
     ) -> None:
         """Broadcast 发动攻击 once after the action's own damage segments."""
@@ -147,7 +149,7 @@ class ActionExecutor:
             if ally_logic:
                 ally_logic.on_ally_attack(eng, spirit, actor, action, targets)
 
-    def _notify_ally_action(self, player_id: str, action: Dict[str, Any]) -> None:
+    def _notify_ally_action(self, player_id: str, action: ActionDict) -> None:
         eng = self._eng
         actor = eng.find_spirit(player_id, action.get("actorId") or "")
         if not actor or not actor.is_alive:
@@ -160,7 +162,7 @@ class ActionExecutor:
                 logic.on_ally_action(eng, spirit, actor, action)
 
     def _resolve_sole_target(
-        self, player_id: str, action: Dict[str, Any]
+        self, player_id: str, action: ActionDict
     ) -> Optional[BattleSpirit]:
         """The single designated target of a NA/skill, if any.
 
@@ -204,7 +206,7 @@ class ActionExecutor:
                 return target
         return None
 
-    def _notify_sole_target(self, player_id: str, action: Dict[str, Any]) -> None:
+    def _notify_sole_target(self, player_id: str, action: ActionDict) -> None:
         eng = self._eng
         sole = self._resolve_sole_target(player_id, action)
         if not sole or not sole.is_alive:
@@ -216,7 +218,7 @@ class ActionExecutor:
     def execute_normal_attack_impl(
         self,
         player_id: str,
-        action: Dict[str, Any],
+        action: ActionDict,
         is_auto_triggered: bool,
     ) -> None:
         eng = self._eng
@@ -261,7 +263,7 @@ class ActionExecutor:
     def _resolve_targets(
         self,
         actor: BattleSpirit,
-        action: Dict[str, Any],
+        action: ActionDict,
         is_auto_triggered: bool,
     ) -> List[BattleSpirit]:
         eng = self._eng
@@ -280,7 +282,7 @@ class ActionExecutor:
             return []
         return [eng.next_rng("auto_target", actor.unique_id).choice(enemies)]
 
-    def execute_skill(self, player_id: str, action: Dict[str, Any]) -> None:
+    def execute_skill(self, player_id: str, action: ActionDict) -> None:
         eng = self._eng
         actor = eng.find_spirit(player_id, action.get("actorId") or "")
         if not actor or not actor.is_alive:
