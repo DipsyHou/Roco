@@ -5,12 +5,15 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict, List, Optional
 
 from ..battle.events import DamageSource
+from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
 from ..battle.types import (
     BattleLogType,
+    ActionType,
     BattleSpirit,
     DamageType,
     EffectType,
     StatType,
+    TargetType,
 )
 from ..battle.utils import get_effective_stat, make_effect
 from ._combat import deal_atk_ratio, deal_damage, target_ally, target_enemy
@@ -18,6 +21,9 @@ from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "guagua"
 LEARNED_USED_KEY = "guagua_learned_used"
+LEARNED_TARGET_KEY = "guagua_learned_target_id"
+LEARNED_POLICY_ID = "guagua_learned"
+LEARNED_SOURCE = "guagua_learned"
 BIYOUWOSHI_TAG = "guagua_biyouwoshi"
 PASSIVE_ATK_BONUS = 0.12
 PASSIVE_CRIT_RATE_BONUS = 0.30
@@ -26,6 +32,29 @@ LEARNED_RATIO = 0.50
 BAIJIA_RATIO = 1.00
 XUESHEN_RATIO = 0.30
 SPEED_BUFF = 0.10
+
+
+def _learned_policy(actor: BattleSpirit, action: Dict[str, Any]) -> bool:
+    if action.get("type") == ActionType.skip.value:
+        return True
+    return (
+        actor.template_id == TEMPLATE_ID
+        and action.get("type") == ActionType.use_skill.value
+        and action.get("skillId") == "guagua_learned"
+    )
+
+
+register_policy(
+    LEARNED_POLICY_ID,
+    _learned_policy,
+    ExtraActionUI(
+        hint="（呱呱额外行动：自动学会了！）",
+        allow_normal_attack=False,
+        allow_gather=False,
+        allow_skip=True,
+        allowed_skill_ids=("guagua_learned",),
+    ),
+)
 
 
 def _has_effect(spirit: BattleSpirit, eff_type: EffectType) -> bool:
@@ -111,6 +140,17 @@ def _bound_master(spirit: BattleSpirit) -> Optional[BattleSpirit]:
     return _master_on_team(ctx, spirit.owner_id)
 
 
+def _pending_learned_target(ctx: BattleContext, actor: BattleSpirit) -> Optional[BattleSpirit]:
+    target_id = actor.sync_attrs.get(LEARNED_TARGET_KEY)
+    if not target_id:
+        return None
+    target = ctx.find_spirit_anywhere(str(target_id))
+    opponent_id = ctx.get_opponent_id(actor.owner_id)
+    if target and target.is_alive and target.owner_id == opponent_id:
+        return target
+    return None
+
+
 def _master_power(master: BattleSpirit) -> float:
     return max(get_effective_stat(master, StatType.atk), get_effective_stat(master, StatType.mag_atk))
 
@@ -127,11 +167,13 @@ class GuaguaLogic(SpiritLogic):
     def on_unit_created(self, spirit: BattleSpirit) -> None:
         if spirit.template_id == TEMPLATE_ID:
             spirit.sync_attrs.setdefault(LEARNED_USED_KEY, 0)
+            spirit.sync_attrs.setdefault(LEARNED_TARGET_KEY, None)
 
     def on_battle_start(self, ctx: BattleContext, spirit: BattleSpirit) -> None:
         if spirit.template_id != TEMPLATE_ID:
             return
         spirit.sync_attrs[LEARNED_USED_KEY] = 0
+        spirit.sync_attrs[LEARNED_TARGET_KEY] = None
         first = next((ally for ally in ctx.get_all_spirits(spirit.owner_id) if ally.slot == 1), None)
         if first is None:
             return
@@ -146,6 +188,7 @@ class GuaguaLogic(SpiritLogic):
         del ctx
         if actor.template_id == TEMPLATE_ID:
             actor.sync_attrs[LEARNED_USED_KEY] = 0
+            actor.sync_attrs[LEARNED_TARGET_KEY] = None
 
     def get_stat_percent_bonus(self, spirit: BattleSpirit, stat: StatType) -> float:
         if spirit.template_id != TEMPLATE_ID or stat not in (StatType.atk, StatType.mag_atk):
@@ -167,6 +210,37 @@ class GuaguaLogic(SpiritLogic):
         if spirit.template_id != TEMPLATE_ID:
             return 0.0
         return PASSIVE_CRIT_DAMAGE_BONUS if _bound_master(spirit) is not None else 0.0
+
+
+    def can_use_skill(self, spirit: BattleSpirit, skill) -> Optional[tuple]:
+        if spirit.template_id == TEMPLATE_ID and skill.id == "guagua_learned":
+            if spirit.sync_attrs.get(LEARNED_TARGET_KEY):
+                return True, ""
+            return False, "只能在必有我师的额外行动中使用"
+        return None
+
+    def get_skill_target_type(
+        self,
+        ctx: BattleContext,
+        spirit: BattleSpirit,
+        skill,
+    ) -> Optional[TargetType]:
+        del ctx
+        if spirit.template_id == TEMPLATE_ID and skill.id == "guagua_learned" and spirit.sync_attrs.get(LEARNED_TARGET_KEY):
+            return TargetType.none
+        return None
+
+    def get_attack_launch_targets(
+        self,
+        ctx: BattleContext,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+        skill,
+    ) -> Optional[List[BattleSpirit]]:
+        if actor.template_id == TEMPLATE_ID and skill.id == "guagua_learned":
+            target = _pending_learned_target(ctx, actor)
+            return [target] if target is not None else []
+        return None
 
     def execute_normal_attack(
         self,
@@ -212,12 +286,19 @@ class GuaguaLogic(SpiritLogic):
             return
         target = ctx.next_rng("guagua_learned_target", observer.unique_id, actor.unique_id).choice(live_targets)
         observer.sync_attrs[LEARNED_USED_KEY] = 1
+        observer.sync_attrs[LEARNED_TARGET_KEY] = target.unique_id
+        ctx.queue_extra_actions([
+            ExtraActionSlot(
+                actor_id=observer.unique_id,
+                policy_id=LEARNED_POLICY_ID,
+                source=LEARNED_SOURCE,
+            )
+        ])
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{observer.name} 观察师傅出手，自动使用「学会了！」！",
+            f"{observer.name} 观察师傅出手，获得一次额外行动，准备自动使用「学会了！」！",
             {"sourceId": observer.unique_id, "teacherId": actor.unique_id, "targetId": target.unique_id},
         )
-        self._cast_learned(ctx, observer, target)
 
     def on_attack(
         self,
@@ -261,9 +342,10 @@ class GuaguaLogic(SpiritLogic):
         actor: BattleSpirit,
         action: Dict[str, Any],
     ) -> None:
-        target = target_enemy(ctx, player_id, action.get("targetId"))
+        target = _pending_learned_target(ctx, actor) or target_enemy(ctx, player_id, action.get("targetId"))
         if target:
             self._cast_learned(ctx, actor, target)
+        actor.sync_attrs[LEARNED_TARGET_KEY] = None
 
     def _cast_learned(self, ctx: BattleContext, actor: BattleSpirit, target: BattleSpirit) -> None:
         deal_atk_ratio(

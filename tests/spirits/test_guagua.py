@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from tests.conftest import P1, P2, by_template, cast_skill, effects_of, normal_attack
-from roco.core.battle.types import EffectType, StatType
+from tests.conftest import P1, P2, by_template, cast_skill, effects_of, normal_attack, submit
+from roco.core.battle.types import ActionType, EffectType, StatType
 from roco.core.battle.utils import get_effective_stat
 
 
@@ -29,7 +29,18 @@ def test_teacher_attack_auto_triggers_learned_once_per_guagua_turn(engine_factor
     assert normal_attack(engine, flora, target)
 
     assert guagua.sync_attrs["guagua_learned_used"] == 1
+    assert guagua.sync_attrs["guagua_learned_target_id"] == target.unique_id
+    assert engine.current_extra_slot() is not None
+    assert engine.current_extra_slot().actor_id == guagua.unique_id
+    assert engine.current_extra_slot().source == "guagua_learned"
     assert target.current_hp < before_hp
+    after_teacher_attack_hp = target.current_hp
+
+    assert submit(engine, guagua, ActionType.use_skill.value, skillId="guagua_learned")
+
+    assert engine.current_extra_slot() is None
+    assert guagua.sync_attrs["guagua_learned_target_id"] is None
+    assert target.current_hp < after_teacher_attack_hp
     assert len(_tagged(flora, "guagua_biyouwoshi")) == 4
     assert any("学会了" in log.message for log in engine.state.battle_log)
 
