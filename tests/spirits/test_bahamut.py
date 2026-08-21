@@ -132,18 +132,18 @@ def test_chejia_crit_stats_by_quxie_stacks():
 
     _add_stacks(enemy, EffectType.state_quxie, 1, 4, b.unique_id)
     rate, dmg = get_crit_stats(b, enemy)
-    assert rate == 0.25
-    assert dmg == 140.0
+    assert rate == 0.20
+    assert dmg == 150.0
 
     _add_stacks(enemy, EffectType.state_quxie, 1, 4, b.unique_id)
     rate, dmg = get_crit_stats(b, enemy)
-    assert rate == 0.50
-    assert dmg == 140.0
+    assert rate == 0.30
+    assert dmg == 150.0
 
     _add_stacks(enemy, EffectType.state_quxie, 1, 4, b.unique_id)
     rate, dmg = get_crit_stats(b, enemy)
-    assert rate == 0.50
-    assert dmg == 180.0
+    assert rate == 0.40
+    assert dmg == 150.0
 
 
 def test_zhaojia_stacks_only_when_already_has_parry():

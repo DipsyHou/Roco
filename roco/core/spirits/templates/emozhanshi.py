@@ -46,10 +46,10 @@ EMOZHANSHI = SpiritTemplate(
         SkillDef(
             id="emozhanshi_skill2",
             name="狂宴",
-            description="能量 4。目标为自身。回复（50%自身已损生命）生命。",
+            description="能量 3。目标为自身。回复（33%自身已损生命）生命。",
             cooldown=0,
             target_type=TargetType.self,
-            energy_cost=4,
+            energy_cost=3,
         ),
         SkillDef(
             id="emozhanshi_skill3",
