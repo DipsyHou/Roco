@@ -25,12 +25,14 @@ LEARNED_TARGET_KEY = "guagua_learned_target_id"
 LEARNED_POLICY_ID = "guagua_learned"
 LEARNED_SOURCE = "guagua_learned"
 BIYOUWOSHI_TAG = "guagua_biyouwoshi"
-PASSIVE_ATK_BONUS = 0.12
-PASSIVE_CRIT_RATE_BONUS = 0.30
-PASSIVE_CRIT_DAMAGE_BONUS = 60.0
-LEARNED_RATIO = 0.50
+PASSIVE_ATK_BONUS = 0.10
+PASSIVE_CRIT_RATE_BONUS = 0.20
+PASSIVE_CRIT_DAMAGE_BONUS = 50.0
+LEARNED_RATIO = 0.48
 BAIJIA_RATIO = 1.00
-XUESHEN_RATIO = 0.30
+BAIJIA_EXTRA_RATIO = 0.48
+XUESHEN_RATIO = 0.32
+XUESHEN_DURATION = 5
 SPEED_BUFF = 0.10
 
 
@@ -151,8 +153,29 @@ def _pending_learned_target(ctx: BattleContext, actor: BattleSpirit) -> Optional
     return None
 
 
-def _master_power(master: BattleSpirit) -> float:
-    return max(get_effective_stat(master, StatType.atk), get_effective_stat(master, StatType.mag_atk))
+def _master_attack(master: BattleSpirit) -> tuple[float, DamageType]:
+    """师傅双攻的较高值及其对应伤害属性：物攻更高→物理，魔攻更高→魔法（相等按物理）。"""
+    atk = get_effective_stat(master, StatType.atk)
+    mag = get_effective_stat(master, StatType.mag_atk)
+    if mag > atk:
+        return mag, DamageType.magical
+    return atk, DamageType.physical
+
+
+def _random_attack_target_or_enemy(
+    ctx: BattleContext,
+    owner_id: str,
+    targets: List[BattleSpirit],
+    rng,
+) -> Optional[BattleSpirit]:
+    """从本次攻击的存活目标里随机挑一个；若一个都不存在，则改为随机一个存活敌方精灵。"""
+    candidates = [target for target in targets if target.is_alive]
+    if not candidates:
+        opponent_id = ctx.get_opponent_id(owner_id)
+        candidates = [enemy for enemy in ctx.get_active_spirits(opponent_id) if enemy.is_alive]
+    if not candidates:
+        return None
+    return rng.choice(candidates)
 
 
 class GuaguaLogic(SpiritLogic):
@@ -175,7 +198,7 @@ class GuaguaLogic(SpiritLogic):
         spirit.sync_attrs[LEARNED_USED_KEY] = 0
         spirit.sync_attrs[LEARNED_TARGET_KEY] = None
         first = next((ally for ally in ctx.get_all_spirits(spirit.owner_id) if ally.slot == 1), None)
-        if first is None:
+        if first is None or first.unique_id == spirit.unique_id:
             return
         _apply_state_once(first, EffectType.state_shifu, spirit.unique_id, display_name="师傅")
         ctx.add_log(
@@ -218,6 +241,26 @@ class GuaguaLogic(SpiritLogic):
             if spirit.sync_attrs.get(LEARNED_TARGET_KEY):
                 return True, ""
             return False, "只能在必有我师的额外行动中使用"
+        return None
+
+    def can_execute_action(
+        self,
+        ctx: BattleContext,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+        *,
+        in_extra_action: bool,
+        stunned: bool,
+    ) -> Optional[tuple]:
+        del ctx, in_extra_action, stunned
+        if actor.template_id != TEMPLATE_ID:
+            return None
+        if (
+            action.get("type") == ActionType.use_skill.value
+            and action.get("skillId") == "guagua_skill1"
+            and action.get("targetId") == actor.unique_id
+        ):
+            return (False, "师傅请喝茶不能选择自身为目标")
         return None
 
     def get_skill_target_type(
@@ -282,10 +325,10 @@ class GuaguaLogic(SpiritLogic):
         master = _master_on_team(ctx, observer.owner_id)
         if master is None or master.unique_id != actor.unique_id:
             return
-        live_targets = [target for target in targets if target.is_alive]
-        if not live_targets:
+        rng = ctx.next_rng("guagua_learned_target", observer.unique_id, actor.unique_id)
+        target = _random_attack_target_or_enemy(ctx, observer.owner_id, targets, rng)
+        if target is None:
             return
-        target = ctx.next_rng("guagua_learned_target", observer.unique_id, actor.unique_id).choice(live_targets)
         observer.sync_attrs[LEARNED_USED_KEY] = 1
         observer.sync_attrs[LEARNED_TARGET_KEY] = target.unique_id
         ctx.queue_extra_actions([
@@ -314,18 +357,19 @@ class GuaguaLogic(SpiritLogic):
         master = _master_on_team(ctx, actor.owner_id)
         if master is None:
             return
-        live_targets = [target for target in targets if target.is_alive]
-        if not live_targets:
+        rng = ctx.next_rng("guagua_xueshen_target", actor.unique_id)
+        target = _random_attack_target_or_enemy(ctx, actor.owner_id, targets, rng)
+        if target is None:
             return
-        target = ctx.next_rng("guagua_xueshen_target", actor.unique_id).choice(live_targets)
-        raw = _master_power(master) * XUESHEN_RATIO
+        power, dtype = _master_attack(master)
+        raw = power * XUESHEN_RATIO
         dealt = deal_damage(
             ctx,
             master,
             target,
             raw,
-            DamageType.physical,
-            lambda a: f"{actor.name} 的「学神」使师傅 {master.name} 追击 {target.name}，造成了 {a} 点物理附加伤害！",
+            dtype,
+            lambda a: f"{actor.name} 的「学神」使师傅 {master.name} 追击 {target.name}，造成了 {a} 点附加伤害！",
             source=DamageSource.additional,
             crit_rng=ctx.next_rng("guagua_xueshen_crit", master.unique_id, target.unique_id),
         )
@@ -424,14 +468,15 @@ class GuaguaLogic(SpiritLogic):
         master = _master_on_team(ctx, actor.owner_id)
         if master is None:
             return
+        power, dtype = _master_attack(master)
         deal_damage(
             ctx,
-            actor,
+            master,
             target,
-            _master_power(master),
-            DamageType.physical,
-            lambda a: f"{actor.name} 借师傅 {master.name} 之长，对 {target.name} 追加造成了 {a} 点物理伤害！",
-            source=DamageSource.skill,
+            power * BAIJIA_EXTRA_RATIO,
+            dtype,
+            lambda a: f"{actor.name} 借师傅 {master.name} 之长，对 {target.name} 追加造成了 {a} 点附加伤害！",
+            source=DamageSource.additional,
             crit_rng=ctx.next_rng("guagua_baijia_extra_crit", actor.unique_id, target.unique_id),
         )
 
@@ -443,7 +488,13 @@ class GuaguaLogic(SpiritLogic):
         action: Dict[str, Any],
     ) -> None:
         del player_id, action
-        _apply_state_once(actor, EffectType.state_xueshen, actor.unique_id, display_name="学神")
+        _apply_state_once(
+            actor,
+            EffectType.state_xueshen,
+            actor.unique_id,
+            display_name="学神",
+            duration_turns=XUESHEN_DURATION,
+        )
         ctx.add_log(
             BattleLogType.effect_applied,
             f"{actor.name} 获得「学神」状态！",

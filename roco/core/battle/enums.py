@@ -95,6 +95,7 @@ class EffectType(str, Enum):
     state_xueshen = "state_xueshen"
     buff_laziji = "buff_laziji"
     buff_shuizhuyu = "buff_shuizhuyu"
+    state_roudun = "state_roudun"
 
 
 class StatType(str, Enum):

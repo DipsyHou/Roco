@@ -61,3 +61,7 @@ pytest
 - `roco.apps` 负责用户界面和交互流程。
 - `roco.net` 负责协议、传输、序列化以及远端引擎视图。
 - `roco.server` 承载权威联机房间与 WebSocket 服务端。
+
+## 一键打包脚本
+
+`scripts/build.bat`

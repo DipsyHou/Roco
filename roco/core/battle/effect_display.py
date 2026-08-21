@@ -213,6 +213,8 @@ def _resolve_display_name(eff: BattleEffect) -> str:
         return "师傅"
     if t == EffectType.state_xueshen:
         return "学神"
+    if t == EffectType.state_roudun:
+        return "肉盾"
     if t == EffectType.buff_laziji:
         return "辣子鸡"
     if t == EffectType.buff_shuizhuyu:
