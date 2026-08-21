@@ -91,10 +91,8 @@ def test_crit_applies_to_base_before_damage_modifiers(standard_engine):
     )
 
     with patch("roco.core.battle.damage.random.random", return_value=0.0):
-        crit = calculate_damage(200, DamageType.physical, attacker, defender, can_crit=True)
-        normal = calculate_damage(200, DamageType.physical, attacker, defender, can_crit=False)
+        crit = calculate_damage(200, DamageType.physical, attacker, defender)
 
-    assert normal == 100
     assert crit == 200
 
 
@@ -104,7 +102,21 @@ def test_crit_default_is_no_bonus_without_buffs(standard_engine):
     defender.base_stats.def_ = 200
 
     with patch("roco.core.battle.damage.random.random", return_value=0.0):
-        assert calculate_damage(200, DamageType.physical, attacker, defender, can_crit=True) == 100
+        assert calculate_damage(200, DamageType.physical, attacker, defender) == 100
+
+
+def test_crit_rate_zero_skips_roll(standard_engine):
+    """Most damage has 0% crit rate; pipeline still runs but never multiplies."""
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    defender.base_stats.def_ = 200
+    attacker.effects.append(
+        make_effect(EffectType.buff_crit_damage, "a", duration_turns=1, value=100)
+    )
+
+    with patch("roco.core.battle.damage.random.random", return_value=0.0) as roll:
+        assert calculate_damage(200, DamageType.physical, attacker, defender) == 100
+    roll.assert_not_called()
 
 
 def test_effective_stat_modifiers_still_work_after_field_split(standard_engine):
@@ -120,3 +132,52 @@ def test_effective_stat_modifiers_still_work_after_field_split(standard_engine):
     )
 
     assert get_effective_stat(spirit, StatType.atk) == 270
+
+
+def test_critical_log_is_generated_by_shared_combat_helper(standard_engine):
+    from roco.core.spirits._combat import deal_damage
+
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    attacker.effects.append(
+        make_effect(EffectType.buff_crit_rate, "a", duration_turns=1, value=1.0)
+    )
+
+    start = len(standard_engine.state.battle_log)
+    deal_damage(
+        standard_engine,
+        attacker,
+        defender,
+        100,
+        DamageType.fixed,
+        lambda actual: f"测试伤害 {actual}",
+    )
+
+    new_logs = standard_engine.state.battle_log[start:]
+    crit_logs = [log for log in new_logs if log.data and log.data.get("critical")]
+    assert len(crit_logs) == 1
+    assert crit_logs[0].message.startswith("暴击！")
+    assert new_logs.index(crit_logs[0]) < next(
+        i for i, log in enumerate(new_logs) if log.message.startswith("测试伤害")
+    )
+
+
+def test_critical_log_is_generated_for_default_normal_attack(standard_engine):
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    attacker.effects.append(
+        make_effect(EffectType.buff_crit_rate, "a", duration_turns=1, value=1.0)
+    )
+
+    start = len(standard_engine.state.battle_log)
+    standard_engine.execute_action(
+        attacker.owner_id,
+        {
+            "type": "normal_attack",
+            "actorId": attacker.unique_id,
+            "targetId": defender.unique_id,
+        },
+    )
+
+    new_logs = standard_engine.state.battle_log[start:]
+    assert sum(1 for log in new_logs if log.data and log.data.get("critical")) == 1

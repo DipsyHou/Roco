@@ -6,6 +6,7 @@ from typing import Any
 
 from . import messages as msg
 from .damage import calculate_damage
+from .effect_meta import stack_count
 from .effects import get_burn_effects, get_poison_effect
 from .hp import apply_damage, execute_instant_defeat
 from .stats import get_effective_stat
@@ -37,7 +38,7 @@ def trigger_burn_damage(ctx: Any, target: BattleSpirit) -> None:
     if not target.is_alive:
         return
     for effect in list(get_burn_effects(target)):
-        stacks = effect.stacks
+        stacks = stack_count(effect)
         if stacks <= 0:
             target.effects = [e for e in target.effects if e.id != effect.id]
             continue
@@ -78,7 +79,7 @@ def process_burn_on_action_end(ctx: Any, target: BattleSpirit) -> None:
     if not target.is_alive:
         return
     for effect in list(get_burn_effects(target)):
-        stacks = effect.stacks
+        stacks = stack_count(effect)
         if stacks <= 0:
             target.effects = [e for e in target.effects if e.id != effect.id]
             continue
@@ -104,12 +105,12 @@ def process_poison_damage(
     if not target.is_alive:
         return
     effect = get_poison_effect(target)
-    if not effect or effect.stacks <= 0:
+    if not effect or stack_count(effect) <= 0:
         if effect:
             target.effects = [e for e in target.effects if e.id != effect.id]
         return
 
-    stacks = effect.stacks
+    stacks = stack_count(effect)
     source = ctx.find_spirit_anywhere(effect.source_id)
     attacker = source if source else target
     raw = target.max_hp * 0.01 * stacks
@@ -139,8 +140,8 @@ def process_poison_damage(
             return
 
     if decrease:
-        effect.stacks -= 1
-        if effect.stacks <= 0:
+        effect.stacks = stack_count(effect) - 1
+        if stack_count(effect) <= 0:
             target.effects = [e for e in target.effects if e.id != effect.id]
             ctx.add_log(
                 BattleLogType.effect_removed,

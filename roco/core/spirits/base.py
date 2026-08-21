@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List, Optional
 
+from ..battle.actions import ActionDict
 from ..battle.context import BattleContext
 from ..battle.events import DamageEvent
 from ..battle.types import BattleSpirit, StatType, TargetType
-
-ActionDict = Dict[str, Any]
 
 __all__ = ["BattleContext", "SpiritLogic"]
 
@@ -219,6 +218,21 @@ class SpiritLogic:
 
         ``in_extra_action`` 表示当前正处在某个 ExtraActionSlot 里；
         基础合法性应优先靠 slot 的 policy 表达，这里只用于精灵特有的硬约束。
+        """
+        return None
+
+    def preview_action(
+        self,
+        ctx: BattleContext,
+        player_id: str,
+        actor: BattleSpirit,
+        action: ActionDict,
+    ) -> Optional[bool]:
+        """Handle a non-consuming pre-submit action for multi-step skills.
+
+        Return ``True`` or ``False`` when this logic recognizes and fully handles
+        the preview action. Return ``None`` to let the engine continue with normal
+        submission. Preview actions must not advance the turn.
         """
         return None
 

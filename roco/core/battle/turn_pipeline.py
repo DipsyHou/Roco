@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict
 
+from .actions import ActionDict
 from . import messages as msg
 from .types import BattleLogType, BattleSpirit
 from .dot import process_system_effects_on_action_end
@@ -16,8 +17,6 @@ from ..spirits import get_spirit_logic
 
 if TYPE_CHECKING:
     from .engine import BattleEngine
-
-ActionDict = Dict[str, Any]
 
 
 class TurnPipeline:

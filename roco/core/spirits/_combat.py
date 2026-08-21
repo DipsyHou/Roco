@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional
 
+from ..battle.crit import log_critical_hit
 from ..battle.events import DamageSource
 from ..battle.types import BattleLogType, BattleSpirit, DamageType, StatType
 from ..battle.utils import (
@@ -97,9 +98,7 @@ def deal_damage(
     describe: DamageMessage,
     *,
     source: DamageSource = DamageSource.attack,
-    can_crit: bool = False,
     crit_rng=None,
-    on_crit: Optional[Callable[[], None]] = None,
 ) -> int:
     """Run the shared damage pipeline; ``describe(actual)`` builds the damage log line."""
     if not target.is_alive:
@@ -110,13 +109,12 @@ def deal_damage(
         damage_type,
         actor,
         target,
-        can_crit=can_crit,
         crit_flag=crit_flag,
         rng=crit_rng,
     )
     actual = apply_damage(target, dmg, ctx=ctx)
-    if crit_flag and on_crit is not None:
-        on_crit()
+    if crit_flag:
+        log_critical_hit(ctx, actor, target)
     ctx.add_log(
         BattleLogType.damage_dealt,
         describe(actual),
@@ -140,9 +138,7 @@ def deal_atk_ratio(
     describe: DamageMessage,
     *,
     source: DamageSource = DamageSource.attack,
-    can_crit: bool = False,
     crit_rng=None,
-    on_crit: Optional[Callable[[], None]] = None,
 ) -> int:
     """Physical damage equal to ``atk * ratio``."""
     atk = get_effective_stat(actor, StatType.atk)
@@ -154,9 +150,7 @@ def deal_atk_ratio(
         DamageType.physical,
         describe,
         source=source,
-        can_crit=can_crit,
         crit_rng=crit_rng,
-        on_crit=on_crit,
     )
 
 
@@ -168,9 +162,7 @@ def deal_mag_ratio(
     describe: DamageMessage,
     *,
     source: DamageSource = DamageSource.skill,
-    can_crit: bool = False,
     crit_rng=None,
-    on_crit: Optional[Callable[[], None]] = None,
 ) -> int:
     """Magical damage equal to ``mag_atk * ratio``."""
     mag = get_effective_stat(actor, StatType.mag_atk)
@@ -182,9 +174,7 @@ def deal_mag_ratio(
         DamageType.magical,
         describe,
         source=source,
-        can_crit=can_crit,
         crit_rng=crit_rng,
-        on_crit=on_crit,
     )
 
 

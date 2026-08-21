@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from ..battle.actions import ActionDict
 from ..battle.engine import BattleEngine
 from ..battle.types import ActionType, BattleSpirit, TargetType
 from ..spirits import get_spirit_logic, get_spirit_template

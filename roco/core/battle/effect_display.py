@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
+from .effect_meta import EffectCategory, effect_category, is_stackable_effect_type, stack_count
 from .types import BattleEffect, EffectType
-
-EffectCategory = Literal["buff", "debuff", "state"]
 
 # 文档约定可叠加；其余默认不可叠加（逐条罗列，不用 *）
 STACKABLE_BURN = EffectType.debuff_burn
@@ -30,32 +29,14 @@ _STAT_NAMES: Dict[str, str] = {
 }
 
 def is_stackable_effect(eff: BattleEffect) -> bool:
-    """可叠加效果合并为一行并用 * 层数；能力值变化永不可叠加。"""
+    """状态栏合并显示的可叠加效果；能力值变化永不可叠加。"""
     if _is_stat_percent_effect(eff):
         return False
-    if eff.type == STACKABLE_BURN:
-        return True
-    if eff.type == STACKABLE_POISON:
-        return True
-    if eff.type == STACKABLE_FREEZE:
-        return True
-    if eff.type == STACKABLE_WARMUP:
-        return True
-    if eff.type in (STACKABLE_GANGQI, STACKABLE_QUXIE, STACKABLE_ZHENSHA, STACKABLE_ZHAOJIA):
-        return True
-    if eff.type == STACKABLE_JIANWU:
-        return True
-    if eff.type == STACKABLE_HUOLI:
-        return True
-    return False
+    return is_stackable_effect_type(eff.type)
 
 
 def _effect_category(eff: BattleEffect) -> EffectCategory:
-    if eff.type.value.startswith("debuff_"):
-        return "debuff"
-    if eff.type.value.startswith("state_"):
-        return "state"
-    return "buff"
+    return effect_category(eff.type)
 
 
 def _is_stat_percent_effect(eff: BattleEffect) -> bool:
@@ -118,6 +99,18 @@ def _format_damage_percent_body(eff: BattleEffect) -> str:
     pct = abs(int((eff.value or 0) * 100))
     verb = "提升" if eff.type == EffectType.buff_damage_percent_boost else "降低"
     return f"伤害{verb}{pct}%{_copy_suffix(eff)}{_turn_suffix(eff)}"
+
+
+def _format_crit_rate_body(eff: BattleEffect) -> str:
+    pct = abs(int((eff.value or 0) * 100))
+    verb = "提升" if eff.type == EffectType.buff_crit_rate else "降低"
+    return f"暴击率{verb}{pct}%{_copy_suffix(eff)}{_turn_suffix(eff)}"
+
+
+def _format_crit_damage_body(eff: BattleEffect) -> str:
+    pct = abs(int(eff.value or 0))
+    verb = "提升" if eff.type == EffectType.buff_crit_damage else "降低"
+    return f"暴击效果{verb}{pct}%{_copy_suffix(eff)}{_turn_suffix(eff)}"
 
 
 def _format_taken_damage_reduction_body(eff: BattleEffect) -> str:
@@ -216,6 +209,12 @@ def _resolve_display_name(eff: BattleEffect) -> str:
         return "破绽"
     if t == EffectType.state_huoli:
         return "火力"
+    if t == EffectType.state_shifu:
+        return "师傅"
+    if t == EffectType.state_xueshen:
+        return "学神"
+    if t == EffectType.state_roudun:
+        return "肉盾"
     if t == EffectType.buff_laziji:
         return "辣子鸡"
     if t == EffectType.buff_shuizhuyu:
@@ -268,38 +267,38 @@ def _format_stackable_group(
     count = len(effects)
 
     if eff.type == STACKABLE_BURN:
-        total = sum(max(0, e.stacks) for e in effects)
+        total = sum(stack_count(e) for e in effects)
         body = f"{_resolve_display_name(eff)} - {_burn_detail(eff, source_names)}"
         mult = f" * {total}"
         return f"[{category}]{body}{mult}"
 
     if eff.type == STACKABLE_WARMUP:
-        total = max(max(0, e.stacks) for e in effects)
+        total = max(stack_count(e) for e in effects)
         mult = f" * {total}"
         return f"[{category}]{_resolve_display_name(eff)}{mult}"
 
     if eff.type == STACKABLE_POISON:
-        total = sum(max(0, e.stacks) for e in effects)
+        total = sum(stack_count(e) for e in effects)
         mult = f" * {total}"
         return f"[{category}]{_resolve_display_name(eff)}{mult}"
 
     if eff.type == STACKABLE_FREEZE:
-        total = sum(max(0, e.stacks) for e in effects)
+        total = sum(stack_count(e) for e in effects)
         mult = f" * {total}"
         return f"[{category}]{_resolve_display_name(eff)}{mult}"
 
     if eff.type in (STACKABLE_GANGQI, STACKABLE_QUXIE, STACKABLE_ZHENSHA, STACKABLE_ZHAOJIA):
-        total = max(max(0, e.stacks) for e in effects)
+        total = max(stack_count(e) for e in effects)
         mult = f" * {total}"
         return f"[{category}]{_resolve_display_name(eff)}{mult}"
 
     if eff.type == STACKABLE_JIANWU:
-        total = max(max(0, e.stacks) for e in effects)
+        total = max(stack_count(e) for e in effects)
         mult = f" * {total}"
         return f"[{category}]{_resolve_display_name(eff)}{mult}{_turn_suffix(eff)}"
 
     if eff.type == STACKABLE_HUOLI:
-        total = max(max(0, e.stacks) for e in effects)
+        total = max(stack_count(e) for e in effects)
         mult = f" * {total}"
         return f"[{category}]{_resolve_display_name(eff)}{mult}"
 
@@ -314,6 +313,10 @@ def _format_one(eff: BattleEffect, source_names: Dict[str, str]) -> str:
         return f"[{category}]{_format_stat_percent_body(eff)}"
     if _is_damage_percent_effect(eff):
         return f"[{category}]{_format_damage_percent_body(eff)}"
+    if eff.type == EffectType.buff_crit_rate:
+        return f"[buff]{_format_crit_rate_body(eff)}"
+    if eff.type == EffectType.buff_crit_damage:
+        return f"[buff]{_format_crit_damage_body(eff)}"
     if _is_stat_flat_effect(eff):
         return f"[{category}]{_format_stat_flat_body(eff)}"
     if _is_damage_flat_effect(eff):
@@ -332,15 +335,15 @@ def _format_one(eff: BattleEffect, source_names: Dict[str, str]) -> str:
     name = _resolve_display_name(eff)
     if eff.type == STACKABLE_BURN:
         body = f"{name} - {_burn_detail(eff, source_names)}"
-        total = max(0, eff.stacks)
+        total = stack_count(eff)
         mult = f" * {total}"
         return f"[{category}]{body}{mult}"
     if eff.type == STACKABLE_POISON:
-        total = max(0, eff.stacks)
+        total = stack_count(eff)
         mult = f" * {total}"
         return f"[{category}]{name}{mult}"
     if eff.type == STACKABLE_FREEZE:
-        total = max(0, eff.stacks)
+        total = stack_count(eff)
         mult = f" * {total}"
         return f"[{category}]{name}{mult}"
     if eff.type in (
@@ -354,9 +357,12 @@ def _format_one(eff: BattleEffect, source_names: Dict[str, str]) -> str:
         EffectType.state_jianwu,
         EffectType.state_huoli,
     ):
-        total = max(0, eff.stacks)
+        total = stack_count(eff)
         mult = f" * {total}"
         return f"[{category}]{name}{mult}{_turn_suffix(eff)}"
+
+    if eff.type in (EffectType.state_shifu, EffectType.state_xueshen):
+        return f"[{category}]{name}{_turn_suffix(eff)}"
 
     if eff.type in (EffectType.buff_laziji, EffectType.buff_shuizhuyu):
         pct = abs(int((eff.value or 0) * 100))

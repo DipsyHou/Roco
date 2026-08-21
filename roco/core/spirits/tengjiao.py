@@ -1,13 +1,12 @@
-"""藤椒小巴 — 热火朝天 / 浇油！ / 炝锅！ / 出锅！"""
+"""藤椒小巴 — 热火朝天 / 浇油 / 炝锅 / 出锅！"""
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional
 
 from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
 from ..battle.types import (
     ActionType,
-    BattleEffect,
     BattleLogType,
     BattleSpirit,
     EffectType,
@@ -20,153 +19,43 @@ from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "tengjiao"
 FREE_POLICY_ID = "tengjiao_free_serve"
-PENDING_FREE_KEY = "pending_free"
-COMMITTED_DISH_KEY = "committed_dish"
-
-DISH_LAZIJI = "laziji"
-DISH_SHUIZHUYU = "shuizhuyu"
-DISH_MAOXUEWANG = "maoxuewang"
-
-HUOLI_THRESHOLDS: Tuple[Tuple[int, str], ...] = (
-    (10, DISH_LAZIJI),
-    (20, DISH_SHUIZHUYU),
-    (30, DISH_MAOXUEWANG),
+from .tengjiao_state import (
+    COMMITTED_DISH_KEY,
+    PENDING_FREE_KEY,
+    DISH_LAZIJI,
+    DISH_MAOXUEWANG,
+    DISH_SHUIZHUYU,
+    HUOLI_THRESHOLDS,
+    committed_dish,
+    consume_all_huoli,
+    huoli_stacks,
+    pending_free,
+    set_committed_dish,
+    set_huoli,
+    set_pending_free,
+)
+from .tengjiao_dishes import (
+    DISH_TAG_PREFIX,
+    HUOLI_PER_BURN,
+    LAZIJI_DURATION,
+    LAZIJI_RATIO,
+    MAOXUEWANG_DURATION,
+    OIL_ATK_BONUS,
+    OIL_DURATION,
+    OIL_HUOLI,
+    SHUIZHUYU_DURATION,
+    SHUIZHUYU_RATIO,
+    dish_cap,
+    refresh_maoxuewang,
+    refresh_or_apply,
 )
 
-LAZIJI_RATIO = 0.10
-LAZIJI_DURATION = 3
-SHUIZHUYU_RATIO = 0.10
-SHUIZHUYU_DURATION = 2
-MAOXUEWANG_AMP = 0.15
-MAOXUEWANG_DURATION = 3
-OIL_ATK_BONUS = 0.20
-OIL_DURATION = 3
-OIL_HUOLI = 5
-HUOLI_PER_BURN = 3
-DISH_TAG_PREFIX = "dish:"
-SUSTAINED_TAG = "sustained_damage"
 
-
-def _pending_free(spirit: BattleSpirit) -> List[str]:
-    raw = spirit.sync_attrs.get(PENDING_FREE_KEY)
-    return list(raw) if raw else []
-
-
-def _set_pending_free(spirit: BattleSpirit, pending: List[str]) -> None:
-    if pending:
-        spirit.sync_attrs[PENDING_FREE_KEY] = list(pending)
-    else:
-        spirit.sync_attrs.pop(PENDING_FREE_KEY, None)
-
-
-def _committed_dish(spirit: BattleSpirit) -> Optional[str]:
-    raw = spirit.sync_attrs.get(COMMITTED_DISH_KEY)
-    return str(raw) if raw else None
-
-
-def _set_committed_dish(spirit: BattleSpirit, dish: Optional[str]) -> None:
-    if dish:
-        spirit.sync_attrs[COMMITTED_DISH_KEY] = dish
-    else:
-        spirit.sync_attrs.pop(COMMITTED_DISH_KEY, None)
-
-
-def _huoli_stacks(spirit: BattleSpirit) -> int:
-    eff = next((e for e in spirit.effects if e.type == EffectType.state_huoli), None)
-    return max(0, eff.stacks) if eff else 0
-
-
-def _set_huoli(spirit: BattleSpirit, stacks: int) -> None:
-    stacks = max(0, stacks)
-    eff = next((e for e in spirit.effects if e.type == EffectType.state_huoli), None)
-    if stacks <= 0:
-        if eff:
-            spirit.effects = [e for e in spirit.effects if e.type != EffectType.state_huoli]
-        return
-    if eff:
-        eff.stacks = stacks
-    else:
-        spirit.effects.append(
-            make_effect(EffectType.state_huoli, spirit.unique_id, stacks=stacks)
-        )
-
-
-def _refresh_or_apply(
-    target: BattleSpirit,
-    *,
-    eff_type: EffectType,
-    source_id: str,
-    duration: int,
-    value: Optional[float] = None,
-    display_name: Optional[str] = None,
-    effect_tag: Optional[str] = None,
-) -> None:
-    existing = next((e for e in target.effects if e.type == eff_type), None)
-    if existing and existing.source_id == source_id:
-        existing.duration_turns = duration
-        if value is not None:
-            existing.value = value
-        if effect_tag is not None:
-            existing.effect_tag = effect_tag
-        if display_name is not None:
-            existing.display_name = display_name
-        return
-    if existing:
-        target.effects = [e for e in target.effects if e is not existing]
-    target.effects.append(
-        make_effect(
-            eff_type,
-            source_id,
-            duration_turns=duration,
-            value=value,
-            display_name=display_name,
-            effect_tag=effect_tag,
-        )
-    )
-
-
-def _refresh_maoxuewang(target: BattleSpirit, source_id: str) -> None:
-    existing = next(
-        (
-            e
-            for e in target.effects
-            if e.type == EffectType.debuff_taken_damage_percent_boost
-            and e.display_name == "毛血旺"
-        ),
-        None,
-    )
-    if existing:
-        existing.duration_turns = MAOXUEWANG_DURATION
-        existing.value = MAOXUEWANG_AMP
-        existing.source_id = source_id
-        existing.effect_tag = SUSTAINED_TAG
-        return
-    target.effects.append(
-        make_effect(
-            EffectType.debuff_taken_damage_percent_boost,
-            source_id,
-            duration_turns=MAOXUEWANG_DURATION,
-            value=MAOXUEWANG_AMP,
-            display_name="毛血旺",
-            effect_tag=SUSTAINED_TAG,
-        )
-    )
-
-
-def _dish_cap(effect: BattleEffect) -> Optional[int]:
-    if (
-        effect.type == EffectType.debuff_taken_damage_percent_boost
-        and effect.display_name == "毛血旺"
-    ):
-        return MAOXUEWANG_DURATION
-    tag = effect.effect_tag or ""
-    if not tag.startswith(DISH_TAG_PREFIX):
-        return None
-    try:
-        return int(tag[len(DISH_TAG_PREFIX) :])
-    except ValueError:
-        return None
-
+# Back-compat aliases for older tests/UI code that imported module-private helpers.
+_pending_free = pending_free
+_set_pending_free = set_pending_free
+_huoli_stacks = huoli_stacks
+_set_huoli = set_huoli
 
 def _free_serve_policy(actor: BattleSpirit, action: Dict[str, Any]) -> bool:
     if action.get("type") != ActionType.use_skill.value:
@@ -230,7 +119,7 @@ class TengjiaoLogic(SpiritLogic):
         self._add_huoli(ctx, observer, amount)
 
     def get_skill_energy_cost(self, spirit: BattleSpirit, skill, base_cost: int) -> int:
-        if skill.id == "tengjiao_skill3" and _pending_free(spirit):
+        if skill.id == "tengjiao_skill3" and pending_free(spirit):
             return 0
         return base_cost
 
@@ -253,7 +142,7 @@ class TengjiaoLogic(SpiritLogic):
 
     def peek_serve_dish(self, ctx: BattleContext, actor: BattleSpirit) -> Optional[str]:
         """Forced free dish, or a dish already committed for UI; else ``None``."""
-        committed = _committed_dish(actor)
+        committed = committed_dish(actor)
         if committed:
             return committed
         slot = ctx.current_extra_slot()
@@ -265,25 +154,51 @@ class TengjiaoLogic(SpiritLogic):
         """Commit the dish for the upcoming 出锅 (roll if not yet known)."""
         existing = self.peek_serve_dish(ctx, actor)
         if existing:
-            _set_committed_dish(actor, existing)
+            set_committed_dish(actor, existing)
             return existing
         dish = self._roll_dish(ctx, actor)
-        _set_committed_dish(actor, dish)
+        set_committed_dish(actor, dish)
         return dish
 
+    def preview_action(
+        self,
+        ctx: BattleContext,
+        player_id: str,
+        actor: BattleSpirit,
+        action: Dict[str, Any],
+    ) -> Optional[bool]:
+        """Commit 出锅's dish without spending the turn.
+
+        The UI submits this preview first, then renders the final target picker
+        based on the committed dish stored in ``sync_attrs``.
+        """
+        del player_id
+        if not action.get("previewDish"):
+            return None
+        if action.get("type") != ActionType.use_skill.value:
+            return False
+        if action.get("skillId") != "tengjiao_skill3":
+            return False
+        if actor.template_id != TEMPLATE_ID:
+            return False
+        if action.get("actorId") != actor.unique_id:
+            return False
+        self.prepare_serve_dish(ctx, actor)
+        return True
+
     def describe_avatar_badge(self, spirit: BattleSpirit):
-        return ("火力", f"{_huoli_stacks(spirit)}")
+        return ("火力", f"{huoli_stacks(spirit)}")
 
     # --- 火力 ---
 
     def _add_huoli(self, ctx: BattleContext, spirit: BattleSpirit, amount: int) -> None:
         if amount <= 0 or not spirit.is_alive:
             return
-        before = _huoli_stacks(spirit)
+        before = huoli_stacks(spirit)
         after = before + amount
-        _set_huoli(spirit, after)
+        set_huoli(spirit, after)
         slots: List[ExtraActionSlot] = []
-        pending = _pending_free(spirit)
+        pending = pending_free(spirit)
         for thr, dish in HUOLI_THRESHOLDS:
             if before < thr <= after:
                 pending.append(dish)
@@ -299,14 +214,9 @@ class TengjiaoLogic(SpiritLogic):
                     f"{spirit.name} 的热火朝天触发额外出锅（{thr}层）！",
                     {"targetId": spirit.unique_id, "threshold": thr, "dish": dish},
                 )
-        _set_pending_free(spirit, pending)
+        set_pending_free(spirit, pending)
         if slots:
             ctx.queue_extra_actions(slots)
-
-    def _consume_all_huoli(self, spirit: BattleSpirit) -> int:
-        amount = _huoli_stacks(spirit)
-        _set_huoli(spirit, 0)
-        return amount
 
     # --- skills ---
 
@@ -362,7 +272,7 @@ class TengjiaoLogic(SpiritLogic):
         field = list(ctx.get_all_spirits(player_id)) + list(ctx.get_active_spirits(opp))
         for spirit in field:
             for effect in spirit.effects:
-                cap = _dish_cap(effect)
+                cap = dish_cap(effect)
                 if cap is None or effect.duration_turns is None:
                     continue
                 if effect.duration_turns >= cap:
@@ -383,7 +293,7 @@ class TengjiaoLogic(SpiritLogic):
         action: Dict[str, Any],
     ) -> None:
         dish = self._pick_dish(ctx, actor)
-        pending = _pending_free(actor)
+        pending = pending_free(actor)
         slot = ctx.current_extra_slot()
         if (
             pending
@@ -392,7 +302,7 @@ class TengjiaoLogic(SpiritLogic):
             and slot.source.startswith("tengjiao_free:")
         ):
             pending.pop(0)
-            _set_pending_free(actor, pending)
+            set_pending_free(actor, pending)
 
         if dish == DISH_LAZIJI:
             self._serve_laziji(ctx, player_id, actor, action)
@@ -402,9 +312,9 @@ class TengjiaoLogic(SpiritLogic):
             self._serve_maoxuewang(ctx, player_id, actor)
 
     def _pick_dish(self, ctx: BattleContext, actor: BattleSpirit) -> str:
-        committed = _committed_dish(actor)
+        committed = committed_dish(actor)
         if committed:
-            _set_committed_dish(actor, None)
+            set_committed_dish(actor, None)
             return committed
         slot = ctx.current_extra_slot()
         if slot and slot.source.startswith("tengjiao_free:"):
@@ -419,7 +329,7 @@ class TengjiaoLogic(SpiritLogic):
         }
         if not any(e.type == EffectType.buff_shuizhuyu for e in actor.effects):
             weights[DISH_SHUIZHUYU] *= 2
-        if _huoli_stacks(actor) >= 20:
+        if huoli_stacks(actor) >= 20:
             weights[DISH_MAOXUEWANG] *= 2
         dishes = list(weights.keys())
         w = [weights[d] for d in dishes]
@@ -435,7 +345,7 @@ class TengjiaoLogic(SpiritLogic):
         target = target_ally(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        _refresh_or_apply(
+        refresh_or_apply(
             target,
             eff_type=EffectType.buff_laziji,
             source_id=actor.unique_id,
@@ -451,7 +361,7 @@ class TengjiaoLogic(SpiritLogic):
         )
 
     def _serve_shuizhuyu(self, ctx: BattleContext, actor: BattleSpirit) -> None:
-        _refresh_or_apply(
+        refresh_or_apply(
             actor,
             eff_type=EffectType.buff_shuizhuyu,
             source_id=actor.unique_id,
@@ -472,13 +382,13 @@ class TengjiaoLogic(SpiritLogic):
         player_id: str,
         actor: BattleSpirit,
     ) -> None:
-        spent = self._consume_all_huoli(actor)
+        spent = consume_all_huoli(actor)
         burns = spent // HUOLI_PER_BURN
         enemies = ctx.get_active_spirits(ctx.get_opponent_id(player_id))
         for enemy in enemies:
             if burns > 0:
                 apply_burn_stacks(enemy, actor.unique_id, burns)
-            _refresh_maoxuewang(enemy, actor.unique_id)
+            refresh_maoxuewang(enemy, actor.unique_id)
         ctx.add_log(
             BattleLogType.effect_applied,
             f"{actor.name} 端出毛血旺，消耗{spent}层火力"

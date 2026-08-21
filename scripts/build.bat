@@ -39,7 +39,7 @@ set "PYI_PATHS=--paths %ROOT%"
 set "COMMON_DATA=--add-data %ROOT%\assets;assets"
 set "ROCO_COLLECT=--collect-submodules roco"
 set "WS_CLIENT=--hidden-import websockets --hidden-import websockets.client --hidden-import websockets.exceptions"
-set "WS_SERVER=--hidden-import websockets --hidden-import websockets.server --hidden-import websockets.exceptions --collect-submodules server"
+set "WS_SERVER=--hidden-import websockets --hidden-import websockets.server --hidden-import websockets.exceptions --collect-submodules roco.server"
 
 echo.
 echo [1/3] RocoDesktop.exe (local hot-seat)...

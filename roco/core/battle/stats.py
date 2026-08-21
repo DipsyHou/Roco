@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from .effect_meta import effect_category, stack_count
 from .types import BattleSpirit, EffectType, StatType
 
 # Set by BattleEngine so live conversion buffs can resolve source / aura carriers.
@@ -15,18 +16,18 @@ def bind_spirit_stat_engine(spirit: BattleSpirit, engine: Any) -> None:
 
 
 def is_buff_effect(effect_type: EffectType) -> bool:
-    """Return whether an effect type is a positive buff by naming convention."""
-    return effect_type.value.startswith("buff_")
+    """Return whether an effect type is a positive buff."""
+    return effect_category(effect_type) == "buff"
 
 
 def is_debuff_effect(effect_type: EffectType) -> bool:
-    """Return whether an effect type is negative by naming convention."""
-    return effect_type.value.startswith("debuff_")
+    """Return whether an effect type is negative."""
+    return effect_category(effect_type) == "debuff"
 
 
 def is_state_effect(effect_type: EffectType) -> bool:
-    """Return whether an effect type is a neutral state by naming convention."""
-    return effect_type.value.startswith("state_")
+    """Return whether an effect type is a state effect."""
+    return effect_category(effect_type) == "state"
 
 
 def count_state_effects(spirit: BattleSpirit) -> int:
@@ -42,7 +43,7 @@ def count_state_effects(spirit: BattleSpirit) -> int:
 def get_state_stack_count(spirit: BattleSpirit, eff_type: EffectType) -> int:
     """Return stack count for stack-based effects."""
     effect = next((e for e in spirit.effects if e.type == eff_type), None)
-    return max(0, effect.stacks) if effect else 0
+    return stack_count(effect) if effect else 0
 
 
 def _stat_base(spirit: BattleSpirit, stat: StatType) -> int:
@@ -67,26 +68,40 @@ def _conversion_flat_bonus(
     stat: StatType,
     engine: Any,
 ) -> float:
-    """Live ATK/MAG from 辣子鸡 / 水煮鱼; base always excludes conversion."""
-    if stat not in (StatType.atk, StatType.mag_atk):
-        return 0.0
+    """转化类固定加成；计算底数始终排除转化（见 mechanics.md 第 8 节，不可二次转化）。
+
+    - 攻击类（物攻/魔攻）：辣子鸡 / 水煮鱼。
+    - 防御类（物防/魔防）：恶魔战士「肉盾」按己方存活“肉盾”携带者双防之和的比例，
+      同时为全队（含自身）的物防与魔防各提供该固定加成。
+    """
     bonus = 0.0
-    for effect in spirit.effects:
-        if effect.type != EffectType.buff_laziji or not effect.value:
-            continue
-        source = engine.find_spirit_anywhere(effect.source_id)
-        if not source or not source.is_alive:
-            continue
-        base_atk = get_effective_stat(source, StatType.atk, exclude_conversion=True)
-        bonus += base_atk * effect.value
-    for ally in engine.get_all_spirits(spirit.owner_id):
-        if not ally.is_alive:
-            continue
-        for effect in ally.effects:
-            if effect.type != EffectType.buff_shuizhuyu or not effect.value:
+    if stat in (StatType.atk, StatType.mag_atk):
+        for effect in spirit.effects:
+            if effect.type != EffectType.buff_laziji or not effect.value:
                 continue
-            base_atk = get_effective_stat(ally, StatType.atk, exclude_conversion=True)
+            source = engine.find_spirit_anywhere(effect.source_id)
+            if not source or not source.is_alive:
+                continue
+            base_atk = get_effective_stat(source, StatType.atk, exclude_conversion=True)
             bonus += base_atk * effect.value
+        for ally in engine.get_all_spirits(spirit.owner_id):
+            if not ally.is_alive:
+                continue
+            for effect in ally.effects:
+                if effect.type != EffectType.buff_shuizhuyu or not effect.value:
+                    continue
+                base_atk = get_effective_stat(ally, StatType.atk, exclude_conversion=True)
+                bonus += base_atk * effect.value
+    elif stat in (StatType.def_, StatType.mag_def):
+        for ally in engine.get_all_spirits(spirit.owner_id):
+            if not ally.is_alive:
+                continue
+            for effect in ally.effects:
+                if effect.type != EffectType.state_roudun or not effect.value:
+                    continue
+                base_def = get_effective_stat(ally, StatType.def_, exclude_conversion=True)
+                base_mag_def = get_effective_stat(ally, StatType.mag_def, exclude_conversion=True)
+                bonus += (base_def + base_mag_def) * effect.value
     return bonus
 
 

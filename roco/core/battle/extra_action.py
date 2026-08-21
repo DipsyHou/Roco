@@ -16,9 +16,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Tuple
 
+from .actions import ActionDict
 from .types import BattleSpirit
 
-ExtraActionPredicate = Callable[[BattleSpirit, Dict[str, Any]], bool]
+ExtraActionPredicate = Callable[[BattleSpirit, ActionDict], bool]
 
 
 @dataclass(frozen=True)
@@ -84,12 +85,12 @@ def policy_ui(policy_id: str) -> ExtraActionUI:
     return _UI_REGISTRY.get(policy_id, DEFAULT_EXTRA_ACTION_UI)
 
 
-def policy_allows(slot: ExtraActionSlot, actor: BattleSpirit, action: Dict[str, Any]) -> bool:
+def policy_allows(slot: ExtraActionSlot, actor: BattleSpirit, action: ActionDict) -> bool:
     fn = _REGISTRY.get(slot.policy_id) or _REGISTRY["unrestricted"]
     return fn(actor, action)
 
 
-def _unrestricted(_actor: BattleSpirit, _action: Dict[str, Any]) -> bool:
+def _unrestricted(_actor: BattleSpirit, _action: ActionDict) -> bool:
     return True
 
 

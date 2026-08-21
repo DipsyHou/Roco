@@ -1,6 +1,6 @@
-"""PyInstaller entry only (see scripts/build.bat). Run server with: python -m server"""
+"""PyInstaller entry only (see scripts/build.bat). Run server with: roco-online-server"""
 
-from server.server_app import main
+from roco.server.server_app import main
 
 if __name__ == "__main__":
     main()

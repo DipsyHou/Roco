@@ -81,3 +81,42 @@ def test_debuff_immunity_blocks_poison_and_burn(standard_engine):
     assert not apply_poison_stacks(target, "poisoner", 3)
     assert not apply_burn_stacks(target, "burner", 3)
     assert not any(e.type in (EffectType.debuff_poison, EffectType.debuff_burn) for e in target.effects)
+
+
+def test_non_stackable_state_display_does_not_show_zero_stacks():
+    effect = make_effect(EffectType.state_shifu, "src", display_name="师傅")
+
+    assert format_spirit_effects([effect], {"src": "呱呱"}) == ["[state]师傅"]
+
+
+def test_crit_buffs_are_positive_but_not_stat_percent_buffs():
+    from roco.core.battle.effect_display import format_spirit_effects
+    from roco.core.battle.stats import is_buff_effect
+
+    crit_rate = make_effect(EffectType.buff_crit_rate, "src", duration_turns=2, value=0.30)
+    crit_damage = make_effect(EffectType.buff_crit_damage, "src", duration_turns=2, value=60)
+
+    assert is_buff_effect(crit_rate.type)
+    assert is_buff_effect(crit_damage.type)
+    assert crit_rate.stat_type is None
+    assert crit_damage.stat_type is None
+    assert format_spirit_effects([crit_rate, crit_damage], {"src": "src"}) == [
+        "[buff]暴击率提升30%(2回合)",
+        "[buff]暴击效果提升60%(2回合)",
+    ]
+
+
+def test_non_stack_count_effects_use_none_stacks_by_default():
+    effect = make_effect(EffectType.state_shifu, "src", display_name="师傅")
+    stun = make_effect(EffectType.debuff_stun, "src", duration_turns=1, stacks=0)
+
+    assert effect.stacks is None
+    assert stun.stacks is None
+
+
+def test_stack_count_effects_keep_integer_stacks_by_default():
+    burn = make_effect(EffectType.debuff_burn, "src")
+    warmup = make_effect(EffectType.state_warmup, "src", stacks=3)
+
+    assert burn.stacks == 0
+    assert warmup.stacks == 3

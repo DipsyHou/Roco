@@ -45,7 +45,8 @@ def test_anesthesia_dispatches_damage_for_ally_hooks(engine_factory):
 
     assert cast_skill(engine, flora, "flora_skill3")
 
-    assert star.energy == 0
+    assert star.energy == 3
+    assert sum(1 for e in engine.state.battle_log if "共振" in e.message) == 1
 
 
 def test_anesthesia_damages_all_enemies_and_slows_them(engine_factory):
