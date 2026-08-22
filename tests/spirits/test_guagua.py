@@ -92,7 +92,7 @@ def test_guagua_conditional_passive_bonus_is_not_displayed(engine_factory):
     assert not any("物攻提升10%" in line for line in lines)
     assert not any("魔攻提升10%" in line for line in lines)
     assert not any("暴击率提升20%" in line for line in lines)
-    assert not any("暴击效果提升50%" in line for line in lines)
+    assert not any("暴击效果提升40%" in line for line in lines)
 
 
 def test_learned_teacher_bonuses_display_as_plain_real_buffs(engine_factory):
@@ -111,5 +111,5 @@ def test_learned_teacher_bonuses_display_as_plain_real_buffs(engine_factory):
     assert "[buff]物攻提升10%(1回合)" in lines
     assert "[buff]魔攻提升10%(1回合)" in lines
     assert "[buff]暴击率提升20%(1回合)" in lines
-    assert "[buff]暴击效果提升50%(1回合)" in lines
+    assert "[buff]暴击效果提升40%(1回合)" in lines
     assert not any("必有我师：" in line for line in lines)

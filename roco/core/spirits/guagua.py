@@ -27,7 +27,7 @@ LEARNED_SOURCE = "guagua_learned"
 BIYOUWOSHI_TAG = "guagua_biyouwoshi"
 PASSIVE_ATK_BONUS = 0.10
 PASSIVE_CRIT_RATE_BONUS = 0.20
-PASSIVE_CRIT_DAMAGE_BONUS = 50.0
+PASSIVE_CRIT_DAMAGE_BONUS = 40.0
 LEARNED_RATIO = 0.48
 BAIJIA_RATIO = 1.00
 BAIJIA_EXTRA_RATIO = 0.48
@@ -113,7 +113,7 @@ def _refresh_biyouwoshi(master: BattleSpirit, source_id: str, duration_turns: in
             duration_turns=duration_turns,
             value=PASSIVE_CRIT_RATE_BONUS,
             effect_tag=BIYOUWOSHI_TAG,
-            display_name="必有我师：暴击率提升30%",
+            display_name="必有我师：暴击率提升20%",
         )
     )
     master.effects.append(
@@ -123,7 +123,7 @@ def _refresh_biyouwoshi(master: BattleSpirit, source_id: str, duration_turns: in
             duration_turns=duration_turns,
             value=PASSIVE_CRIT_DAMAGE_BONUS,
             effect_tag=BIYOUWOSHI_TAG,
-            display_name="必有我师：暴击效果提升60%",
+            display_name="必有我师：暴击效果提升40%",
         )
     )
 

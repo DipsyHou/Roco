@@ -14,13 +14,13 @@ GUAGUA = SpiritTemplate(
     id="guagua",
     name="呱呱",
     description="呱呱",
-    base_stats=BaseStats(hp=600, atk=120, mag_atk=120, def_=120, mag_def=120, speed=140),
+    base_stats=BaseStats(hp=600, atk=120, mag_atk=120, def_=120, mag_def=120, speed=120),
     passive_skill=PassiveSkillDef(
         id="guagua_passive",
         name="必有我师",
         description=(
             "游戏开始时，若自身不处于我方首位，使我方首位精灵获得“师傅”状态效果。"
-            "场上存在“师傅”时，自身双攻提高10%，攻击伤害暴击率提升20%，暴击效果提升50%。"
+            "场上存在“师傅”时，自身双攻提高10%，攻击伤害暴击率提升20%，暴击效果提升40%。"
             "师傅发动攻击后，自身每回合最多1次自动释放特殊技能“学会了！”。"
         ),
     ),
