@@ -6,13 +6,15 @@ from tests.conftest import P1, by_template, cast_skill
 
 
 def test_moon_gain_bonus_on_opening_energy(engine_factory):
-    """开局获得秘能也吃月盈：帕尔萨斯 2→3，黑猫 4→5。"""
+    """开局获得秘能也吃月盈：帕尔萨斯 2→3，黑猫 4→5。祭司自身开局不预充。"""
     with_priest = engine_factory(
         ("parsas", "starweaver", "shengyu", "flora", "tita"),
         ("clawdragon", "flora", "chaosling", "steamdragon", "fanying"),
     )
     assert by_template(with_priest, P1, "parsas").energy == 3
     assert by_template(with_priest, P1, "starweaver").energy == 5
+    assert by_template(with_priest, P1, "shengyu").energy == 0
+    assert by_template(with_priest, P1, "shengyu").max_energy == 5
 
     without_priest = engine_factory(
         ("parsas", "starweaver", "flora", "chaosling", "tita"),

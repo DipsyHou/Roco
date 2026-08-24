@@ -6,8 +6,8 @@ from tests.conftest import P1, P2, by_template, cast_skill, normal_attack
 from roco.core.battle.types import DamageType, EffectType, StatType
 from roco.core.battle.utils import make_effect, calculate_damage, get_effective_stat
 from roco.core.spirits.deerle import (
-    LOUDONG_DAMAGE_BOOST,
-    LOUDONG_HIT_TAG,
+    KEEN_DAMAGE_BOOST,
+    KEEN_HIT_TAG,
     NORMAL_ATK_RATIO,
     deerle_logic,
 )
@@ -78,7 +78,7 @@ def _get_jianwu(spirit):
     return next((e for e in spirit.effects if e.type == EffectType.state_jianwu), None)
 
 
-def test_loudong_requires_applier_and_uses_damage_boost(engine_factory):
+def test_keen_no_trigger_below_three_flaws(engine_factory):
     engine = engine_factory(
         ("deerle", "flora", "tita", "fanying", "clawdragon"),
         ("steamdragon", "chaosling", "qiuka", "starweaver", "huxian"),
@@ -86,14 +86,9 @@ def test_loudong_requires_applier_and_uses_damage_boost(engine_factory):
     deerle = by_template(engine, P1, "deerle")
     enemy = by_template(engine, P2, "steamdragon")
     _clear_flaws(engine, P2)
-    for e in list(enemy.effects):
-        if e.type == EffectType.state_loudong_baichu:
-            enemy.effects.remove(e)
+    for _ in range(2):
+        deerle_logic._apply_flaw(engine, deerle, enemy)
 
-    # 非本人施加的漏洞：不触发
-    enemy.effects.append(
-        make_effect(EffectType.state_loudong_baichu, "someone-else", display_name="漏洞百出")
-    )
     hp_before = enemy.current_hp
     expected_plain = calculate_damage(
         get_effective_stat(deerle, StatType.atk) * NORMAL_ATK_RATIO,
@@ -102,27 +97,29 @@ def test_loudong_requires_applier_and_uses_damage_boost(engine_factory):
         enemy,
     )
     assert normal_attack(engine, deerle, enemy)
-    assert any(e.type == EffectType.state_loudong_baichu for e in enemy.effects)
     assert hp_before - enemy.current_hp == expected_plain
     assert engine.state.extra_action_queue == []
-    assert not any(e.effect_tag == LOUDONG_HIT_TAG for e in deerle.effects)
+    assert not any(e.effect_tag == KEEN_HIT_TAG for e in deerle.effects)
 
-    # 本人施加：伤害走 +20% 造成伤害加成，并解除 + 额外行动
-    enemy.effects = [e for e in enemy.effects if e.type != EffectType.state_loudong_baichu]
-    enemy.effects.append(
-        make_effect(
-            EffectType.state_loudong_baichu,
-            deerle.unique_id,
-            display_name="漏洞百出",
-        )
+
+def test_keen_boosts_damage_and_grants_extra_action(engine_factory):
+    engine = engine_factory(
+        ("deerle", "flora", "tita", "fanying", "clawdragon"),
+        ("steamdragon", "chaosling", "qiuka", "starweaver", "huxian"),
     )
-    # 临时加成与结算同管线的期望值
+    deerle = by_template(engine, P1, "deerle")
+    enemy = by_template(engine, P2, "steamdragon")
+    _clear_flaws(engine, P2)
+    for _ in range(3):
+        deerle_logic._apply_flaw(engine, deerle, enemy)
+
+    # 临时加成与结算同管线的期望值：+25% 造成伤害
     boost = make_effect(
         EffectType.buff_damage_percent_boost,
         deerle.unique_id,
-        value=LOUDONG_DAMAGE_BOOST,
+        value=KEEN_DAMAGE_BOOST,
         damage_type=DamageType.physical,
-        effect_tag=LOUDONG_HIT_TAG,
+        effect_tag=KEEN_HIT_TAG,
     )
     deerle.effects.append(boost)
     expected_boosted = calculate_damage(
@@ -136,28 +133,9 @@ def test_loudong_requires_applier_and_uses_damage_boost(engine_factory):
     hp_before = enemy.current_hp
     assert normal_attack(engine, deerle, enemy)
     assert hp_before - enemy.current_hp == expected_boosted
-    assert not any(e.type == EffectType.state_loudong_baichu for e in enemy.effects)
-    assert not any(e.effect_tag == LOUDONG_HIT_TAG for e in deerle.effects)
+    assert not any(e.effect_tag == KEEN_HIT_TAG for e in deerle.effects)
     assert len(engine.state.extra_action_queue) == 1
-    assert engine.state.extra_action_queue[0].source == "loudong_baichu"
-
-
-def test_keen_marks_loudong_at_three_flaws(engine_factory):
-    engine = engine_factory(
-        ("deerle", "flora", "tita", "fanying", "clawdragon"),
-        ("steamdragon", "chaosling", "qiuka", "starweaver", "huxian"),
-    )
-    deerle = by_template(engine, P1, "deerle")
-    enemy = by_template(engine, P2, "steamdragon")
-    _clear_flaws(engine, P2)
-    for _ in range(3):
-        deerle_logic._apply_flaw(engine, deerle, enemy)
-
-    assert cast_skill(engine, deerle, "deerle_skill3")
-    assert any(
-        e.type == EffectType.state_loudong_baichu and e.source_id == deerle.unique_id
-        for e in enemy.effects
-    )
+    assert engine.state.extra_action_queue[0].source == "deerle_keen"
 
 
 def test_stab_applies_flaw_before_damage(engine_factory):

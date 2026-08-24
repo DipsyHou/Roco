@@ -1,14 +1,16 @@
-"""梅花德尔勒 — 看破 / 剑花 / 穿刺 / 敏锐
+"""梅花德尔勒 — 看破 / 剑花 / 穿刺 / 敏锐（被动）
 
 设计确认：
 1. 只有普通攻击（不含技能）会清除/扩散「破绽」。
 2. 「破绽」持续时间并列最短时，取列表中最靠前（最早存在于 effects 里）的一条。
 3. 候选敌人不足两个时，把破绽全部给现有候选（不足两个就给一个）。
 4. 「看破」新赋予的破绽与目标已有的破绽是两条独立效果，不覆盖、不叠加。
-5. 「漏洞百出」触发的额外行动追加到队列末尾（``queue_extra_actions`` 默认行为）。
+5. 「敏锐」为被动：普攻发动时，若目标当前拥有不少于 3 条「破绽」，则本次普攻
+   伤害提高 25%，并获得一次额外行动（追加到队列末尾）。
 6. 剑舞叠层封顶 6 层：达到上限后继续叠加静默吸收，不单独提示（参考巴哈姆特
    招架 ``ZHAOJIA_CAP`` 的处理）。
-7. 「漏洞百出」仅对施加者生效；其「伤害提高 25%」走造成伤害加成管线，而非抬高物攻倍率。
+7. 「敏锐」的「伤害提高 25%」走造成伤害加成管线，而非抬高物攻倍率；破绽数量在
+   普攻结算（含看破清除）之前判定。
 8. 普攻仅在已有「剑舞」时叠层；剑舞过期后普攻不会自动重建（需剑花或开局被动）。
 """
 
@@ -36,12 +38,11 @@ JIANWU_CAP = 6
 JIANWU_ATK_PER_STACK = 0.05
 JIANWU_SPEED_PER_STACK = 0.20
 JIANWU_DURATION = 5
-FLAW_LOUDONG_THRESHOLD = 3
-LOUDONG_DAMAGE_BOOST = 0.25
-LOUDONG_HIT_TAG = "deerle_loudong_hit"
+KEEN_FLAW_THRESHOLD = 3
+KEEN_DAMAGE_BOOST = 0.25
+KEEN_HIT_TAG = "deerle_keen_hit"
 PIERCE_ATK_RATIO = 1.0
 NORMAL_ATK_RATIO = 1.0
-KEEN_ATK_RATIO = 0.25
 
 
 def _get_flaws(spirit: BattleSpirit) -> List[Any]:
@@ -52,28 +53,11 @@ def _get_jianwu(spirit: BattleSpirit):
     return next((e for e in spirit.effects if e.type == EffectType.state_jianwu), None)
 
 
-def _get_own_loudong(target: BattleSpirit, actor: BattleSpirit):
-    """仅返回由 ``actor`` 施加的「漏洞百出」。"""
-    return next(
-        (
-            e
-            for e in target.effects
-            if e.type == EffectType.state_loudong_baichu and e.source_id == actor.unique_id
-        ),
-        None,
-    )
-
-
-def _has_loudong(spirit: BattleSpirit) -> bool:
-    return any(e.type == EffectType.state_loudong_baichu for e in spirit.effects)
-
-
 class DeerleLogic(SpiritLogic):
     template_id = "deerle"
     SKILLS: ClassVar[Dict[str, str]] = {
         "deerle_skill1": "_skill_jianhua",
         "deerle_skill2": "_skill_stab",
-        "deerle_skill3": "_skill_keen",
     }
 
     # --- 生命周期 ---
@@ -167,30 +151,30 @@ class DeerleLogic(SpiritLogic):
             {"targetId": target.unique_id},
         )
 
-    def _with_loudong_damage_boost(self, actor: BattleSpirit):
-        """本次普攻临时挂上造成伤害 +20%，结算后立刻撤掉。"""
+    def _apply_keen_damage_boost(self, actor: BattleSpirit):
+        """本次普攻临时挂上造成伤害 +25%，结算后立刻撤掉。"""
         boost = make_effect(
             EffectType.buff_damage_percent_boost,
             actor.unique_id,
-            value=LOUDONG_DAMAGE_BOOST,
+            value=KEEN_DAMAGE_BOOST,
             damage_type=DamageType.physical,
-            effect_tag=LOUDONG_HIT_TAG,
-            display_name="漏洞百出",
+            effect_tag=KEEN_HIT_TAG,
+            display_name="敏锐",
         )
         actor.effects.append(boost)
         return boost
 
-    def _clear_loudong_hit_boost(self, actor: BattleSpirit) -> None:
+    def _clear_keen_damage_boost(self, actor: BattleSpirit) -> None:
         actor.effects = [
             e
             for e in actor.effects
             if not (
                 e.type == EffectType.buff_damage_percent_boost
-                and e.effect_tag == LOUDONG_HIT_TAG
+                and e.effect_tag == KEEN_HIT_TAG
             )
         ]
 
-    # --- 普通攻击：破绽扩散 + 剑舞叠层 + 漏洞百出判定 ---
+    # --- 普通攻击：敏锐判定 + 破绽扩散 + 剑舞叠层 ---
 
     def execute_normal_attack(
         self,
@@ -203,9 +187,10 @@ class DeerleLogic(SpiritLogic):
         if not target:
             return True
 
-        loudong = _get_own_loudong(target, actor)
-        if loudong is not None:
-            self._with_loudong_damage_boost(actor)
+        # 敏锐（被动）：破绽数量在看破清除之前判定
+        keen_triggered = len(_get_flaws(target)) >= KEEN_FLAW_THRESHOLD
+        if keen_triggered:
+            self._apply_keen_damage_boost(actor)
         try:
             deal_atk_ratio(
                 ctx,
@@ -215,19 +200,18 @@ class DeerleLogic(SpiritLogic):
                 lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
             )
         finally:
-            self._clear_loudong_hit_boost(actor)
+            self._clear_keen_damage_boost(actor)
 
         actor.last_attack_target_id = target.unique_id
 
-        if loudong is not None and loudong in target.effects:
-            target.effects.remove(loudong)
+        if keen_triggered:
             ctx.add_log(
-                BattleLogType.effect_removed,
-                f"{target.name} 的「漏洞百出」被触发并解除！",
-                {"targetId": target.unique_id},
+                BattleLogType.passive_triggered,
+                f"「敏锐」触发！{actor.name} 获得一次额外行动！",
+                {"targetId": actor.unique_id},
             )
             ctx.queue_extra_actions(
-                [ExtraActionSlot(actor_id=actor.unique_id, source="loudong_baichu")]
+                [ExtraActionSlot(actor_id=actor.unique_id, source="deerle_keen")]
             )
 
         if _get_flaws(target):
@@ -288,45 +272,6 @@ class DeerleLogic(SpiritLogic):
             lambda a: f"{actor.name} 的穿刺对 {target.name} 造成了 {a} 点物理伤害！",
             source=DamageSource.skill,
         )
-
-    def _skill_keen(
-        self,
-        ctx: BattleContext,
-        player_id: str,
-        actor: BattleSpirit,
-        action: Dict[str, Any],
-    ) -> None:
-        del action
-        opponent_id = ctx.get_opponent_id(player_id)
-        targets = list(ctx.get_active_spirits(opponent_id))
-        for target in targets:
-            deal_atk_ratio(
-                ctx,
-                actor,
-                target,
-                KEEN_ATK_RATIO,
-                lambda a, t=target: f"{actor.name} 的敏锐对 {t.name} 造成了 {a} 点物理伤害！",
-                source=DamageSource.skill,
-            )
-        for target in targets:
-            if not target.is_alive:
-                continue
-            if (
-                len(_get_flaws(target)) >= FLAW_LOUDONG_THRESHOLD
-                and not _has_loudong(target)
-            ):
-                target.effects.append(
-                    make_effect(
-                        EffectType.state_loudong_baichu,
-                        actor.unique_id,
-                        display_name="漏洞百出",
-                    )
-                )
-                ctx.add_log(
-                    BattleLogType.effect_applied,
-                    f"{target.name} 获得了「漏洞百出」！",
-                    {"targetId": target.unique_id},
-                )
 
 
 deerle_logic = DeerleLogic()

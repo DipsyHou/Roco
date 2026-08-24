@@ -19,12 +19,14 @@ DEERLE = SpiritTemplate(
     base_stats=BaseStats(hp=550, atk=120, mag_atk=100, def_=130, mag_def=130, speed=140),
     passive_skill=PassiveSkillDef(
         id="deerle_passive",
-        name="看破",
+        name="看破 / 敏锐",
         description=(
-            "战斗开始时，赋予随机两个敌方精灵「破绽」效果，持续3回合。"
+            "【看破】战斗开始时，赋予随机两个敌方精灵「破绽」效果，持续3回合。"
             "对敌方目标释放普通攻击时，若目标拥有「破绽」，则清除其一条「破绽」"
             "（优先清除持续时间较短的「破绽」），并赋予除目标外随机两个敌方精灵"
             "「破绽」，持续3回合。（破绽：负面效果。物防降低5%。）"
+            "【敏锐】发动普通攻击时，若目标拥有不少于3条「破绽」，"
+            "则使此次攻击伤害提高25%，并获得一次额外行动。"
         ),
     ),
     normal_attack=SkillDef(
@@ -56,21 +58,6 @@ DEERLE = SpiritTemplate(
             description="对一个敌方精灵赋予「破绽」，持续3回合；然后对其造成（100%自身物攻）点物理伤害。",
             cooldown=0,
             target_type=TargetType.single_enemy,
-            energy_cost=1,
-            launches_attack=True,
-        ),
-        SkillDef(
-            id="deerle_skill3",
-            name="敏锐",
-            description=(
-                "对敌方所有精灵造成（25%自身物攻）点物理伤害；"
-                "然后赋予所有拥有不少于3条「破绽」，且未拥有「漏洞百出」效果的目标「漏洞百出」。"
-                "（漏洞百出：状态效果。施加者对持有者释放普通攻击时，"
-                "施加者的此次普通攻击伤害提高25%，并获得一次额外行动；"
-                "随后解除持有者的此效果。）"
-            ),
-            cooldown=0,
-            target_type=TargetType.all_enemies,
             energy_cost=1,
             launches_attack=True,
         ),

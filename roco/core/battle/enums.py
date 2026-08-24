@@ -88,7 +88,6 @@ class EffectType(str, Enum):
     state_zhaojia = "state_zhaojia"
     buff_def_pierce = "buff_def_pierce"
     state_jianwu = "state_jianwu"
-    state_loudong_baichu = "state_loudong_baichu"
     debuff_flaw = "debuff_flaw"
     state_huoli = "state_huoli"
     state_shifu = "state_shifu"

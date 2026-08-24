@@ -1,7 +1,7 @@
 """圣域祭司 — 月盈 / 圣洁 / 指引 / 再现
 
 秘能机制说明：
-- 秘能上限 5，回合开始满值 5 点；回合结束消耗全部秘能换速度（每点 20 速，2回合）。
+- 秘能上限 5；开局为 0，仅在自身回合开始时充满 5 点；回合结束消耗全部秘能换速度（每点 20 速，2回合）。
 - 「己方精灵获得秘能后，使其额外获得1点秘能」通过 ``get_ally_energy_gain_bonus``
   接入通用入口 ``_combat.grant_personal_energy``：任何调用该入口授予秘能的精灵
   （帕尔萨斯、黑猫巫师等）在场上有本精灵时都会多得1点。圣域祭司自身的秘能是
@@ -56,7 +56,7 @@ class ShengyuLogic(SpiritLogic):
     # --- 秘能：回合制满-清空，不经过增益入口 ---
 
     def on_unit_created(self, spirit: BattleSpirit) -> None:
-        spirit.energy = SHENGYU_ENERGY_CAP
+        spirit.energy = 0
         spirit.max_energy = SHENGYU_ENERGY_CAP
 
     def get_resource_label(self) -> Optional[str]:
