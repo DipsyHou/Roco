@@ -15,8 +15,25 @@ from .damage_modifiers import (
     get_incoming_damage_modifiers,
     get_incoming_flat_damage_modifiers,
 )
-from .stats import get_effective_stat
+from .stats import _STAT_ENGINE_ATTR, get_effective_stat
 from .types import BattleSpirit, DamageType, StatType
+
+
+def _sum_ally_aura(spirit: BattleSpirit, hook_name: str) -> float:
+    """聚合同队存活精灵为 ``spirit`` 提供的某个伤害光环钩子（通用、与精灵无关）。"""
+    engine = getattr(spirit, _STAT_ENGINE_ATTR, None)
+    if engine is None:
+        return 0.0
+    from ..spirits import get_spirit_logic
+
+    total = 0.0
+    for source in engine.get_all_spirits(spirit.owner_id):
+        if not source.is_alive:
+            continue
+        logic = get_spirit_logic(source.template_id)
+        if logic is not None:
+            total += getattr(logic, hook_name)(engine, source, spirit)
+    return total
 
 
 def calculate_damage(
@@ -52,6 +69,8 @@ def calculate_damage(
         DamageType.magical: att_mi - att_md,
         DamageType.fixed: att_fi - att_fd,
     }[damage_type]
+    # 同队光环提供的「造成伤害提高」（作用于所有伤害类型，与其他增伤加性叠加）。
+    net_inc += _sum_ally_aura(attacker, "get_aura_damage_percent_bonus")
     result *= 1 + net_inc
 
     fpi, fmi, ffi, fpd, fmd, ffd = get_flat_damage_modifiers(attacker)
@@ -72,6 +91,10 @@ def calculate_damage(
     logic = get_spirit_logic(defender.template_id)
     if logic:
         dec_pct += logic.get_damage_reduction(defender)
+        dec_pct += logic.get_incoming_damage_reduction(defender, damage_type)
+
+    # 同队光环提供的「受到伤害降低」。
+    dec_pct += _sum_ally_aura(defender, "get_aura_taken_damage_reduction")
 
     dec_pct = min(dec_pct, 0.8)
     result *= 1 - dec_pct

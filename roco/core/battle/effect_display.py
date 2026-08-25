@@ -215,6 +215,20 @@ def _resolve_display_name(eff: BattleEffect) -> str:
         return "学神"
     if t == EffectType.state_roudun:
         return "肉盾"
+    if t == EffectType.state_yinghuajifu:
+        return "硬化肌肤"
+    if t == EffectType.state_jipi:
+        return "棘皮"
+    if t == EffectType.state_zaisheng:
+        return "再生"
+    if t == EffectType.state_module_qianghua:
+        return "强化模块"
+    if t == EffectType.state_module_jisu:
+        return "急速模块"
+    if t == EffectType.state_module_diyu:
+        return "抵御模块"
+    if t == EffectType.state_module_chaoxian:
+        return "超限模块"
     if t == EffectType.buff_laziji:
         return "辣子鸡"
     if t == EffectType.buff_shuizhuyu:
@@ -331,6 +345,10 @@ def _format_one(eff: BattleEffect, source_names: Dict[str, str]) -> str:
         return f"[buff]{_format_skill_energy_cost_reduction_body(eff)}"
     if eff.type == EffectType.debuff_skill_energy_cost_increase:
         return f"[debuff]{_format_skill_energy_cost_increase_body(eff)}"
+    if eff.type == EffectType.state_shield:
+        amount = int(eff.value or 0)
+        label = eff.display_name or "护盾"
+        return f"[{category}]{label} {amount}{_turn_suffix(eff)}"
 
     name = _resolve_display_name(eff)
     if eff.type == STACKABLE_BURN:

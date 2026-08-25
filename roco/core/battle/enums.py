@@ -95,6 +95,17 @@ class EffectType(str, Enum):
     buff_laziji = "buff_laziji"
     buff_shuizhuyu = "buff_shuizhuyu"
     state_roudun = "state_roudun"
+    # 护盾系统（见 docs/mechanics.md §22 与 battle/shield.py）
+    state_shield = "state_shield"
+    # 石化刺蜥蜴：硬化肌肤（固伤减免状态）/ 棘皮（受击转盾标记）/ 再生（受击加防减费）
+    state_yinghuajifu = "state_yinghuajifu"
+    state_jipi = "state_jipi"
+    state_zaisheng = "state_zaisheng"
+    # 机械方方：多色模块 / 超限模块
+    state_module_qianghua = "state_module_qianghua"
+    state_module_jisu = "state_module_jisu"
+    state_module_diyu = "state_module_diyu"
+    state_module_chaoxian = "state_module_chaoxian"
 
 
 class StatType(str, Enum):
