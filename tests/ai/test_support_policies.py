@@ -80,3 +80,21 @@ def test_cixiyi_sets_up_shields_when_energy_is_sufficient():
     assert action["type"] == ActionType.use_skill.value
     assert action["skillId"] == "cixiyi_skill1"
     assert action["playerId"] == cx.owner_id
+
+
+def test_guifashi_does_not_pick_draw_when_energy_is_zero():
+    """能量不足时占卜不得进入合法行动，否则人机会反复校验失败。"""
+    from roco.core.ai.legal import enumerate_legal_actions
+
+    engine = make_engine(
+        ("guifashi", "flora", "clawdragon", "tita", "fanying"),
+        ("flora",) * 5,
+    )
+    _active(engine, "guifashi")
+    engine.state.players["p1"].team_energy = 0
+
+    actions = enumerate_legal_actions(engine, "p1")
+    assert all(a.get("skillId") != "guifashi_draw" for a in actions)
+
+    action = choose_action(engine, "p1")
+    assert engine.submit_action("p1", action) is True

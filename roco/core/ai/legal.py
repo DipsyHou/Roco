@@ -56,7 +56,10 @@ def _guifashi_skill_actions(
     """Enumerate card-specific actions for 诡法师."""
     state = get_cards(actor)
     if skill.id == "guifashi_draw":
-        return [_base(actor, ActionType.use_skill.value, skillId=skill.id)]
+        action = _base(actor, ActionType.use_skill.value, skillId=skill.id)
+        # 与揭晓/逆位一致：必须过引擎校验（能量、额外行动策略等），
+        # 否则能量不足时仍会被 AI 选中，导致反复「行动未通过校验」。
+        return [action] if engine._validate_action(player_id, action, actor) else []
 
     if skill.id == "guifashi_show":
         actions: List[Dict[str, Any]] = []

@@ -162,6 +162,17 @@ class GuifashiLogic(
         for card_id in discarded:
             self._log_discard(ctx, actor, card_id)
 
+    def can_use_skill(self, spirit: BattleSpirit, skill) -> Optional[tuple]:
+        sk = getattr(skill, "id", None)
+        state = get_cards(spirit)
+        if sk == "guifashi_draw" and not state.deck:
+            return False, "牌堆为空"
+        if sk == "guifashi_show" and not state.hand:
+            return False, "没有手牌"
+        if sk == "guifashi_cheat" and not state.hand:
+            return False, "没有手牌"
+        return None
+
     def can_execute_action(
         self,
         ctx: BattleContext,

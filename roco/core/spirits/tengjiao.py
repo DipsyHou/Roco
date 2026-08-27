@@ -145,9 +145,9 @@ class TengjiaoLogic(SpiritLogic):
         committed = committed_dish(actor)
         if committed:
             return committed
-        slot = ctx.current_extra_slot()
-        if slot and slot.source.startswith("tengjiao_free:"):
-            return slot.source.split(":", 1)[1]
+        free_slot = self._free_serve_slot(ctx, actor)
+        if free_slot is not None:
+            return free_slot.source.split(":", 1)[1]
         return None
 
     def prepare_serve_dish(self, ctx: BattleContext, actor: BattleSpirit) -> str:
@@ -217,6 +217,25 @@ class TengjiaoLogic(SpiritLogic):
         set_pending_free(spirit, pending)
         if slots:
             ctx.queue_extra_actions(slots)
+
+    def _free_serve_slot(self, ctx: BattleContext, actor: BattleSpirit):
+        """免费出锅槽：仅在「额外行动期」结算时有效。
+
+        正常行动中途（付费出锅先扣能）也可能已经把免费槽推进队列；
+        此时 ``current_extra_slot()`` 非空，但不能当成正在打免费出锅。
+        引擎在切入额外行动时会设置 ``_suspended_turn_actor_id``，用它区分。
+        """
+        slot = ctx.current_extra_slot()
+        if (
+            slot is None
+            or slot.policy_id != FREE_POLICY_ID
+            or not slot.source.startswith("tengjiao_free:")
+            or slot.actor_id != actor.unique_id
+        ):
+            return None
+        if not getattr(ctx, "_suspended_turn_actor_id", None):
+            return None
+        return slot
 
     # --- skills ---
 
@@ -293,16 +312,12 @@ class TengjiaoLogic(SpiritLogic):
         action: Dict[str, Any],
     ) -> None:
         dish = self._pick_dish(ctx, actor)
-        pending = pending_free(actor)
-        slot = ctx.current_extra_slot()
-        if (
-            pending
-            and slot
-            and slot.policy_id == FREE_POLICY_ID
-            and slot.source.startswith("tengjiao_free:")
-        ):
-            pending.pop(0)
-            set_pending_free(actor, pending)
+        free_slot = self._free_serve_slot(ctx, actor)
+        if free_slot is not None:
+            pending = pending_free(actor)
+            if pending:
+                pending.pop(0)
+                set_pending_free(actor, pending)
 
         if dish == DISH_LAZIJI:
             self._serve_laziji(ctx, player_id, actor, action)
@@ -316,9 +331,9 @@ class TengjiaoLogic(SpiritLogic):
         if committed:
             set_committed_dish(actor, None)
             return committed
-        slot = ctx.current_extra_slot()
-        if slot and slot.source.startswith("tengjiao_free:"):
-            return slot.source.split(":", 1)[1]
+        free_slot = self._free_serve_slot(ctx, actor)
+        if free_slot is not None:
+            return free_slot.source.split(":", 1)[1]
         return self._roll_dish(ctx, actor)
 
     def _roll_dish(self, ctx: BattleContext, actor: BattleSpirit) -> str:
