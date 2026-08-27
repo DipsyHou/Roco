@@ -30,23 +30,20 @@ class SteamdragonPolicy:
             return -100.0
         if at == ActionType.gather_energy.value:
             if energy < 2:
-                return 85.0
-            if energy < 4 and burns < 8:
-                return 40.0
-            return 5.0
+                return 130.0
+            if energy < 4:
+                return 45.0
+            return 10.0
 
         if at == ActionType.normal_attack.value:
             enemy = engine.find_spirit_anywhere(action.get("targetId") or "")
             if not enemy:
                 return 5.0
-            score = 22.0 + (1.0 - F.hp_ratio(enemy)) * 20.0
-            # AA applies warmup burns — prefer already-burning or focus target.
-            score += get_total_burn_stacks(enemy) * 3.0
+            score = 30.0 + (1.0 - F.hp_ratio(enemy)) * 20.0
+            score += get_total_burn_stacks(enemy) * 4.0
             if focus and enemy.unique_id == focus.unique_id:
-                score += 12.0
+                score += 10.0
             if warmup >= 4:
-                score += 15.0
-            if energy <= 1:
                 score += 10.0
             return score
 
@@ -60,32 +57,28 @@ class SteamdragonPolicy:
         if skill_id == "steamdragon_skill1":  # 烙印
             if not target:
                 return -50.0
-            score = 55.0 + (1.0 - F.hp_ratio(target)) * 15.0
-            score += get_total_burn_stacks(target) * 2.0
+            score = 145.0 + (1.0 - F.hp_ratio(target)) * 25.0
+            score += get_total_burn_stacks(target) * 3.0
             if focus and target.unique_id == focus.unique_id:
-                score += 18.0
-            if warmup >= 2:
-                score += 10.0
+                score += 15.0
             return score
 
         if skill_id == "steamdragon_skill2":  # 嗜热
-            score = 10.0 + burns * 4.0
-            if self_r < 0.55:
+            score = 70.0 + burns * 8.0
+            if self_r < 0.6:
                 score += 35.0
-            if self_r > 0.85:
-                score -= 25.0
-            if burns < 5:
+            if burns < 3:
                 score -= 20.0
             return score
 
         if skill_id == "steamdragon_skill3":  # 沸腾
-            score = 35.0
-            if warmup >= 8:
-                score -= 25.0
-            if self_r < 0.35:
+            score = 55.0
+            if warmup <= 2 and self_r > 0.5:
+                score += 40.0
+            if warmup <= 4 and self_r > 0.65:
+                score += 15.0
+            if self_r < 0.4:
                 score -= 40.0
-            if burns < 3 and warmup < 4:
-                score += 20.0  # need fuel for spreading
             return score
 
         return 0.0

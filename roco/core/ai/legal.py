@@ -8,6 +8,8 @@ from ..battle.actions import ActionDict
 from ..battle.engine import BattleEngine
 from ..battle.types import ActionType, BattleSpirit, TargetType
 from ..spirits import get_spirit_logic, get_spirit_template
+from ..spirits.guifashi_cards import ALLY_TARGET_CARDS, ENEMY_TARGET_CARDS, TAROT_CARDS
+from ..spirits.guifashi_support import get_cards
 
 
 def _base(actor: BattleSpirit, action_type: str, **extra: Any) -> Dict[str, Any]:
@@ -43,6 +45,64 @@ def expand_targets(
     if target_type in (TargetType.single_ally, TargetType.single_ally_on_field):
         return [a.unique_id for a in allies] or [None]
     return [None]
+
+
+def _guifashi_skill_actions(
+    engine: BattleEngine,
+    player_id: str,
+    actor: BattleSpirit,
+    skill,
+) -> List[Dict[str, Any]]:
+    """Enumerate card-specific actions for 诡法师."""
+    state = get_cards(actor)
+    if skill.id == "guifashi_draw":
+        return [_base(actor, ActionType.use_skill.value, skillId=skill.id)]
+
+    if skill.id == "guifashi_show":
+        actions: List[Dict[str, Any]] = []
+        opponent_id = engine.get_opponent_id(player_id)
+        enemies = _alive(engine.get_all_spirits(opponent_id))
+        allies = _alive(engine.get_all_spirits(player_id))
+        for idx, card in enumerate(state.hand):
+            extra: Dict[str, Any] = {"skillId": skill.id, "cardHandIndex": idx}
+            if card in ALLY_TARGET_CARDS:
+                targets = [a.unique_id for a in allies] or [None]
+            elif card in ENEMY_TARGET_CARDS:
+                targets = [e.unique_id for e in enemies] or [None]
+            elif card == "demon":
+                consume = [i for i in range(len(state.hand)) if i != idx]
+                if not consume:
+                    continue
+                extra["consumeHandIndices"] = consume
+                targets = [None]
+            else:
+                targets = [None]
+            for tid in targets:
+                action = _base(actor, ActionType.use_skill.value, **extra)
+                if tid is not None:
+                    action["targetId"] = tid
+                if engine._validate_action(player_id, action, actor):
+                    actions.append(action)
+        return actions
+
+    if skill.id == "guifashi_cheat":
+        actions: List[Dict[str, Any]] = []
+        for idx, old_card in enumerate(state.hand):
+            for new_card in TAROT_CARDS:
+                if new_card == old_card:
+                    continue
+                action = _base(
+                    actor,
+                    ActionType.use_skill.value,
+                    skillId=skill.id,
+                    cardHandIndex=idx,
+                    newCardId=new_card,
+                )
+                if engine._validate_action(player_id, action, actor):
+                    actions.append(action)
+        return actions
+
+    return []
 
 
 def enumerate_legal_actions(
@@ -84,9 +144,13 @@ def enumerate_legal_actions(
         if engine._validate_action(player_id, action, actor):
             candidates.append(action)
 
+    logic = get_spirit_logic(actor.template_id)
     for skill in tpl.skills:
+        if actor.template_id == "guifashi" and skill.id in {"guifashi_draw", "guifashi_show", "guifashi_cheat"}:
+            skill_actions = _guifashi_skill_actions(engine, player_id, actor, skill)
+            candidates.extend(skill_actions)
+            continue
         tt = skill.target_type
-        logic = get_spirit_logic(actor.template_id)
         if logic:
             override = logic.get_skill_target_type(engine, actor, skill)
             if override is not None:
