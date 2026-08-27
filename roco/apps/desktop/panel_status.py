@@ -6,6 +6,7 @@ import tkinter as tk
 from typing import List
 
 from roco.core.battle.effect_display import format_spirit_effects
+from roco.core.battle.shield import max_shield
 from roco.core.battle.timeline import action_value
 from roco.core.battle.types import BattleSpirit, StatType
 from roco.core.battle.utils import get_effective_stat
@@ -97,6 +98,10 @@ class StatusPanelMixin:
             else:
                 ins("  (—)", "stat_flat")
             nl()
+
+        nl()
+        ins("  护盾  ", "label")
+        ins(str(max_shield(spirit)), "value")
 
         nl()
         ins("状态效果", "section")

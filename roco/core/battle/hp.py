@@ -27,8 +27,12 @@ def apply_damage(
     if logic is not None:
         damage = logic.adjust_incoming_damage(spirit, damage)
 
+    from .shield import absorb as absorb_shield
+
     reported = max(0, damage)
-    applied = min(spirit.current_hp, reported)
+    # 护盾抵扣发生在扣血与致死判定之前；被完全抵扣仍算「受到伤害」（reported 不变）。
+    hp_damage = absorb_shield(spirit, reported)
+    applied = min(spirit.current_hp, hp_damage)
     spirit.current_hp -= applied
     if spirit.current_hp <= 0:
         spirit.current_hp = 0

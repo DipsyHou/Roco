@@ -31,12 +31,12 @@ def choose_action(
 
     actions = enumerate_legal_actions(engine, player_id, actor=actor)
     if not actions:
-        # Should be unreachable if skip is always legal for living actors.
-        return {
-            "type": "skip",
-            "playerId": player_id,
-            "actorId": actor.unique_id,
-        }
+        # Unreachable when skip is legal. Policies that forbid skip must still
+        # expose a legal skill; a silent skip here can loop-fail validation.
+        raise RuntimeError(
+            f"no legal actions for {actor.template_id} "
+            f"(extra_slot={engine.current_extra_slot()})"
+        )
 
     policy = POLICY_BY_TEMPLATE.get(actor.template_id)
     return pick_by_score(engine, actor, actions, policy)

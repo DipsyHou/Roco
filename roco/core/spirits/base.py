@@ -317,6 +317,12 @@ class SpiritLogic:
     def get_damage_reduction(self, spirit: BattleSpirit) -> float:
         return 0.0
 
+    def get_incoming_damage_reduction(
+        self, spirit: BattleSpirit, damage_type: "DamageType"
+    ) -> float:
+        """按伤害类型区分的受到伤害减免（如仅减固定伤害）。加到该类型的减伤上。"""
+        return 0.0
+
     def get_crit_rate_bonus(
         self, spirit: BattleSpirit, target: Optional[BattleSpirit] = None
     ) -> float:
@@ -339,6 +345,24 @@ class SpiritLogic:
         target: BattleSpirit,
         stat: StatType,
     ) -> float:
+        return 0.0
+
+    def get_aura_damage_percent_bonus(
+        self,
+        ctx: BattleContext,
+        source: BattleSpirit,
+        spirit: BattleSpirit,
+    ) -> float:
+        """``source`` 为同队的 ``spirit`` 提供的「造成伤害提高」光环（加性叠加）。"""
+        return 0.0
+
+    def get_aura_taken_damage_reduction(
+        self,
+        ctx: BattleContext,
+        source: BattleSpirit,
+        spirit: BattleSpirit,
+    ) -> float:
+        """``source`` 为同队的 ``spirit`` 提供的「受到伤害降低」光环（加性叠加）。"""
         return 0.0
 
     def get_team_energy_cap_bonus(self, ctx: BattleContext, spirit: BattleSpirit) -> int:

@@ -35,6 +35,8 @@ def _force_free_dish(engine, tengjiao, dish: str) -> None:
         front=True,
     )
     engine._advance_to_next_extra_slot()
+    # 与真实流程一致：切入额外行动期时挂起原回合，出锅据此识别免费结算。
+    engine._suspended_turn_actor_id = tengjiao.unique_id
     engine.state.phase = BattlePhase.waiting_for_action
 
 
@@ -157,6 +159,62 @@ def test_crossing_two_thresholds_queues_two():
     tengjiao_logic._add_huoli(engine, tengjiao, 25)  # 0 -> 25 crosses 10 and 20
     assert _pending_free(tengjiao) == [DISH_LAZIJI, DISH_SHUIZHUYU]
     assert len(engine.state.extra_action_queue) == 2
+
+
+def test_paid_serve_crossing_threshold_keeps_pending_for_free_extra():
+    """付费出锅耗能越过阈值时，不得在当次结算里吞掉免费出锅的 pending。"""
+    from roco.core.ai import choose_action
+    from roco.core.ai.legal import enumerate_legal_actions
+
+    engine = make_engine(_team())
+    tengjiao = by_template(engine, P1, "tengjiao")
+    advance_to(engine, tengjiao)
+    _set_huoli(tengjiao, 29)
+    engine.state.players[P1].team_energy = 3
+
+    assert cast_skill(engine, tengjiao, "tengjiao_skill3")
+    assert _pending_free(tengjiao) == [DISH_MAOXUEWANG]
+    assert engine.current_extra_slot() is not None
+    assert engine.current_extra_slot().source == f"tengjiao_free:{DISH_MAOXUEWANG}"
+
+    actions = enumerate_legal_actions(engine, P1)
+    assert any(a.get("skillId") == "tengjiao_skill3" for a in actions)
+    action = choose_action(engine, P1)
+    assert action.get("skillId") == "tengjiao_skill3"
+    assert engine.submit_action(P1, action) is True
+    assert _pending_free(tengjiao) == []
+
+
+def test_paid_serve_at_29_rolls_maoxuewang_without_eating_free_pending(monkeypatch):
+    """29 层付费出锅：扣能越过 30 入队免费毛血旺；本次随机也出毛血旺时，
+    应付费结算清空火力，且不得吞掉免费 pending。"""
+    from roco.core.spirits.tengjiao import TengjiaoLogic, HUOLI_PER_BURN
+
+    engine = make_engine(_team())
+    tengjiao = by_template(engine, P1, "tengjiao")
+    advance_to(engine, tengjiao)
+    _set_huoli(tengjiao, 29)
+    engine.state.players[P1].team_energy = 3
+    monkeypatch.setattr(TengjiaoLogic, "_roll_dish", lambda self, ctx, actor: DISH_MAOXUEWANG)
+
+    assert cast_skill(engine, tengjiao, "tengjiao_skill3")
+
+    # 扣能 29→32 触发免费毛血旺，pending / 队列保留
+    assert _pending_free(tengjiao) == [DISH_MAOXUEWANG]
+    assert engine.current_extra_slot() is not None
+    assert engine.current_extra_slot().source == f"tengjiao_free:{DISH_MAOXUEWANG}"
+
+    # 付费随机毛血旺：按越过阈值后的 32 层清空火力并折算灼烧
+    assert _huoli_stacks(tengjiao) == 0
+    enemy = engine.get_active_spirits("p2")[0]
+    burns = effects_of(enemy, EffectType.debuff_burn)
+    assert burns and burns[0].stacks == 32 // HUOLI_PER_BURN
+    assert any(e.display_name == "毛血旺" for e in enemy.effects)
+
+    # 免费额外出锅仍可交（火力已空，只再挂毛血旺易伤）
+    assert _submit_serve(engine, tengjiao, tengjiao.unique_id)
+    assert _pending_free(tengjiao) == []
+    assert engine.current_extra_slot() is None
 
 
 def test_preview_dish_commits_without_spending_turn():

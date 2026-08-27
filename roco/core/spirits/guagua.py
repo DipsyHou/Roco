@@ -37,8 +37,6 @@ SPEED_BUFF = 0.10
 
 
 def _learned_policy(actor: BattleSpirit, action: Dict[str, Any]) -> bool:
-    if action.get("type") == ActionType.skip.value:
-        return True
     return (
         actor.template_id == TEMPLATE_ID
         and action.get("type") == ActionType.use_skill.value
@@ -53,7 +51,7 @@ register_policy(
         hint="（呱呱额外行动：自动学会了！）",
         allow_normal_attack=False,
         allow_gather=False,
-        allow_skip=True,
+        allow_skip=False,
         allowed_skill_ids=("guagua_learned",),
     ),
 )
