@@ -13,26 +13,6 @@ from .stats import get_effective_stat
 from .types import BattleLogType, BattleSpirit, DamageType, EffectType, StatType
 
 
-def get_sustained_damage_taken_amp(target: BattleSpirit) -> float:
-    """Extra multiplier on burn/poison from effects tagged ``sustained_damage``."""
-    total = 0.0
-    for effect in target.effects:
-        if (
-            effect.type == EffectType.debuff_taken_damage_percent_boost
-            and effect.effect_tag == "sustained_damage"
-            and effect.value
-        ):
-            total += effect.value
-    return total
-
-
-def _apply_sustained_amp(target: BattleSpirit, damage: int) -> int:
-    amp = get_sustained_damage_taken_amp(target)
-    if amp <= 0 or damage <= 0:
-        return damage
-    return max(0, int(damage * (1 + amp) + 1e-9))
-
-
 def trigger_burn_damage(ctx: Any, target: BattleSpirit) -> None:
     """Resolve burn once per source; does not halve stacks (see 主动触发)."""
     if not target.is_alive:
@@ -47,8 +27,12 @@ def trigger_burn_damage(ctx: Any, target: BattleSpirit) -> None:
         if source and source.is_alive:
             atk = get_effective_stat(source, StatType.atk)
             raw = atk * 0.1 * stacks
-            damage = _apply_sustained_amp(
-                target, calculate_damage(raw, DamageType.physical, source, target)
+            damage = calculate_damage(
+                raw,
+                DamageType.physical,
+                source,
+                target,
+                sustained="burn",
             )
             if damage > 0:
                 actual = apply_damage(target, damage, ctx=ctx)
@@ -111,21 +95,23 @@ def process_poison_damage(
         return
 
     stacks = stack_count(effect)
-    source = ctx.find_spirit_anywhere(effect.source_id)
-    attacker = source if source else target
     raw = target.max_hp * 0.01 * stacks
-    damage = _apply_sustained_amp(
-        target, calculate_damage(raw, DamageType.fixed, attacker, target)
+    damage = calculate_damage(
+        raw,
+        DamageType.fixed,
+        None,
+        target,
+        sustained="poison",
     )
     if damage > 0:
         actual = apply_damage(target, damage, ctx=ctx)
         if hasattr(ctx, "notify_damage_taken"):
-            ctx.notify_damage_taken(attacker, target, actual)
+            ctx.notify_damage_taken(target, target, actual)
         ctx.add_log(
             BattleLogType.damage_dealt,
             msg.poison_tick(target.name, actual),
             {
-                "attackerId": getattr(attacker, "unique_id", None),
+                "attackerId": None,
                 "targetId": target.unique_id,
                 "damage": actual,
                 "effectType": EffectType.debuff_poison.value,

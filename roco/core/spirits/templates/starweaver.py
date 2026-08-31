@@ -55,7 +55,7 @@ STARWEAVER = SpiritTemplate(
         SkillDef(
             id="starweaver_skill3",
             name="星爆",
-            description="消耗全部秘能，对敌方场上所有精灵造成（40 + 5 * 消耗秘能数）点固伤，然后使自己眩晕2回合并获得4点秘能。",
+            description="消耗全部秘能，对敌方场上所有精灵造成（（40 + 5 * 消耗秘能数）%自身魔攻）魔法伤害，然后使自己眩晕2回合并获得4点秘能。",
             cooldown=0,
             target_type=TargetType.all_enemies,
             energy_cost=-1,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple, Union
 
 from .effect_meta import EffectCategory, effect_category, is_stackable_effect_type, stack_count
-from .types import BattleEffect, EffectType
+from .types import BattleEffect, DamageType, EffectType
 
 # 文档约定可叠加；其余默认不可叠加（逐条罗列，不用 *）
 STACKABLE_BURN = EffectType.debuff_burn
@@ -97,8 +97,14 @@ def _format_stat_percent_body(eff: BattleEffect) -> str:
 
 def _format_damage_percent_body(eff: BattleEffect) -> str:
     pct = abs(int((eff.value or 0) * 100))
+    if eff.damage_type == DamageType.fixed:
+        kind = "固定伤害"
+    elif eff.effect_tag == "sustained_damage":
+        kind = "持续伤害"
+    else:
+        kind = "伤害"
     verb = "提升" if eff.type == EffectType.buff_damage_percent_boost else "降低"
-    return f"伤害{verb}{pct}%{_copy_suffix(eff)}{_turn_suffix(eff)}"
+    return f"{kind}{verb}{pct}%{_copy_suffix(eff)}{_turn_suffix(eff)}"
 
 
 def _format_crit_rate_body(eff: BattleEffect) -> str:

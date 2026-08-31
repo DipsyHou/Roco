@@ -39,9 +39,7 @@ _COPYABLE_TYPES = (
     EffectType.debuff_stat_percent_reduction,
     EffectType.debuff_stat_flat_reduction,
     EffectType.debuff_damage_percent_reduction,
-    EffectType.debuff_damage_flat_reduction,
     EffectType.debuff_taken_damage_percent_boost,
-    EffectType.debuff_taken_damage_flat_boost,
 )
 
 

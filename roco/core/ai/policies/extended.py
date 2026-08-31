@@ -844,9 +844,7 @@ class ShengyuPolicy:
             EffectType.debuff_stat_percent_reduction,
             EffectType.debuff_stat_flat_reduction,
             EffectType.debuff_damage_percent_reduction,
-            EffectType.debuff_damage_flat_reduction,
             EffectType.debuff_taken_damage_percent_boost,
-            EffectType.debuff_taken_damage_flat_boost,
         }
         return sum(1 for effect in spirit.effects if effect.type in copyable)
 
