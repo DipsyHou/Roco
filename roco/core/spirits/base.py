@@ -105,6 +105,17 @@ class SpiritLogic:
         """
         return damage
 
+    def get_damage_share_for_ally(
+        self,
+        ctx: BattleContext,
+        observer: BattleSpirit,
+        ally: BattleSpirit,
+        segment_amount: int,
+    ) -> int:
+        """How much of ``ally``'s incoming segment ``observer`` absorbs (pre-shield)."""
+        del ctx, observer, ally, segment_amount
+        return 0
+
     def on_death(
         self,
         spirit: BattleSpirit,

@@ -10,6 +10,7 @@ from .types import BattleEffect, DamageType, EffectType
 # 文档约定可叠加；其余默认不可叠加（逐条罗列，不用 *）
 STACKABLE_BURN = EffectType.debuff_burn
 STACKABLE_POISON = EffectType.debuff_poison
+STACKABLE_PARASITE = EffectType.debuff_parasite
 STACKABLE_FREEZE = EffectType.debuff_freeze
 STACKABLE_WARMUP = EffectType.state_warmup
 STACKABLE_GANGQI = EffectType.state_gangqi
@@ -195,6 +196,8 @@ def _resolve_display_name(eff: BattleEffect) -> str:
         return "灼烧"
     if t == STACKABLE_POISON:
         return "中毒"
+    if t == STACKABLE_PARASITE:
+        return "寄生"
     if t == STACKABLE_FREEZE:
         return "冰冻"
     if t == EffectType.buff_infusion:
@@ -227,6 +230,8 @@ def _resolve_display_name(eff: BattleEffect) -> str:
         return "棘皮"
     if t == EffectType.state_zaisheng:
         return "再生"
+    if t == EffectType.state_shengen:
+        return "深根"
     if t == EffectType.state_module_qianghua:
         return "强化模块"
     if t == EffectType.state_module_jisu:
@@ -258,6 +263,8 @@ def _stackable_group_key(
 ) -> Tuple[Union[str, EffectType], ...]:
     if eff.type == STACKABLE_BURN:
         return ("burn", eff.source_id)
+    if eff.type == STACKABLE_PARASITE:
+        return ("parasite", eff.source_id)
     if eff.type == STACKABLE_POISON:
         return ("poison",)
     if eff.type == STACKABLE_FREEZE:
@@ -287,6 +294,12 @@ def _format_stackable_group(
     count = len(effects)
 
     if eff.type == STACKABLE_BURN:
+        total = sum(stack_count(e) for e in effects)
+        body = f"{_resolve_display_name(eff)} - {_burn_detail(eff, source_names)}"
+        mult = f" * {total}"
+        return f"[{category}]{body}{mult}"
+
+    if eff.type == STACKABLE_PARASITE:
         total = sum(stack_count(e) for e in effects)
         body = f"{_resolve_display_name(eff)} - {_burn_detail(eff, source_names)}"
         mult = f" * {total}"

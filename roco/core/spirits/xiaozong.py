@@ -13,7 +13,6 @@ from ..battle.types import (
     StatType,
 )
 from ..battle.utils import (
-    apply_heal,
     get_effective_stat,
     make_effect,
 )
@@ -161,6 +160,8 @@ class XiaozongLogic(SpiritLogic):
         damage_type: DamageType,
         verb: str,
         source: DamageSource = DamageSource.skill,
+        *,
+        lifesteal_ratio: float = 0.0,
     ) -> int:
         type_label = "物理" if damage_type == DamageType.physical else "魔法"
         return deal_damage(
@@ -171,6 +172,8 @@ class XiaozongLogic(SpiritLogic):
             damage_type,
             lambda a: f"{actor.name} 的{verb}对 {target.name} 造成了 {a} 点{type_label}伤害！",
             source=source,
+            lifesteal_ratio=lifesteal_ratio,
+            lifesteal_healer=actor,
         )
 
     def _skill_riyue(
@@ -208,18 +211,16 @@ class XiaozongLogic(SpiritLogic):
         stacks_at_cast = get_lingqi_stacks(actor)
         tongling = self._enter_tongling_mode(actor)
         raw = mag * 0.80 + stacks_at_cast * 0.20
-        dealt = self._hit(ctx, actor, target, raw, DamageType.magical, "华采若英")
-        if tongling:
-            heal = int(dealt * 0.30)
-            if heal > 0:
-                actual = apply_heal(actor, heal)
-                if actual > 0:
-                    ctx.add_log(
-                        BattleLogType.heal_applied,
-                        f"{actor.name} 凭华采若英回复了 {actual} 点血量！",
-                        {"targetId": actor.unique_id, "heal": actual},
-                    )
-        else:
+        dealt = self._hit(
+            ctx,
+            actor,
+            target,
+            raw,
+            DamageType.magical,
+            "华采若英",
+            lifesteal_ratio=0.30 if tongling else 0.0,
+        )
+        if not tongling:
             self._grant_lingqi(ctx, actor, LINGQI_PER_SKILL)
 
     def _skill_yuanju(

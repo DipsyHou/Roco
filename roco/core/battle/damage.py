@@ -18,7 +18,7 @@ from .damage_modifiers import (
 from .stats import _STAT_ENGINE_ATTR, get_effective_stat
 from .types import BattleSpirit, DamageType, StatType
 
-SustainedKind = Optional[Literal["burn", "poison"]]
+SustainedKind = Optional[Literal["burn", "poison", "parasite"]]
 
 
 def _modifier_mode(sustained: SustainedKind) -> DamageModifierMode:
@@ -26,6 +26,8 @@ def _modifier_mode(sustained: SustainedKind) -> DamageModifierMode:
         return DamageModifierMode.sustained_burn
     if sustained == "poison":
         return DamageModifierMode.sustained_poison
+    if sustained == "parasite":
+        return DamageModifierMode.sustained_parasite
     return DamageModifierMode.normal
 
 

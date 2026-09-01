@@ -27,6 +27,7 @@ from .xiaozong import xiaozong_logic
 from .emozhanshi import emozhanshi_logic
 from .cixiyi import cixiyi_logic
 from .jifangfang import jifangfang_logic
+from .gulum import gulum_logic
 
 _REGISTRY: Dict[str, SpiritLogic] = {
     flora_logic.template_id: flora_logic,
@@ -51,6 +52,7 @@ _REGISTRY: Dict[str, SpiritLogic] = {
     emozhanshi_logic.template_id: emozhanshi_logic,
     cixiyi_logic.template_id: cixiyi_logic,
     jifangfang_logic.template_id: jifangfang_logic,
+    gulum_logic.template_id: gulum_logic,
 }
 
 

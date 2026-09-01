@@ -16,6 +16,7 @@ class DamageModifierMode(str, Enum):
     normal = "normal"
     sustained_burn = "sustained_burn"
     sustained_poison = "sustained_poison"
+    sustained_parasite = "sustained_parasite"
 
 
 def _is_sustained_tagged(effect) -> bool:
@@ -38,7 +39,10 @@ def _outgoing_percent_applies(
     mode: DamageModifierMode,
 ) -> bool:
     tagged = _is_sustained_tagged(effect)
-    if mode == DamageModifierMode.sustained_burn:
+    if mode in (
+        DamageModifierMode.sustained_burn,
+        DamageModifierMode.sustained_parasite,
+    ):
         return tagged
     if mode == DamageModifierMode.sustained_poison:
         return False
@@ -51,7 +55,10 @@ def _incoming_percent_applies(
     mode: DamageModifierMode,
 ) -> bool:
     tagged = _is_sustained_tagged(effect)
-    if mode == DamageModifierMode.sustained_burn:
+    if mode in (
+        DamageModifierMode.sustained_burn,
+        DamageModifierMode.sustained_parasite,
+    ):
         return tagged
     if mode == DamageModifierMode.sustained_poison:
         return not tagged and effect.damage_type == DamageType.fixed
@@ -79,6 +86,14 @@ def get_damage_modifiers(
                 pi += value
             elif effect.type == EffectType.debuff_damage_percent_reduction:
                 pd += value
+            continue
+        if mode == DamageModifierMode.sustained_parasite:
+            if damage_type != DamageType.magical:
+                continue
+            if effect.type == EffectType.buff_damage_percent_boost:
+                mi += value
+            elif effect.type == EffectType.debuff_damage_percent_reduction:
+                md += value
             continue
         if effect.type == EffectType.buff_damage_percent_boost:
             if _match_damage_type(effect.damage_type, damage_type):
@@ -128,6 +143,14 @@ def get_incoming_damage_modifiers(
                 pr += value
             elif effect.type == EffectType.debuff_taken_damage_percent_boost:
                 pr -= value
+            continue
+        if mode == DamageModifierMode.sustained_parasite:
+            if damage_type != DamageType.magical:
+                continue
+            if effect.type == EffectType.buff_taken_damage_percent_reduction:
+                mr += value
+            elif effect.type == EffectType.debuff_taken_damage_percent_boost:
+                mr -= value
             continue
         if effect.type == EffectType.buff_taken_damage_percent_reduction:
             if _match_damage_type(effect.damage_type, damage_type):

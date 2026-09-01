@@ -734,10 +734,12 @@
 
 ### 23.4 受到伤害时刻（每一段伤害）
 
-调用链为 `deal_damage` / `_apply_hit` → `apply_damage` → `notify_damage_taken` → `dispatch_damage`。单段伤害顺序：
+调用链为 `deal_damage` / `_apply_hit` → `execute_damage_segment` → `apply_damage` →（可选）`notify_damage_taken` → `dispatch_damage`。单段伤害顺序：
 
-1. `calculate_damage` 伤害管线算出**最终伤害值**（内部顺序见 23.5）；
-2. `apply_damage`：
+1. `calculate_damage` 伤害管线算出**最终伤害段数值**（内部顺序见 23.5）；
+2. **伤害段分配**（`resolve_damage_applications`）：如格鲁姆「深根」将段内数值拆给队友与自身；分摊段仍扣血/吃盾，但**不广播**「受到伤害」；
+3. **吸血**（若有）：按**扣盾前段数值**为治疗者回复（如小琮华采、寄生）；
+4. 对每个受击者 `apply_damage`：
    1. `defender.adjust_incoming_damage`（可再调整这次数值）；
    2. **护盾抵扣**（§22.2）；
    3. 溢出部分扣除生命；
@@ -777,6 +779,7 @@
 **持续伤害细分**：
 
 - **灼烧**：有施加者，`sustained="burn"`，仅吃持续伤害专用增减伤（物伤公式）；
+- **寄生**：有施加者（按来源分别叠层），`sustained="parasite"`，仅吃持续伤害专用增减伤（魔伤公式）；施加者按段数值 100% 吸血（扣盾前）；
 - **中毒**：无施加者，`sustained="poison"`，基础值 = `最大生命 × 1% × 层数`，**不吃任何增减伤**（仅护盾在扣血前抵扣）。
 
 护盾不在此管线内，而在管线**之后、扣血之前**结算（§22.4）。
@@ -792,7 +795,8 @@
 1. `actor.on_turn_end`；
 2. 每个存活队友 `on_ally_turn_end`；
 3. **`tick_effects(actor)`**：actor 身上**所有带持续时间的效果一律 −1**，到期移除并记录（护盾、buff、debuff、状态一视同仁）；
-4. **`process_system_effects_on_action_end(actor)`**：系统持续伤害结算，顺序固定为 **灼烧 → 中毒 → 冰冻处决**：
+4. **`process_system_effects_on_action_end(actor)`**：系统持续伤害结算，顺序固定为 **寄生 → 灼烧 → 中毒 → 冰冻处决**：
+   - 寄生：按来源逐条结算伤害（走伤害段管线与受到伤害时刻），随后各来源层数 **−1**；
    - 灼烧：按来源逐条结算伤害（走受到伤害时刻），随后各来源层数**减半**；
    - 中毒：结算固定伤害（走受到伤害时刻），随后层数 **−1**；
    - 冰冻处决：生命 ≤（1% × 冰冻层数）最大生命时直接处决。

@@ -307,6 +307,41 @@ def apply_poison_stacks(
 
 
 
+def get_parasite_effects(spirit: BattleSpirit) -> List[BattleEffect]:
+    return [effect for effect in spirit.effects if effect.type == EffectType.debuff_parasite]
+
+
+
+def get_total_parasite_stacks(spirit: BattleSpirit) -> int:
+    return sum(stack_count(effect) for effect in get_parasite_effects(spirit))
+
+
+
+def apply_parasite_stacks(
+    target: BattleSpirit,
+    source_id: str,
+    stacks: int,
+) -> bool:
+    if stacks <= 0 or is_debuff_immune(target):
+        return False
+    existing = next(
+        (
+            effect
+            for effect in target.effects
+            if effect.type == EffectType.debuff_parasite and effect.source_id == source_id
+        ),
+        None,
+    )
+    if existing:
+        existing.stacks = stack_count(existing) + stacks
+    else:
+        target.effects.append(
+            make_effect(EffectType.debuff_parasite, source_id, stacks=stacks)
+        )
+    return True
+
+
+
 def get_freeze_effect(spirit: BattleSpirit) -> Optional[BattleEffect]:
     return next(
         (effect for effect in spirit.effects if effect.type == EffectType.debuff_freeze),
@@ -352,6 +387,7 @@ def tick_effects(
         if effect.type in (
             EffectType.debuff_burn,
             EffectType.debuff_poison,
+            EffectType.debuff_parasite,
             EffectType.debuff_freeze,
             EffectType.state_warmup,
             EffectType.state_channeling_skill,
