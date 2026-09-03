@@ -25,7 +25,7 @@ from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "jifangfang"
 
-FANGHUOQIANG_RATIO = 0.90
+FANGHUOQIANG_RATIO = 0.60
 FANGHUOQIANG_CAP_RATIO = 1.20
 FANGHUOQIANG_DURATION = 3
 BIANXIE_RATIO = 0.30

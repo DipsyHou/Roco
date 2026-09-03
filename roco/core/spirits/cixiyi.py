@@ -2,7 +2,7 @@
 
 - 硬化肌肤（被动）：受到的固定伤害降低 50%（开局挂一条永久的固伤减免效果）。
 - 棘皮（技能）：给全体己方挂「棘皮」标记；持有者「受到伤害后」移除标记并获得
-  （30% 施加者物防）护盾，上限（60% 施加者物防），持续 2 回合，可累积刷新。
+  （30% 施加者物防）护盾，上限（60% 施加者物防），持续 3 回合，可累积刷新。
 - 再生（被动）：自身受到伤害后 +20% 双防、并使「棘皮」能耗 −2，持续 1 回合，
   再次获得延长 1 回合，最多 2 回合。
 - 岩刺（技能）：对自身造成（20% 物攻）物理伤害，再对目标造成
@@ -34,7 +34,7 @@ TEMPLATE_ID = "cixiyi"
 HARDEN_FIXED_REDUCTION = 0.5
 JIPI_SHIELD_RATIO = 0.30
 JIPI_SHIELD_CAP_RATIO = 0.60
-JIPI_SHIELD_DURATION = 2
+JIPI_SHIELD_DURATION = 3
 ZAISHENG_DEF_BONUS = 0.20
 ZAISHENG_COST_REDUCTION = 2
 ZAISHENG_MAX_DURATION = 2

@@ -129,9 +129,10 @@ class EmozhanshiLogic(SpiritLogic):
         action: Dict[str, Any],
     ) -> None:
         del action
+        missing_hp = max(0, actor.max_hp - actor.current_hp)
         raw = (
             get_effective_stat(actor, StatType.mag_atk) * LINXING_MAG_RATIO
-            + actor.current_hp * LINXING_HP_RATIO
+            + missing_hp * LINXING_HP_RATIO
         )
         opponent_id = ctx.get_opponent_id(player_id)
         targets: List[BattleSpirit] = [

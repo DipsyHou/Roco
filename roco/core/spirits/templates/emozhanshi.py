@@ -56,7 +56,7 @@ EMOZHANSHI = SpiritTemplate(
             name="临行留念",
             description=(
                 "固定不消耗能量。目标为全体敌方精灵。对所有目标造成"
-                "（50%自身魔攻+10%自身当前生命）魔法伤害；随后自身直接倒下。"
+                "（50%自身魔攻+10%自身已损生命）魔法伤害；随后自身直接倒下。"
             ),
             cooldown=0,
             target_type=TargetType.all_enemies,

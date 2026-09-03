@@ -1,4 +1,4 @@
-"""缇塔 — 分流 / 扩容 / 缓存 / 过载"""
+"""缇塔 — 分流 / 扩容（被动）/ 缓冲 / 过载"""
 
 from __future__ import annotations
 
@@ -10,16 +10,18 @@ from ..battle.utils import get_state_stack_count, is_debuff_immune, make_effect
 from ._combat import deal_atk_ratio, deal_mag_ratio, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
-MAX_EXPANSION_STACKS = 5
-CACHE_ENERGY_THRESHOLD = 5
+EXPANSION_CAP_BONUS = 2
+BUFFER_ENERGY_THRESHOLD = 5
+OVERLOAD_MAG_RATIO = 2.0
+OVERLOAD_SPEED_PENALTY = 0.20
+OVERLOAD_SLOW_TURNS = 2
 
 
 class TitaLogic(SpiritLogic):
     template_id = "tita"
     SKILLS: ClassVar[Dict[str, str]] = {
         "tita_skill1": "_skill_shunt",
-        "tita_skill2": "_skill_expansion",
-        "tita_skill3": "_skill_overload",
+        "tita_skill2": "_skill_overload",
     }
 
     def execute_normal_attack(
@@ -42,9 +44,19 @@ class TitaLogic(SpiritLogic):
         return True
 
     def get_team_energy_cap_bonus(self, ctx: BattleContext, spirit: BattleSpirit) -> int:
-        return min(
-            MAX_EXPANSION_STACKS,
-            get_state_stack_count(spirit, EffectType.state_expansion),
+        del ctx
+        if spirit.template_id != self.template_id or not spirit.is_alive:
+            return 0
+        return EXPANSION_CAP_BONUS
+
+    def on_battle_start(self, ctx: BattleContext, spirit: BattleSpirit) -> None:
+        if spirit.template_id != self.template_id:
+            return
+        max_cap = ctx.sync_team_energy_cap(spirit.owner_id)
+        ctx.add_log(
+            BattleLogType.passive_triggered,
+            f"{spirit.name} 的扩容使队伍能量上限提升至 {max_cap}！",
+            {"targetId": spirit.unique_id, "maxTeamEnergy": max_cap},
         )
 
     def on_turn_start(self, ctx: BattleContext, actor: BattleSpirit) -> None:
@@ -82,7 +94,7 @@ class TitaLogic(SpiritLogic):
                 1,
                 reason=f"{observer.name} 的分流使队伍回复 1 点能量",
             )
-        self._try_cache_passive(ctx, player_id, observer)
+        self._try_buffer_passive(ctx, player_id, observer)
 
     def on_spirit_defeated(
         self,
@@ -94,18 +106,18 @@ class TitaLogic(SpiritLogic):
         if defeated.template_id == "tita":
             ctx.sync_team_energy_cap(defeated.owner_id)
 
-    def _try_cache_passive(
+    def _try_buffer_passive(
         self,
         ctx: BattleContext,
         player_id: str,
         tita: BattleSpirit,
     ) -> None:
-        if ctx.get_team_energy_spent(player_id) < CACHE_ENERGY_THRESHOLD:
+        if ctx.get_team_energy_spent(player_id) < BUFFER_ENERGY_THRESHOLD:
             return
         ctx.gain_team_energy(
             player_id,
             1,
-            reason=f"{tita.name} 的缓存触发，队伍回复 1 点能量",
+            reason=f"{tita.name} 的缓冲触发，队伍回复 1 点能量",
             log_type=BattleLogType.passive_triggered,
         )
 
@@ -114,8 +126,9 @@ class TitaLogic(SpiritLogic):
         ctx: BattleContext,
         actor: BattleSpirit,
         target: BattleSpirit,
-        ratio: float = 0.30,
-        turns: int = 1,
+        *,
+        ratio: float = OVERLOAD_SPEED_PENALTY,
+        turns: int = OVERLOAD_SLOW_TURNS,
     ) -> None:
         if not target.is_alive or is_debuff_immune(target):
             return
@@ -169,40 +182,6 @@ class TitaLogic(SpiritLogic):
             {"targetId": actor.unique_id, "stacks": 2},
         )
 
-    def _skill_expansion(
-        self,
-        ctx: BattleContext,
-        player_id: str,
-        actor: BattleSpirit,
-        action: Dict[str, Any],
-    ) -> None:
-        del action
-        current = get_state_stack_count(actor, EffectType.state_expansion)
-        max_cap = ctx.sync_team_energy_cap(player_id)
-        if current >= MAX_EXPANSION_STACKS:
-            ctx.add_log(
-                BattleLogType.effect_applied,
-                f"{actor.name} 的扩容已达 {MAX_EXPANSION_STACKS} 层，层数不变（能量上限 {max_cap}）。",
-                {
-                    "targetId": actor.unique_id,
-                    "stacks": current,
-                    "maxTeamEnergy": max_cap,
-                },
-            )
-            return
-        new_stacks = current + 1
-        self._set_state_stacks(actor, EffectType.state_expansion, new_stacks, "扩容")
-        max_cap = ctx.sync_team_energy_cap(player_id)
-        ctx.add_log(
-            BattleLogType.effect_applied,
-            f"{actor.name} 获得 1 层扩容（{new_stacks} 层，能量上限 {max_cap}）！",
-            {
-                "targetId": actor.unique_id,
-                "stacks": new_stacks,
-                "maxTeamEnergy": max_cap,
-            },
-        )
-
     def _skill_overload(
         self,
         ctx: BattleContext,
@@ -217,11 +196,11 @@ class TitaLogic(SpiritLogic):
             ctx,
             actor,
             target,
-            1.75,
+            OVERLOAD_MAG_RATIO,
             lambda a: f"{actor.name} 用过载对 {target.name} 造成了 {a} 点魔法伤害！",
         )
         self._apply_speed_down(ctx, actor, target)
-        self._apply_speed_down(ctx, actor, actor, turns=2)
+        self._apply_speed_down(ctx, actor, actor)
 
 
 tita_logic = TitaLogic()

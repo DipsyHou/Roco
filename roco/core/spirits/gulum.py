@@ -23,7 +23,8 @@ from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "gulum"
 SHENGEN_DURATION = 3
-SHENGEN_SPEED_PENALTY = -0.40
+SHENGEN_SPEED_PENALTY = -0.50
+SHENGEN_SHARE_RATIO = 0.40
 NUTRIENT_HEAL_RATIO = 0.02
 SEED_PARASITE_STACKS = 4
 TANGLE_PARASITE_STACKS = 2
@@ -67,7 +68,7 @@ class GulumLogic(SpiritLogic):
             return 0
         if ally.owner_id != observer.owner_id or ally.unique_id == observer.unique_id:
             return 0
-        return segment_amount // 2
+        return int(segment_amount * SHENGEN_SHARE_RATIO + 1e-9)
 
     def on_damage(self, ctx: BattleContext, spirit: BattleSpirit, event: DamageEvent) -> None:
         if spirit.template_id != self.template_id or not spirit.is_alive:
@@ -75,7 +76,7 @@ class GulumLogic(SpiritLogic):
         if event.damage <= 0:
             return
         target = event.target
-        if target.owner_id != spirit.owner_id or target.unique_id == spirit.unique_id:
+        if target.owner_id != spirit.owner_id:
             return
 
         heal_amt = int(spirit.max_hp * NUTRIENT_HEAL_RATIO + 1e-9)

@@ -19,8 +19,8 @@ GULUM = SpiritTemplate(
         id="gulum_passive",
         name="养分输送",
         description=(
-            "队友受到伤害时，若自身生命值比例高于50%，则为该队友回复（2%自身最大生命值）点生命值；"
-            "否则为自己回复（2%自身最大生命值）点生命值。"
+            "我方精灵受到伤害时，若自身生命值比例高于50%，则为该精灵回复（2%自身最大生命）点生命；"
+            "否则为自己回复（2%自身最大生命）点生命。"
         ),
     ),
     normal_attack=SkillDef(
@@ -45,7 +45,7 @@ GULUM = SpiritTemplate(
             name="深根",
             description=(
                 "目标为自身。获得「深根」，持续3回合，期间再次使用此技能会重置「深根」持续时间。"
-                "（深根：速度降低40%，队友受到伤害时自身分摊50%的伤害量。）"
+                "（深根：速度降低50%，队友受到伤害时自身分摊40%的伤害量。）"
             ),
             cooldown=0,
             target_type=TargetType.self,
@@ -57,7 +57,7 @@ GULUM = SpiritTemplate(
             description="目标为全体敌方精灵。赋予全体目标2层「寄生」效果，然后触发所有目标的「寄生」效果。",
             cooldown=0,
             target_type=TargetType.all_enemies,
-            energy_cost=3,
+            energy_cost=2,
         ),
     ],
 )

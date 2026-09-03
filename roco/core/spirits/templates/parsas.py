@@ -16,7 +16,7 @@ PARSAS = SpiritTemplate(
     id="parsas",
     name="帕尔萨斯",
     description="帕尔萨斯",
-    base_stats=BaseStats(hp=650, atk=130, mag_atk=100, def_=120, mag_def=120, speed=120),
+    base_stats=BaseStats(hp=650, atk=100, mag_atk=130, def_=120, mag_def=120, speed=120),
     passive_skill=PassiveSkillDef(
         id="parsas_passive",
         name="收藏灵魂",

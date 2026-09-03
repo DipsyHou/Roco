@@ -29,8 +29,8 @@ def test_deep_root_splits_damage_evenly():
     amounts = {app.target.unique_id: app.segment_amount for app in apps}
     emit_flags = {app.target.unique_id: app.emit_damage_event for app in apps}
 
-    assert amounts[ally.unique_id] == 51
-    assert amounts[gulum.unique_id] == 50
+    assert amounts[ally.unique_id] == 61
+    assert amounts[gulum.unique_id] == 40
     assert emit_flags[ally.unique_id] is True
     assert emit_flags[gulum.unique_id] is False
 
@@ -99,5 +99,5 @@ def test_gulum_share_portion_does_not_emit_damage_event():
         source=DamageSource.skill,
     )
 
-    assert gulum.current_hp == gulum_hp_before - 50 + int(gulum.max_hp * 0.02)
-    assert ally.current_hp == 800 - 50
+    assert gulum.current_hp == gulum_hp_before - 40 + int(gulum.max_hp * 0.02)
+    assert ally.current_hp == 800 - 60

@@ -40,7 +40,7 @@ class JifangfangPolicy:
         target = engine.find_spirit_anywhere(target_id) if target_id else None
 
         if skill_id == "jifangfang_skill1":
-            if energy < 4:
+            if energy < 3:
                 return -50.0
             if missing_shield is None:
                 return 10.0

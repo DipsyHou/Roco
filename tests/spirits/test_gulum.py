@@ -150,3 +150,29 @@ def test_gulum_nutrient_heals_ally_when_healthy():
 
     expected_heal = int(gulum.max_hp * 0.02)
     assert ally.current_hp == ally_hp_before - 200 + expected_heal
+
+
+def test_gulum_nutrient_heals_self_when_healthy_and_takes_damage():
+    engine = make_engine(
+        ("gulum", "flora", "clawdragon", "chaosling", "starweaver"),
+        ("qiuka", "fanying", "tita", "guifashi", "flora"),
+    )
+    gulum = by_template(engine, P1, "gulum")
+    enemy = by_template(engine, P2, "qiuka")
+    gulum.current_hp = 800
+    gulum.max_hp = 1000
+    enemy.base_stats.atk = 200
+    gulum.base_stats.def_ = 100
+    hp_before = gulum.current_hp
+
+    deal_atk_ratio(
+        engine,
+        enemy,
+        gulum,
+        1.0,
+        lambda actual: f"hit {actual}",
+        source=DamageSource.skill,
+    )
+
+    expected_heal = int(gulum.max_hp * 0.02)
+    assert gulum.current_hp == hp_before - 200 + expected_heal
