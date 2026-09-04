@@ -54,7 +54,7 @@ def test_fanghuoqiang_shield_and_bianxie_merge(engine_factory):
 
     jifangfang_logic._skill_fanghuoqiang(engine, P1, ff, {})
     sh = shield_from_source(ally, ff.unique_id)
-    assert sh is not None and int(sh.value) == int(atk * 0.90)
+    assert sh is not None and int(sh.value) == int(atk * 0.60)
     assert shield_from_source(ff, ff.unique_id) is not None  # 含自身
 
     before = int(shield_from_source(ally, ff.unique_id).value)

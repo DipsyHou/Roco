@@ -39,12 +39,12 @@ JIFANGFANG = SpiritTemplate(
             id="jifangfang_skill1",
             name="防火墙",
             description=(
-                "能量 4。目标为全体己方精灵。赋予所有目标（90%自身物攻）护盾，持续3回合，"
+                "能量 3。目标为全体己方精灵。赋予所有目标（60%自身物攻）护盾，持续3回合，"
                 "持续期间再次获得自身赋予的护盾会累积护盾量并刷新持续时间，上限为（120%施加者物攻）。"
             ),
             cooldown=0,
             target_type=TargetType.all_allies,
-            energy_cost=4,
+            energy_cost=3,
         ),
         SkillDef(
             id="jifangfang_skill2",

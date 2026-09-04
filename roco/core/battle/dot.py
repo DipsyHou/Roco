@@ -6,31 +6,15 @@ from typing import Any
 
 from . import messages as msg
 from .damage import calculate_damage
+from .damage_segment import execute_damage_segment
 from .effect_meta import stack_count
-from .effects import get_burn_effects, get_poison_effect
+from .effects import get_burn_effects, get_parasite_effects, get_poison_effect
+from .events import DamageSource
 from .hp import apply_damage, execute_instant_defeat
 from .stats import get_effective_stat
 from .types import BattleLogType, BattleSpirit, DamageType, EffectType, StatType
 
-
-def get_sustained_damage_taken_amp(target: BattleSpirit) -> float:
-    """Extra multiplier on burn/poison from effects tagged ``sustained_damage``."""
-    total = 0.0
-    for effect in target.effects:
-        if (
-            effect.type == EffectType.debuff_taken_damage_percent_boost
-            and effect.effect_tag == "sustained_damage"
-            and effect.value
-        ):
-            total += effect.value
-    return total
-
-
-def _apply_sustained_amp(target: BattleSpirit, damage: int) -> int:
-    amp = get_sustained_damage_taken_amp(target)
-    if amp <= 0 or damage <= 0:
-        return damage
-    return max(0, int(damage * (1 + amp) + 1e-9))
+PARASITE_MAG_RATIO = 0.04
 
 
 def trigger_burn_damage(ctx: Any, target: BattleSpirit) -> None:
@@ -47,29 +31,23 @@ def trigger_burn_damage(ctx: Any, target: BattleSpirit) -> None:
         if source and source.is_alive:
             atk = get_effective_stat(source, StatType.atk)
             raw = atk * 0.1 * stacks
-            damage = _apply_sustained_amp(
-                target, calculate_damage(raw, DamageType.physical, source, target)
+            damage = calculate_damage(
+                raw,
+                DamageType.physical,
+                source,
+                target,
+                sustained="burn",
             )
             if damage > 0:
-                actual = apply_damage(target, damage, ctx=ctx)
-                if hasattr(ctx, "notify_damage_taken"):
-                    ctx.notify_damage_taken(source, target, actual)
-                ctx.add_log(
-                    BattleLogType.damage_dealt,
-                    msg.burn_tick(target.name, source.name, actual),
-                    {
-                        "attackerId": source.unique_id,
-                        "targetId": target.unique_id,
-                        "damage": actual,
-                        "effectType": EffectType.debuff_burn.value,
-                    },
+                execute_damage_segment(
+                    ctx,
+                    source,
+                    target,
+                    damage,
+                    source=DamageSource.dot,
+                    describe=lambda actual: msg.burn_tick(target.name, source.name, actual),
                 )
                 if not target.is_alive:
-                    ctx.add_log(
-                        BattleLogType.spirit_defeated,
-                        msg.defeated(target.name),
-                        {"targetId": target.unique_id},
-                    )
                     return
 
 
@@ -95,6 +73,67 @@ def process_burn_on_action_end(ctx: Any, target: BattleSpirit) -> None:
             effect.stacks = new_stacks
 
 
+def trigger_parasite_damage(ctx: Any, target: BattleSpirit) -> None:
+    """Resolve parasite once per source; does not reduce stacks."""
+    if not target.is_alive:
+        return
+    for effect in list(get_parasite_effects(target)):
+        stacks = stack_count(effect)
+        if stacks <= 0:
+            target.effects = [e for e in target.effects if e.id != effect.id]
+            continue
+
+        source = ctx.find_spirit_anywhere(effect.source_id)
+        if not source or not source.is_alive:
+            continue
+
+        mag = get_effective_stat(source, StatType.mag_atk)
+        raw = mag * PARASITE_MAG_RATIO * stacks
+        damage = calculate_damage(
+            raw,
+            DamageType.magical,
+            source,
+            target,
+            sustained="parasite",
+        )
+        if damage <= 0:
+            continue
+        execute_damage_segment(
+            ctx,
+            source,
+            target,
+            damage,
+            source=DamageSource.dot,
+            describe=lambda actual, t=target.name, s=source.name: msg.parasite_tick(t, s, actual),
+            lifesteal_ratio=1.0,
+            lifesteal_healer=source,
+        )
+        if not target.is_alive:
+            return
+
+
+def process_parasite_on_action_end(ctx: Any, target: BattleSpirit) -> None:
+    """Resolve parasite damage, then reduce stacks by 1 per source."""
+    trigger_parasite_damage(ctx, target)
+    if not target.is_alive:
+        return
+    for effect in list(get_parasite_effects(target)):
+        stacks = stack_count(effect)
+        if stacks <= 0:
+            target.effects = [e for e in target.effects if e.id != effect.id]
+            continue
+        new_stacks = stacks - 1
+        if new_stacks <= 0:
+            target.effects = [e for e in target.effects if e.id != effect.id]
+            ctx.add_log(
+                BattleLogType.effect_removed,
+                msg.parasite_cleared(target.name),
+                {"targetId": target.unique_id, "effectId": effect.id},
+            )
+        else:
+            effect.stacks = new_stacks
+
+
 def process_poison_damage(
     ctx: Any,
     target: BattleSpirit,
@@ -111,21 +150,23 @@ def process_poison_damage(
         return
 
     stacks = stack_count(effect)
-    source = ctx.find_spirit_anywhere(effect.source_id)
-    attacker = source if source else target
     raw = target.max_hp * 0.01 * stacks
-    damage = _apply_sustained_amp(
-        target, calculate_damage(raw, DamageType.fixed, attacker, target)
+    damage = calculate_damage(
+        raw,
+        DamageType.fixed,
+        None,
+        target,
+        sustained="poison",
     )
     if damage > 0:
         actual = apply_damage(target, damage, ctx=ctx)
         if hasattr(ctx, "notify_damage_taken"):
-            ctx.notify_damage_taken(attacker, target, actual)
+            ctx.notify_damage_taken(target, target, actual)
         ctx.add_log(
             BattleLogType.damage_dealt,
             msg.poison_tick(target.name, actual),
             {
-                "attackerId": getattr(attacker, "unique_id", None),
+                "attackerId": None,
                 "targetId": target.unique_id,
                 "damage": actual,
                 "effectType": EffectType.debuff_poison.value,
@@ -179,7 +220,9 @@ def process_freeze_on_action_end(ctx: Any, target: BattleSpirit) -> None:
 
 def process_system_effects_on_action_end(ctx: Any, target: BattleSpirit) -> None:
     """Resolve system effects at action end."""
-    process_burn_on_action_end(ctx, target)
+    process_parasite_on_action_end(ctx, target)
+    if target.is_alive:
+        process_burn_on_action_end(ctx, target)
     if target.is_alive:
         process_poison_on_action_end(ctx, target)
     if target.is_alive:

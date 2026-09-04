@@ -39,25 +39,71 @@ def test_damage_types_use_expected_defense(raw, damage_type, defense, expected, 
     assert calculate_damage(raw, damage_type, attacker, defender) == expected
 
 
-def test_damage_pipeline_combines_percent_flat_reduction_and_cap(standard_engine):
+def test_damage_pipeline_combines_percent_reduction_and_cap(standard_engine):
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
     defender.base_stats.def_ = 100
     attacker.effects.extend(
         [
             make_effect(EffectType.buff_damage_percent_boost, "a", duration_turns=1, damage_type=DamageType.physical, value=0.2),
-            make_effect(EffectType.buff_damage_flat_boost, "a", duration_turns=1, value=20),
         ]
     )
     defender.effects.extend(
         [
             make_effect(EffectType.buff_taken_damage_percent_reduction, "d", duration_turns=1, damage_type=DamageType.physical, value=0.3),
-            make_effect(EffectType.buff_taken_damage_flat_reduction, "d", duration_turns=1, value=10),
             make_effect(EffectType.buff_damage_cap, "d", duration_turns=1, value=200),
         ]
     )
 
-    assert calculate_damage(200, DamageType.physical, attacker, defender) == 172
+    assert calculate_damage(200, DamageType.physical, attacker, defender) == 168
+
+
+def test_general_percent_boost_does_not_apply_to_fixed(standard_engine):
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    attacker.effects.append(
+        make_effect(
+            EffectType.buff_damage_percent_boost,
+            "a",
+            duration_turns=1,
+            value=0.5,
+        )
+    )
+    defender.effects.append(
+        make_effect(
+            EffectType.buff_taken_damage_percent_reduction,
+            "d",
+            duration_turns=1,
+            value=0.5,
+        )
+    )
+
+    assert calculate_damage(100, DamageType.fixed, attacker, defender) == 100
+
+
+def test_explicit_fixed_percent_modifiers_apply(standard_engine):
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    attacker.effects.append(
+        make_effect(
+            EffectType.buff_damage_percent_boost,
+            "a",
+            duration_turns=1,
+            damage_type=DamageType.fixed,
+            value=0.2,
+        )
+    )
+    defender.effects.append(
+        make_effect(
+            EffectType.buff_taken_damage_percent_reduction,
+            "d",
+            duration_turns=1,
+            damage_type=DamageType.fixed,
+            value=0.25,
+        )
+    )
+
+    assert calculate_damage(100, DamageType.fixed, attacker, defender) == 90
 
 
 def test_taken_damage_percent_reduction_persists_across_hits(standard_engine):
@@ -134,11 +180,44 @@ def test_effective_stat_modifiers_still_work_after_field_split(standard_engine):
     assert get_effective_stat(spirit, StatType.atk) == 270
 
 
+def test_fixed_damage_never_crits(standard_engine):
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    attacker.effects.extend(
+        [
+            make_effect(EffectType.buff_crit_rate, "a", duration_turns=1, value=1.0),
+            make_effect(EffectType.buff_crit_damage, "a", duration_turns=1, value=100),
+        ]
+    )
+
+    crit_flag: list[bool] = []
+    assert calculate_damage(
+        100, DamageType.fixed, attacker, defender, crit_flag=crit_flag
+    ) == 100
+    assert not crit_flag
+
+
+def test_fixed_damage_ignores_generic_damage_reduction(standard_engine):
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    defender.effects.append(
+        make_effect(
+            EffectType.buff_taken_damage_percent_reduction,
+            "d",
+            duration_turns=1,
+            value=0.5,
+        )
+    )
+
+    assert calculate_damage(100, DamageType.fixed, attacker, defender) == 100
+
+
 def test_critical_log_is_generated_by_shared_combat_helper(standard_engine):
     from roco.core.spirits._combat import deal_damage
 
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
+    defender.base_stats.def_ = 100
     attacker.effects.append(
         make_effect(EffectType.buff_crit_rate, "a", duration_turns=1, value=1.0)
     )
@@ -149,7 +228,7 @@ def test_critical_log_is_generated_by_shared_combat_helper(standard_engine):
         attacker,
         defender,
         100,
-        DamageType.fixed,
+        DamageType.physical,
         lambda actual: f"测试伤害 {actual}",
     )
 

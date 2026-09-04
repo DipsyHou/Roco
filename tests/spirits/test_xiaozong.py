@@ -36,6 +36,12 @@ def test_lingqi_cap_locked_at_battle_start(engine_factory):
     assert get_lingqi_stacks(xz) == xz.battle_start_max_hp
 
 
+def _calc_physical(engine, xz, amount: int) -> int:
+    attacker = engine.get_active_spirits(P2)[0]
+    xz.base_stats.def_ = 100
+    return calculate_damage(amount, DamageType.physical, attacker, xz)
+
+
 def _calc_fixed(engine, xz, amount: int) -> int:
     attacker = engine.get_active_spirits(P2)[0]
     return calculate_damage(amount, DamageType.fixed, attacker, xz)
@@ -47,7 +53,7 @@ def test_lingjue_reduces_damage_and_grants_lingqi(engine_factory):
     add_lingqi(xz, 50)
 
     # floor(50 * 0.1) = 5
-    assert _calc_fixed(engine, xz, 100) == 95
+    assert _calc_physical(engine, xz, 100) == 95
     assert get_lingqi_stacks(xz) == 55
 
 
@@ -57,7 +63,7 @@ def test_lingjue_in_tongling_reduces_but_no_grant(engine_factory):
     add_lingqi(xz, 50)
     grant_tongling(xz)
 
-    assert _calc_fixed(engine, xz, 100) == 95
+    assert _calc_physical(engine, xz, 100) == 95
     assert get_lingqi_stacks(xz) == 50  # 通灵后不再积攒
 
 
@@ -67,7 +73,7 @@ def test_lingjue_lingqi_gain_equals_actual_reduction(engine_factory):
     add_lingqi(xz, 300)
 
     # 灵珏可减 30，段伤害 24 → 实际减 24、叠 24 层（非 30）。
-    assert _calc_fixed(engine, xz, 24) == 0
+    assert _calc_physical(engine, xz, 24) == 0
     assert get_lingqi_stacks(xz) == 324
 
 
@@ -76,7 +82,7 @@ def test_lingjue_no_lingqi_on_zero_damage_segment(engine_factory):
     xz = _xz(engine)
     add_lingqi(xz, 300)
 
-    assert _calc_fixed(engine, xz, 0) == 0
+    assert _calc_physical(engine, xz, 0) == 0
     assert get_lingqi_stacks(xz) == 300
 
 
@@ -85,11 +91,20 @@ def test_lingjue_no_effect_below_ten_stacks(engine_factory):
     xz = _xz(engine)
     add_lingqi(xz, 9)
 
-    assert _calc_fixed(engine, xz, 100) == 100
+    assert _calc_physical(engine, xz, 100) == 100
     assert get_lingqi_stacks(xz) == 9
 
 
-def test_ally_flat_reduction_before_lingjue_in_pipeline(engine_factory):
+def test_lingjue_does_not_reduce_fixed_damage(engine_factory):
+    engine = engine_factory(TEAM)
+    xz = _xz(engine)
+    add_lingqi(xz, 300)
+
+    assert _calc_fixed(engine, xz, 24) == 24
+    assert get_lingqi_stacks(xz) == 300
+
+
+def test_lingjue_reduces_without_generic_flat_debuff(engine_factory):
     engine = engine_factory(TEAM)
     xz = _xz(engine)
     add_lingqi(xz, 300)
@@ -101,9 +116,9 @@ def test_ally_flat_reduction_before_lingjue_in_pipeline(engine_factory):
         )
     )
 
-    # 24 - 5 = 19，灵珏再减 19 → 0，叠 19 灵气。
-    assert _calc_fixed(engine, xz, 24) == 0
-    assert get_lingqi_stacks(xz) == 319
+    # 固定值减伤效果已取消；灵珏也不减固伤。
+    assert _calc_fixed(engine, xz, 24) == 24
+    assert get_lingqi_stacks(xz) == 300
 
 
 # --- 通灵复活 -------------------------------------------------------------
@@ -117,10 +132,10 @@ def test_fatal_hit_revives_with_tongling(engine_factory):
     dmg = _calc_fixed(engine, xz, 9999)
     apply_damage(xz, dmg, ctx=engine)
 
-    # 管线内 floor(40*0.1)=4 减伤并 +4 灵气 → 44 层，复活续命至 44。
+    # 固伤不吃灵珏减伤；40 层灵气复活续命至 40。
     assert xz.is_alive
-    assert xz.current_hp == 44
-    assert get_lingqi_stacks(xz) == 44
+    assert xz.current_hp == 40
+    assert get_lingqi_stacks(xz) == 40
     assert has_tongling(xz)
 
 

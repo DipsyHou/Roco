@@ -456,7 +456,6 @@ class TitaPolicy:
         at = action.get("type")
         energy = F.team_energy(engine, actor.owner_id)
         shunt = get_state_stack_count(actor, EffectType.state_shunt)
-        expansion = get_state_stack_count(actor, EffectType.state_expansion)
         target = _enemy_target(engine, actor.owner_id, action)
         enemy_lowest = F.lowest_hp_enemy_with_tiebreak(engine, actor.owner_id)
 
@@ -472,26 +471,14 @@ class TitaPolicy:
             return 0.0
 
         skill_id = action.get("skillId")
-        if skill_id == "tita_skill2":
-            if energy < 5:
-                return -50.0
-            if expansion >= 5:
-                return 20.0
-            score = 150.0 + expansion * 10.0
-            if energy >= 7:
-                score += 10.0
-            return score
         if skill_id == "tita_skill1":
             if energy < 5:
                 return -50.0
             if shunt >= 2:
                 return 35.0
-            score = 140.0
-            if expansion >= 3:
-                score += 10.0
-            return score
-        if skill_id == "tita_skill3":
-            if energy < 3:
+            return 140.0
+        if skill_id == "tita_skill2":
+            if energy < 5:
                 return -60.0
             if not target:
                 return -20.0
@@ -844,9 +831,7 @@ class ShengyuPolicy:
             EffectType.debuff_stat_percent_reduction,
             EffectType.debuff_stat_flat_reduction,
             EffectType.debuff_damage_percent_reduction,
-            EffectType.debuff_damage_flat_reduction,
             EffectType.debuff_taken_damage_percent_boost,
-            EffectType.debuff_taken_damage_flat_boost,
         }
         return sum(1 for effect in spirit.effects if effect.type in copyable)
 

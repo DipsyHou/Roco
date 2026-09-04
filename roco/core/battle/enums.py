@@ -101,6 +101,7 @@ class EffectType(str, Enum):
     state_yinghuajifu = "state_yinghuajifu"
     state_jipi = "state_jipi"
     state_zaisheng = "state_zaisheng"
+    state_shengen = "state_shengen"
     # 机械方方：多色模块 / 超限模块
     state_module_qianghua = "state_module_qianghua"
     state_module_jisu = "state_module_jisu"

@@ -167,15 +167,16 @@ class StarweaverLogic(SpiritLogic):
         del action
         opponent_id = ctx.get_opponent_id(player_id)
         consumed = getattr(actor, "_consumed_energy", 0) or 0
-        fixed_dmg = 40 + 5 * consumed
+        ratio = (40 + 5 * consumed) / 100.0
         for target in ctx.get_active_spirits(opponent_id):
-            deal_damage(
+            deal_mag_ratio(
                 ctx,
                 actor,
                 target,
-                fixed_dmg,
-                DamageType.fixed,
-                lambda a, t=target: f"{actor.name} 的星爆对 {t.name} 造成了 {a} 点固伤！",
+                ratio,
+                lambda a, t=target: (
+                    f"{actor.name} 的星爆对 {t.name} 造成了 {a} 点魔法伤害！"
+                ),
                 source=DamageSource.skill,
             )
         actor.effects.append(

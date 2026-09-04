@@ -73,5 +73,17 @@ def poison_cleared(target_name: str) -> str:
     return f"{target_name} 的中毒消失了。"
 
 
+def parasite_tick(target_name: str, source_name: str, damage: int) -> str:
+    return f"{target_name} 因 {source_name} 的寄生受到 {damage} 点魔法伤害！"
+
+
+def parasite_lifesteal(source_name: str, heal: int) -> str:
+    return f"{source_name} 因寄生回复了 {heal} 点血量！"
+
+
+def parasite_cleared(target_name: str) -> str:
+    return f"{target_name} 的寄生消失了。"
+
+
 def freeze_execute(target_name: str) -> str:
     return f"{target_name} 因冰冻处决而阵亡！"

@@ -31,6 +31,7 @@ STACK_COUNT_EFFECT_TYPES: frozenset[EffectType] = frozenset(
     {
         EffectType.debuff_burn,
         EffectType.debuff_poison,
+        EffectType.debuff_parasite,
         EffectType.debuff_freeze,
         EffectType.state_warmup,
         EffectType.state_shunt,
@@ -50,6 +51,7 @@ STACKABLE_DISPLAY_EFFECT_TYPES: frozenset[EffectType] = frozenset(
     {
         EffectType.debuff_burn,
         EffectType.debuff_poison,
+        EffectType.debuff_parasite,
         EffectType.debuff_freeze,
         EffectType.state_warmup,
         EffectType.state_gangqi,

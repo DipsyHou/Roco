@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from .actions import ActionDict
 from .crit import log_critical_hit
 from .damage import calculate_damage
+from .damage_segment import execute_damage_segment
 from .events import DamageSource
-from .hp import apply_damage
 from .rules import TEAM_GATHER_ENERGY_GAIN
 from .stats import get_effective_stat
 from .types import (
@@ -255,21 +255,15 @@ class ActionExecutor:
             crit_flag=crit_flag,
             rng=eng.next_rng("normal_attack_crit", actor.unique_id, target.unique_id),
         )
-        actual = apply_damage(target, phys, ctx=eng)
-        if crit_flag:
-            log_critical_hit(eng, actor, target)
-        eng.add_log(
-            BattleLogType.damage_dealt,
-            msg.physical_hit(actor.name, target.name, actual),
-            {"attackerId": actor.unique_id, "targetId": target.unique_id, "damage": actual},
+        execute_damage_segment(
+            eng,
+            actor,
+            target,
+            phys,
+            source=DamageSource.attack,
+            describe=lambda actual: msg.physical_hit(actor.name, target.name, actual),
+            log_crit=(lambda: log_critical_hit(eng, actor, target)) if crit_flag else None,
         )
-        eng.notify_damage_taken(actor, target, actual, source=DamageSource.attack)
-        if not target.is_alive:
-            eng.add_log(
-                BattleLogType.spirit_defeated,
-                msg.defeated(target.name),
-                {"targetId": target.unique_id},
-            )
 
     def _resolve_targets(
         self,

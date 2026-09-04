@@ -227,14 +227,25 @@ def test_pulse_deals_mag_ratio_and_gains_energy(engine_factory):
     assert all(e.current_hp == b - d for e, b, d in zip(enemies, before, expected))
 
 
-def test_burst_damage_scales_as_40_plus_5_per_energy(engine_factory):
+def test_burst_damage_scales_with_mag_atk_and_consumed_energy(engine_factory):
+    from roco.core.battle.types import DamageType, StatType
+    from roco.core.battle.utils import calculate_damage, get_effective_stat
+
     engine = engine_factory(("starweaver", "flora", "clawdragon", "chaosling", "steamdragon"))
     star = by_template(engine, P1, "starweaver")
     enemies = engine.get_active_spirits(P2)
     before = [e.current_hp for e in enemies]
     star.energy = 6
+    consumed = 6
+    ratio = (40 + 5 * consumed) / 100.0
+    raw = get_effective_stat(star, StatType.mag_atk) * ratio
+    expected = [
+        calculate_damage(raw, DamageType.magical, star, enemy) for enemy in enemies
+    ]
 
     assert cast_skill(engine, star, "starweaver_skill3")
 
     assert star.energy == 4
-    assert all(e.current_hp == b - 70 for e, b in zip(enemies, before))
+    assert all(
+        e.current_hp == b - d for e, b, d in zip(enemies, before, expected)
+    )

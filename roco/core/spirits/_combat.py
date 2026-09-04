@@ -17,16 +17,18 @@ from __future__ import annotations
 from typing import Callable, List, Optional
 
 from ..battle.crit import log_critical_hit
+from ..battle.damage_segment import execute_damage_segment
 from ..battle.events import DamageSource
 from ..battle.types import BattleLogType, BattleSpirit, DamageType, StatType
 from ..battle.utils import (
     apply_burn_stacks,
-    apply_damage,
     apply_heal,
+    apply_parasite_stacks,
     apply_poison_stacks,
     calculate_damage,
     get_effective_stat,
     get_poison_stacks,
+    get_total_parasite_stacks,
     trigger_burn_damage,
     trigger_poison_damage,
 )
@@ -99,6 +101,8 @@ def deal_damage(
     *,
     source: DamageSource = DamageSource.attack,
     crit_rng=None,
+    lifesteal_ratio: float = 0.0,
+    lifesteal_healer: Optional[BattleSpirit] = None,
 ) -> int:
     """Run the shared damage pipeline; ``describe(actual)`` builds the damage log line."""
     if not target.is_alive:
@@ -112,22 +116,17 @@ def deal_damage(
         crit_flag=crit_flag,
         rng=crit_rng,
     )
-    actual = apply_damage(target, dmg, ctx=ctx)
-    if crit_flag:
-        log_critical_hit(ctx, actor, target)
-    ctx.add_log(
-        BattleLogType.damage_dealt,
-        describe(actual),
-        {"attackerId": actor.unique_id, "targetId": target.unique_id, "damage": actual},
+    return execute_damage_segment(
+        ctx,
+        actor,
+        target,
+        dmg,
+        source=source,
+        describe=describe,
+        log_crit=(lambda: log_critical_hit(ctx, actor, target)) if crit_flag else None,
+        lifesteal_ratio=lifesteal_ratio,
+        lifesteal_healer=lifesteal_healer,
     )
-    ctx.notify_damage_taken(actor, target, actual, source=source)
-    if not target.is_alive:
-        ctx.add_log(
-            BattleLogType.spirit_defeated,
-            f"{target.name} 被击败了！",
-            {"targetId": target.unique_id},
-        )
-    return actual
 
 
 def deal_atk_ratio(
@@ -219,6 +218,29 @@ def grant_burn(
     )
     if target.is_alive and get_poison_stacks(target) > 0:
         trigger_poison_damage(ctx, target)
+    return True
+
+
+def grant_parasite(
+    ctx,
+    actor: BattleSpirit,
+    target: BattleSpirit,
+    stacks: int,
+    *,
+    log_message: Optional[str] = None,
+) -> bool:
+    """Apply parasite stacks per source."""
+    if stacks <= 0 or not target.is_alive:
+        return False
+    if not apply_parasite_stacks(target, actor.unique_id, stacks):
+        return False
+    total = get_total_parasite_stacks(target)
+    msg = log_message or f"{target.name} 获得 {stacks} 层寄生（当前 {total} 层）！"
+    ctx.add_log(
+        BattleLogType.effect_applied,
+        msg,
+        {"targetId": target.unique_id, "sourceId": actor.unique_id, "stacks": stacks},
+    )
     return True
 
 
