@@ -128,21 +128,21 @@ def test_chejia_crit_stats_by_quxie_stacks():
     _add_stacks(enemy, EffectType.state_quxie, 1, 4, b.unique_id)
     rate, dmg = get_crit_stats(b, enemy)
     assert rate == 0.0
-    assert dmg == 100.0
-
-    _add_stacks(enemy, EffectType.state_quxie, 1, 4, b.unique_id)
-    rate, dmg = get_crit_stats(b, enemy)
-    assert rate == 0.20
     assert dmg == 150.0
 
     _add_stacks(enemy, EffectType.state_quxie, 1, 4, b.unique_id)
     rate, dmg = get_crit_stats(b, enemy)
-    assert rate == 0.30
+    assert rate == 0.25
     assert dmg == 150.0
 
     _add_stacks(enemy, EffectType.state_quxie, 1, 4, b.unique_id)
     rate, dmg = get_crit_stats(b, enemy)
-    assert rate == 0.40
+    assert rate == 0.35
+    assert dmg == 150.0
+
+    _add_stacks(enemy, EffectType.state_quxie, 1, 4, b.unique_id)
+    rate, dmg = get_crit_stats(b, enemy)
+    assert rate == 0.60
     assert dmg == 150.0
 
 

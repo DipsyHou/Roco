@@ -1,8 +1,8 @@
 """Critical-hit mechanics.
 
-暴击是 battle 层的通用机制：本模块集中负责暴击属性读取、掷点、基础伤害
-放大，以及统一战斗日志。精灵逻辑只需要通过 effect / hook 提供暴击率和
-暴击效果，不应该自己生成暴击日志。
+暴击是 battle 层的通用机制：本模块集中负责暴击属性读取、掷点与基础伤害
+放大。暴击标记写入伤害日志（``damage_dealt`` + ``critical``），不再单独打一行。
+精灵逻辑只通过 effect / hook 提供暴击率与暴击效果，不要自己生成暴击日志。
 """
 
 from __future__ import annotations
@@ -10,9 +10,10 @@ from __future__ import annotations
 import random as _random
 from typing import Optional, Tuple
 
-from .types import BattleLogType, BattleSpirit, EffectType
+from .types import BattleSpirit, EffectType
 
-DEFAULT_CRIT_DAMAGE_PERCENT = 100.0
+# Baseline crit multiplier: 150% means crit deals 1.5× base ( +50% 暴击效果 ).
+DEFAULT_CRIT_DAMAGE_PERCENT = 150.0
 
 
 def get_crit_stats(
@@ -20,8 +21,8 @@ def get_crit_stats(
 ) -> Tuple[float, float]:
     """Return ``(crit_rate, crit_damage_percent)`` for one damage segment.
 
-    ``crit_rate`` is clamped to 0~1. ``crit_damage_percent`` uses 100 as the
-    no-bonus baseline, so +60% crit damage is represented as 160.
+    ``crit_rate`` is clamped to 0~1. ``crit_damage_percent`` uses 150 as the
+    default (+50% 暴击效果); buffs add percentage points on top (e.g. +40 → 190).
     """
     from ..spirits import get_spirit_logic
 
@@ -73,16 +74,12 @@ def apply_crit_to_base(
 
 
 def log_critical_hit(ctx, attacker: BattleSpirit, target: BattleSpirit) -> None:
-    """Append the standard critical-hit log entry."""
-    ctx.add_log(
-        BattleLogType.damage_dealt,
-        f"暴击！{attacker.name} 对 {target.name} 的伤害触发了暴击！",
-        {
-            "attackerId": attacker.unique_id,
-            "targetId": target.unique_id,
-            "critical": True,
-        },
-    )
+    """No-op. Crit is folded into the damage log via ``critical=True``.
+
+    Kept as a deprecated export for older call sites / tests.
+    """
+    del ctx, attacker, target
+    return None
 
 
 # Backward-compatible private alias for older imports/tests during transition.

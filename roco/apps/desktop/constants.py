@@ -6,6 +6,7 @@ from typing import Dict
 
 DEFAULT_P1 = ["flora", "clawdragon", "guifashi"]
 DEFAULT_P2 = ["starweaver", "steamdragon", "qiuka"]
+
 UI_FONT = ("Microsoft YaHei UI", 10)
 UI_FONT_TITLE = ("Microsoft YaHei UI", 11, "bold")
 UI_FONT_BADGE = ("Microsoft YaHei UI", 8, "bold")

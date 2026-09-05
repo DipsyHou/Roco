@@ -16,7 +16,7 @@ def test_damage_log_precedes_guardian(engine_factory):
     claw = by_template(engine, P2, "clawdragon")
 
     start = len(engine.state.battle_log)
-    QiukaLogic()._hit_physical(engine, qiuka, claw, 0.20, "用毒刺对")
+    QiukaLogic()._hit_physical(engine, qiuka, claw, 0.20, skill="毒刺")
 
     messages = [entry.message for entry in engine.state.battle_log[start:]]
     sting_idx = next(i for i, message in enumerate(messages) if "毒刺" in message)
@@ -71,9 +71,9 @@ def test_poison_claw_counts_at_most_ten_stacks(engine_factory):
 
     real_deal = QiukaLogic._hit_physical
 
-    def spy(self, ctx, actor, target, ratio, verb):
+    def spy(self, ctx, actor, target, ratio, skill=None):
         ratios.append(ratio)
-        return real_deal(self, ctx, actor, target, ratio, verb)
+        return real_deal(self, ctx, actor, target, ratio, skill=skill)
 
     with patch.object(QiukaLogic, "_hit_physical", spy):
         QiukaLogic()._skill_poison_claw(engine, P1, qiuka, {"targetId": enemy.unique_id})

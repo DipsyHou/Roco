@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, Optional
 
+from ..battle import messages as msg
 from ..battle.types import (
     BattleLogType,
     BattleSpirit,
@@ -86,10 +87,7 @@ class StarweaverLogic(SpiritLogic):
             target,
             40,
             DamageType.fixed,
-            lambda a: (
-                f"{observer.name} 的共振触发！对 {target.name} 造成了 {a} 点固伤！"
-                f"（剩余秘能：{observer.energy}）"
-            ),
+            lambda a: msg.skill_damage(observer.name, "共振", target.name, a, kind=msg.KIND_FIXED),
             source=DamageSource.additional,
         )
 
@@ -109,18 +107,13 @@ class StarweaverLogic(SpiritLogic):
                 actor,
                 target,
                 0.20,
-                lambda a, t=target: (
-                    f"{actor.name} 的汲取对 {t.name} 造成了 {a} 点魔法伤害！"
+                lambda a, t=target: msg.skill_damage(
+                    actor.name, "汲取", t.name, a, kind=msg.KIND_MAGICAL
                 ),
                 source=DamageSource.skill,
             )
         gain = len(targets)
-        gained = grant_personal_energy(ctx, actor, gain)
-        ctx.add_log(
-            BattleLogType.effect_applied,
-            f"{actor.name} 回复了 {gained} 点秘能！当前秘能：{actor.energy}",
-            {"targetId": actor.unique_id},
-        )
+        grant_personal_energy(ctx, actor, gain)
 
     def _skill_purify(
         self,
@@ -140,7 +133,7 @@ class StarweaverLogic(SpiritLogic):
         if removed:
             ctx.add_log(
                 BattleLogType.effect_removed,
-                f"{target.name} 的 {len(removed)} 个负面效果被净化了！",
+                msg.purged_debuffs(target.name, len(removed)),
                 {"targetId": target.unique_id},
             )
         target.effects.append(
@@ -153,7 +146,7 @@ class StarweaverLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{target.name} 获得了2回合负面效果免疫！",
+            msg.effect_gained(target.name, "净化"),
             {"targetId": target.unique_id},
         )
 
@@ -174,18 +167,18 @@ class StarweaverLogic(SpiritLogic):
                 actor,
                 target,
                 ratio,
-                lambda a, t=target: (
-                    f"{actor.name} 的星爆对 {t.name} 造成了 {a} 点魔法伤害！"
+                lambda a, t=target: msg.skill_damage(
+                    actor.name, "星爆", t.name, a, kind=msg.KIND_MAGICAL
                 ),
                 source=DamageSource.skill,
             )
         actor.effects.append(
             make_effect(EffectType.debuff_stun, actor.unique_id, duration_turns=2)
         )
-        gained = grant_personal_energy(ctx, actor, 4)
+        grant_personal_energy(ctx, actor, 4)
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 使用星爆后眩晕2回合，并获得{gained}点秘能！",
+            msg.effect_gained(actor.name, "眩晕"),
             {"targetId": actor.unique_id},
         )
 

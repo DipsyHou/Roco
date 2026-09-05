@@ -7,7 +7,8 @@ from roco.core.battle.types import DamageType, EffectType
 from tests.conftest import by_template, P1
 
 
-def test_burn_ignores_general_percent_boost(standard_engine):
+def test_burn_applies_general_percent_boost(standard_engine):
+    """灼烧视为普通物伤修饰：吃来源增伤。"""
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
     defender.base_stats.def_ = 100
@@ -24,7 +25,7 @@ def test_burn_ignores_general_percent_boost(standard_engine):
 
     plain = calculate_damage(20, DamageType.physical, attacker, defender, sustained="burn")
     boosted = calculate_damage(20, DamageType.physical, attacker, defender)
-    assert plain == 20
+    assert plain == 30
     assert boosted == 30
 
 
@@ -48,7 +49,23 @@ def test_burn_applies_sustained_taken_amp(standard_engine):
     assert base == 23
 
 
-def test_poison_ignores_all_damage_modifiers(standard_engine):
+def test_burn_applies_general_taken_amp(standard_engine):
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    defender.base_stats.def_ = 100
+    defender.effects.append(
+        make_effect(
+            EffectType.debuff_taken_damage_percent_boost,
+            attacker.unique_id,
+            duration_turns=3,
+            value=0.16,
+        )
+    )
+    assert calculate_damage(20, DamageType.physical, attacker, defender, sustained="burn") == 23
+
+
+def test_poison_ignores_untagged_and_sustained_amp(standard_engine):
+    """中毒不吃毛血旺 / 未标注固伤的减伤，只吃明确的固伤承伤修饰。"""
     defender = standard_engine.get_all_spirits("p2")[0]
     defender.max_hp = 1000
     defender.current_hp = 1000
@@ -68,23 +85,33 @@ def test_poison_ignores_all_damage_modifiers(standard_engine):
                 duration_turns=3,
                 value=0.5,
             ),
-            make_effect(
-                EffectType.buff_taken_damage_percent_reduction,
-                "src",
-                duration_turns=3,
-                damage_type=DamageType.fixed,
-                value=0.5,
-            ),
         ]
     )
     apply_poison_stacks(defender, "src", 10)
 
     process_poison_damage(standard_engine, defender, decrease=False)
-
     assert defender.current_hp == 900
 
 
-def test_poison_ignores_harden_skin(engine_factory):
+def test_poison_applies_fixed_taken_amp(standard_engine):
+    defender = standard_engine.get_all_spirits("p2")[0]
+    defender.max_hp = 1000
+    defender.current_hp = 1000
+    defender.effects.append(
+        make_effect(
+            EffectType.debuff_taken_damage_percent_boost,
+            "src",
+            duration_turns=3,
+            damage_type=DamageType.fixed,
+            value=0.5,
+        )
+    )
+    apply_poison_stacks(defender, "src", 10)
+    process_poison_damage(standard_engine, defender, decrease=False)
+    assert defender.current_hp == 850  # 100 * 1.5
+
+
+def test_poison_applies_harden_skin(engine_factory):
     engine = engine_factory(
         ("cixiyi", "flora", "tita", "fanying", "clawdragon"),
         ("steamdragon", "chaosling", "qiuka", "starweaver", "huxian"),
@@ -95,4 +122,4 @@ def test_poison_ignores_harden_skin(engine_factory):
     apply_poison_stacks(cx, "src", 10)
 
     process_poison_damage(engine, cx, decrease=False)
-    assert cx.current_hp == 900
+    assert cx.current_hp == 950  # 硬化肌肤 50% 固伤减免

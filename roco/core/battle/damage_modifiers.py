@@ -38,14 +38,21 @@ def _outgoing_percent_applies(
     damage_type: DamageType,
     mode: DamageModifierMode,
 ) -> bool:
+    """Burn/parasite: same as normal damage, plus sustained-tagged amps (毛血旺侧输出暂无).
+
+    Poison has no attacker, so outgoing modifiers never apply.
+    """
     tagged = _is_sustained_tagged(effect)
+    if mode == DamageModifierMode.sustained_poison:
+        return False
     if mode in (
         DamageModifierMode.sustained_burn,
         DamageModifierMode.sustained_parasite,
     ):
-        return tagged
-    if mode == DamageModifierMode.sustained_poison:
-        return False
+        # 普通增减伤 ∪ 持续专用标记
+        return tagged or (
+            not tagged and _match_damage_type(effect.damage_type, damage_type)
+        )
     return not tagged and _match_damage_type(effect.damage_type, damage_type)
 
 
@@ -54,14 +61,20 @@ def _incoming_percent_applies(
     damage_type: DamageType,
     mode: DamageModifierMode,
 ) -> bool:
+    """Burn/parasite: normal taken amps/reduces ∪ sustained-tagged (毛血旺).
+
+    Poison: only explicit fixed-damage taken modifiers (固伤易伤/固伤减伤效果).
+    """
     tagged = _is_sustained_tagged(effect)
+    if mode == DamageModifierMode.sustained_poison:
+        return not tagged and effect.damage_type == DamageType.fixed
     if mode in (
         DamageModifierMode.sustained_burn,
         DamageModifierMode.sustained_parasite,
     ):
-        return tagged
-    if mode == DamageModifierMode.sustained_poison:
-        return not tagged and effect.damage_type == DamageType.fixed
+        return tagged or (
+            not tagged and _match_damage_type(effect.damage_type, damage_type)
+        )
     return not tagged and _match_damage_type(effect.damage_type, damage_type)
 
 

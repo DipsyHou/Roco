@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 
+from ..battle import messages as msg
 from ..battle.types import BattleLogType, BattleSpirit
 from ..battle.utils import apply_poison_stacks, get_poison_stacks, process_poison_damage
 from ._combat import deal_atk_ratio, target_enemy
@@ -37,7 +38,7 @@ class QiukaLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        self._hit_physical(ctx, actor, target, 1.0, "对")
+        self._hit_physical(ctx, actor, target, 1.0)
         actor.last_attack_target_id = target.unique_id
         return True
 
@@ -47,20 +48,18 @@ class QiukaLogic(SpiritLogic):
         actor: BattleSpirit,
         target: BattleSpirit,
         ratio: float,
-        verb: str,
+        skill: Optional[str] = None,
     ) -> int:
         """Physical hit with pain bonus against poisoned targets."""
         if not target.is_alive:
             return 0
         if get_poison_stacks(target) > 0:
             ratio *= PAIN_DAMAGE_MULT
-        return deal_atk_ratio(
-            ctx,
-            actor,
-            target,
-            ratio,
-            lambda a: f"{actor.name} {verb} {target.name} 造成了 {a} 点物理伤害！",
-        )
+        if skill:
+            describe = lambda a: msg.skill_damage(actor.name, skill, target.name, a)
+        else:
+            describe = lambda a: msg.physical_hit(actor.name, target.name, a)
+        return deal_atk_ratio(ctx, actor, target, ratio, describe)
 
     def _add_poison(
         self,
@@ -76,7 +75,7 @@ class QiukaLogic(SpiritLogic):
             total = get_poison_stacks(target)
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 获得 {stacks} 层中毒（当前 {total} 层）！",
+                msg.gained_stacks(target.name, stacks, "中毒", total=total),
                 {
                     "sourceId": actor.unique_id,
                     "targetId": target.unique_id,
@@ -98,7 +97,7 @@ class QiukaLogic(SpiritLogic):
             if not enemies:
                 return
             target = ctx.next_rng("qiuka_sting", actor.unique_id).choice(enemies)
-            self._hit_physical(ctx, actor, target, STING_RATIO, "用毒刺对")
+            self._hit_physical(ctx, actor, target, STING_RATIO, skill="毒刺")
             self._add_poison(ctx, actor, target, STING_POISON)
 
     def _skill_virulent(
@@ -130,7 +129,7 @@ class QiukaLogic(SpiritLogic):
             actor,
             target,
             CLAW_BASE_RATIO + CLAW_PER_STACK * stacks,
-            "用毒爪对",
+            skill="毒爪",
         )
         if target.is_alive:
             process_poison_damage(ctx, target, decrease=False)

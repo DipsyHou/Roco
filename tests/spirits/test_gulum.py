@@ -35,7 +35,7 @@ def test_parasite_stacks_per_source():
     assert stacks == [2, 3]
 
 
-def test_parasite_ignores_general_percent_boost():
+def test_parasite_applies_general_percent_boost():
     engine = make_engine()
     attacker = by_template(engine, P1, "flora")
     defender = by_template(engine, P2, "qiuka")
@@ -53,7 +53,7 @@ def test_parasite_ignores_general_percent_boost():
 
     plain = calculate_damage(40, DamageType.magical, attacker, defender, sustained="parasite")
     boosted = calculate_damage(40, DamageType.magical, attacker, defender)
-    assert plain == 40
+    assert plain == 60
     assert boosted == 60
 
 
@@ -176,3 +176,32 @@ def test_gulum_nutrient_heals_self_when_healthy_and_takes_damage():
 
     expected_heal = int(gulum.max_hp * 0.02)
     assert gulum.current_hp == hp_before - 200 + expected_heal
+
+
+def test_gulum_nutrient_skips_dead_ally():
+    engine = make_engine(
+        ("gulum", "flora", "clawdragon", "chaosling", "starweaver"),
+        ("qiuka", "fanying", "tita", "guifashi", "flora"),
+    )
+    gulum = by_template(engine, P1, "gulum")
+    ally = by_template(engine, P1, "flora")
+    enemy = by_template(engine, P2, "qiuka")
+    gulum.current_hp = 800
+    gulum.max_hp = 1000
+    ally.current_hp = 1
+    ally.max_hp = 1000
+    enemy.base_stats.atk = 500
+    ally.base_stats.def_ = 100
+
+    deal_atk_ratio(
+        engine,
+        enemy,
+        ally,
+        1.0,
+        lambda actual: f"hit {actual}",
+        source=DamageSource.skill,
+    )
+
+    assert not ally.is_alive
+    assert ally.current_hp == 0
+    assert gulum.current_hp == 800

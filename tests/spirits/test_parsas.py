@@ -23,11 +23,11 @@ def test_contract_costs_10_percent_hp_and_grants_3_plus_sole_target(engine_facto
     assert cast_skill(engine, parsas, "parsas_skill1")
 
     assert before_hp - parsas.current_hp == int(before_hp * 0.10)
-    # 契约 +3，自身为唯一目标再 +2
+    # 契约 +3，自身技能唯一目标再 +2
     assert parsas.energy == 5
 
 
-def test_sole_target_from_enemy_normal_attack(engine_factory):
+def test_enemy_normal_attack_does_not_grant_sole_target_energy(engine_factory):
     engine = engine_factory(
         ("parsas", "flora", "clawdragon", "chaosling", "tita"),
         ("qiuka", "fanying", "steamdragon", "guifashi", "cuiding"),
@@ -39,6 +39,22 @@ def test_sole_target_from_enemy_normal_attack(engine_factory):
     engine.state.turn_prepared_actor_id = enemy.unique_id
 
     assert normal_attack(engine, enemy, parsas)
+    assert parsas.energy == 5
+
+
+def test_ally_skill_sole_target_grants_energy(engine_factory):
+    engine = engine_factory(
+        ("parsas", "flora", "clawdragon", "chaosling", "tita"),
+        ("qiuka", "fanying", "steamdragon", "guifashi", "cuiding"),
+    )
+    parsas = by_template(engine, P1, "parsas")
+    flora = by_template(engine, P1, "flora")
+    parsas.energy = 5
+    engine.state.players[P1].energy = 10
+    engine.state.active_actor_id = flora.unique_id
+    engine.state.turn_prepared_actor_id = flora.unique_id
+
+    assert cast_skill(engine, flora, "flora_skill1", parsas)
     assert parsas.energy == 7
 
 
@@ -85,15 +101,20 @@ def test_crossing_threshold_extends_terror(engine_factory):
         ("qiuka", "fanying", "steamdragon", "guifashi", "cuiding"),
     )
     parsas = by_template(engine, P1, "parsas")
+    flora = by_template(engine, P1, "flora")
     enemy = by_template(engine, P2, "qiuka")
     parsas.energy = 7
     assert cast_skill(engine, parsas, "parsas_skill2", enemy)
     assert effects_of(parsas, EffectType.buff_def_pierce)[0].duration_turns == 2
 
     parsas.energy = 12
-    engine.state.active_actor_id = enemy.unique_id
-    engine.state.turn_prepared_actor_id = enemy.unique_id
-    assert normal_attack(engine, enemy, parsas)
+    engine.state.players[P1].energy = 10
+    engine.state.active_actor_id = flora.unique_id
+    engine.state.turn_prepared_actor_id = flora.unique_id
+    assert cast_skill(engine, flora, "flora_skill1", parsas)
     assert parsas.energy >= 13
     assert effects_of(parsas, EffectType.buff_def_pierce)[0].duration_turns == 3
-    assert any("恐怖延长" in e.message for e in engine.state.battle_log)
+    assert any(
+        e.type.value == "passive_triggered" and "收藏灵魂" in e.message
+        for e in engine.state.battle_log
+    )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle import messages as msg
 from ..battle.effect_meta import stack_count
 from ..battle.types import BattleLogType, BattleSpirit, EffectType
 from ..battle.utils import (
@@ -26,11 +27,11 @@ class SteamdragonLogic(SpiritLogic):
     }
 
     def on_turn_start(self, ctx: BattleContext, spirit: BattleSpirit) -> None:
-        add_warmup_stacks(spirit, spirit.unique_id, 2)
+        add_warmup_stacks(spirit, spirit.unique_id, 1)
         stacks = get_warmup_stacks(spirit)
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{spirit.name} 的热启动获得 2 层升温（当前 {stacks} 层）！",
+            msg.passive(spirit.name, "热启动"),
             {"actorId": spirit.unique_id, "warmupStacks": stacks},
         )
 
@@ -56,12 +57,10 @@ class SteamdragonLogic(SpiritLogic):
             )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{actor.name} 的升温使 {target.name} 获得 {stacks} 层灼烧（该来源共 {total} 层）！",
-                {
-                    "sourceId": actor.unique_id,
-                    "targetId": target.unique_id,
-                    "stacks": stacks,
-                },
+                msg.effect_gained_from(actor.name, target.name, "灼烧", stacks=stacks),
+                msg.data_effect(
+                    target.unique_id, actor.unique_id, stacks=stacks
+                ),
             )
 
     def execute_normal_attack(
@@ -79,7 +78,7 @@ class SteamdragonLogic(SpiritLogic):
             actor,
             target,
             0.5,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         for adj in ctx.get_adjacent_enemies(target):
             if adj.is_alive:
@@ -88,7 +87,7 @@ class SteamdragonLogic(SpiritLogic):
                     actor,
                     adj,
                     0.25,
-                    lambda a, t=adj: f"{actor.name} 对 {t.name} 造成了 {a} 点物理伤害！",
+                    lambda a, t=adj: msg.physical_hit(actor.name, t.name, a),
                 )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -108,14 +107,14 @@ class SteamdragonLogic(SpiritLogic):
             actor,
             target,
             0.5,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         # Brand burn does not cross-trigger poison (unlike grant_burn).
         if target.is_alive and apply_burn_stacks(target, actor.unique_id, 5):
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 获得 5 层灼烧！",
-                {"targetId": target.unique_id, "sourceId": actor.unique_id},
+                msg.gained_stacks(target.name, 5, "灼烧"),
+                msg.data_effect(target.unique_id, actor.unique_id),
             )
 
     def _skill_heat_appetite(
@@ -133,8 +132,13 @@ class SteamdragonLogic(SpiritLogic):
         heal = apply_heal(actor, total_burn * 8)
         ctx.add_log(
             BattleLogType.heal_applied,
-            f"{actor.name} 的嗜热回复了 {heal} 点生命（敌方灼烧合计 {total_burn} 层）！",
-            {"actorId": actor.unique_id, "heal": heal, "burnStacks": total_burn},
+            msg.heal_self(actor.name, heal, skill="嗜热"),
+            msg.data_heal(
+                actor.unique_id,
+                actor.unique_id,
+                heal,
+                burnStacks=total_burn,
+            ),
         )
 
     def _skill_boil(
@@ -151,15 +155,15 @@ class SteamdragonLogic(SpiritLogic):
             actor.current_hp -= actual_cost
             ctx.add_log(
                 BattleLogType.damage_dealt,
-                f"{actor.name} 为沸腾消耗了 {actual_cost} 点生命！",
-                {"targetId": actor.unique_id, "damage": actual_cost},
+                msg.hp_cost(actor.name, actual_cost, skill="沸腾"),
+                msg.data_hp_cost(actor.unique_id, actual_cost),
             )
         before = get_warmup_stacks(actor)
         add_warmup_stacks(actor, actor.unique_id, 4)
         stacks = get_warmup_stacks(actor)
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 的沸腾获得 4 层升温（{before} → {stacks} 层）！",
+            msg.effect_gained(actor.name, "升温", stacks=4),
             {"actorId": actor.unique_id, "warmupStacks": stacks},
         )
 

@@ -64,7 +64,10 @@ class StatusPanelMixin:
             for s in eng.state.players[pid].spirits
         }
         owner = "Player 1" if spirit.owner_id == self.p1 else "Player 2"
-        av = action_value(spirit.charge, max(1, eng.get_effective_speed(spirit)))
+        if spirit.unique_id == eng.state.active_actor_id:
+            av = 0.0
+        else:
+            av = action_value(spirit.charge, max(1, eng.get_effective_speed(spirit)))
         hp_ratio = (spirit.current_hp / spirit.max_hp) if spirit.max_hp > 0 else 0.0
 
         ins(spirit.name, "title")

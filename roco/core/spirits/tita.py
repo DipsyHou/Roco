@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle import messages as msg
 from ..battle.effect_meta import stack_count
 from ..battle.types import BattleLogType, BattleSpirit, EffectType, StatType
 from ..battle.utils import get_state_stack_count, is_debuff_immune, make_effect
@@ -39,7 +40,7 @@ class TitaLogic(SpiritLogic):
             actor,
             target,
             1.0,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         return True
 
@@ -55,7 +56,7 @@ class TitaLogic(SpiritLogic):
         max_cap = ctx.sync_team_energy_cap(spirit.owner_id)
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{spirit.name} 的扩容使队伍能量上限提升至 {max_cap}！",
+            msg.passive(spirit.name, "扩容"),
             {"targetId": spirit.unique_id, "maxTeamEnergy": max_cap},
         )
 
@@ -74,7 +75,7 @@ class TitaLogic(SpiritLogic):
             spirit.effects = [e for e in spirit.effects if e.id != eff.id]
             ctx.add_log(
                 BattleLogType.effect_removed,
-                f"{spirit.name} 的分流效果消失了。",
+                msg.effect_lost(spirit.name, "分流"),
                 {"targetId": spirit.unique_id},
             )
 
@@ -143,7 +144,7 @@ class TitaLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{target.name} 速度降低{int(ratio * 100)}%，持续{turns}回合！",
+            msg.effect_gained(target.name, "过载"),
             {"targetId": target.unique_id},
         )
 
@@ -178,7 +179,7 @@ class TitaLogic(SpiritLogic):
         self._set_state_stacks(actor, EffectType.state_shunt, 2, "分流")
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 获得 2 层分流！",
+            msg.effect_gained(actor.name, "分流", stacks=2),
             {"targetId": actor.unique_id, "stacks": 2},
         )
 
@@ -197,7 +198,9 @@ class TitaLogic(SpiritLogic):
             actor,
             target,
             OVERLOAD_MAG_RATIO,
-            lambda a: f"{actor.name} 用过载对 {target.name} 造成了 {a} 点魔法伤害！",
+            lambda a: msg.skill_damage(
+                actor.name, "过载", target.name, a, kind=msg.KIND_MAGICAL
+            ),
         )
         self._apply_speed_down(ctx, actor, target)
         self._apply_speed_down(ctx, actor, actor)

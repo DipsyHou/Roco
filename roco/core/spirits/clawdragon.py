@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle import messages as msg
 from ..battle.types import BattleLogType, BattleSpirit, DamageType, EffectType, StatType
 from ..battle.utils import get_effective_stat, make_effect
 from ._combat import deal_damage, target_enemy
@@ -60,8 +61,8 @@ class ClawdragonLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{target.name} 的守护者触发，物防与魔防提升15%（2回合）！",
-            {"targetId": target.unique_id},
+            msg.passive(target.name, "守护者"),
+            msg.data_effect(target.unique_id, target.unique_id),
         )
 
     def _skill_legendary_power(
@@ -82,7 +83,7 @@ class ClawdragonLogic(SpiritLogic):
             target,
             raw,
             DamageType.physical,
-            lambda a: f"{actor.name}的传说力量对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "传说力量", target.name, a),
             source=DamageSource.skill,
         )
 
@@ -114,8 +115,8 @@ class ClawdragonLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 使用龙之舞，物攻+20%、速度+20%！",
-            {"targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "龙之舞"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     def _skill_shoulder_throw(
@@ -135,7 +136,7 @@ class ClawdragonLogic(SpiritLogic):
             target,
             atk * THROW_ATK_RATIO,
             DamageType.physical,
-            lambda a: f"{actor.name}的过肩摔对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "过肩摔", target.name, a),
             source=DamageSource.skill,
         )
         if target.is_alive:
@@ -144,8 +145,8 @@ class ClawdragonLogic(SpiritLogic):
             )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 被过肩摔眩晕1回合！",
-                {"targetId": target.unique_id},
+                msg.effect_gained(target.name, "眩晕"),
+                msg.data_effect(target.unique_id, actor.unique_id),
             )
 
 

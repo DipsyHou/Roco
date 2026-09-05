@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, Optional
 
+from ..battle import messages as msg
 from ..battle.types import BattleEffect, BattleLogType, BattleSpirit, EffectType, StatType
 from ..battle.utils import apply_heal, get_effective_stat, make_effect
 from ._combat import grant_personal_energy, target_ally, target_enemy
@@ -96,8 +97,8 @@ class ShengyuLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 的月盈消耗{consumed}点秘能，速度提高{SHENGYU_SPEED_PER_POINT * consumed}点！",
-            {"targetId": actor.unique_id},
+            msg.passive(actor.name, "月盈"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     def _speed_bonus_ratio(self, actor: BattleSpirit, consumed: int) -> float:
@@ -130,17 +131,11 @@ class ShengyuLogic(SpiritLogic):
         if heal > 0:
             ctx.add_log(
                 BattleLogType.heal_applied,
-                f"{actor.name} 的圣洁为 {target.name} 回复了 {heal} 点血量！",
-                {"actorId": actor.unique_id, "targetId": target.unique_id, "heal": heal},
+                msg.heal(actor.name, target.name, heal, skill="圣洁"),
+                msg.data_heal(actor.unique_id, target.unique_id, heal),
             )
         if target.energy is not None:
-            gained = grant_personal_energy(ctx, target, 1)
-            if gained > 0:
-                ctx.add_log(
-                    BattleLogType.effect_applied,
-                    f"{target.name} 额外回复了{gained}点秘能！",
-                    {"targetId": target.unique_id},
-                )
+            grant_personal_energy(ctx, target, 1)
 
     def _skill_guidance(
         self,
@@ -164,8 +159,8 @@ class ShengyuLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 的指引使 {target.name} 受到的伤害提高16%（3回合）！",
-            {"targetId": target.unique_id, "sourceId": actor.unique_id},
+            msg.effect_gained_from(actor.name, target.name, "指引"),
+            msg.data_effect(target.unique_id, actor.unique_id),
         )
 
     def _skill_replicate(
@@ -188,8 +183,8 @@ class ShengyuLogic(SpiritLogic):
         if not candidates:
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{actor.name} 消耗{REPLICATE_ENERGY_COST}点秘能施放了再现，但 {target.name} 没有可复制的负面效果。",
-                {"targetId": target.unique_id},
+                msg.replicate_empty(actor.name, target.name),
+                msg.data_effect(target.unique_id, actor.unique_id),
             )
             return
 
@@ -201,8 +196,8 @@ class ShengyuLogic(SpiritLogic):
 
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 的再现将 {target.name} 的一个负面效果复制给了敌方全体！",
-            {"sourceId": actor.unique_id, "targetId": target.unique_id},
+            msg.replicate_to_enemies(actor.name, target.name),
+            msg.data_effect(target.unique_id, actor.unique_id),
         )
 
     def _clone_effect(self, original: BattleEffect, new_target: BattleSpirit) -> BattleEffect:

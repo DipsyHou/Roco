@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List
 
+from ..battle import messages as msg
 from ..battle.shield import grant_shield, has_shield_from
 from ..battle.types import (
     BattleLogType,
@@ -78,7 +79,7 @@ class JifangfangLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{spirit.name} 装载「强化模块」，护盾所至皆受其增益！",
+            msg.effect_gained(spirit.name, "强化模块"),
             {"sourceId": spirit.unique_id, "targetId": spirit.unique_id},
         )
 
@@ -168,7 +169,7 @@ class JifangfangLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{actor.name} 切换到「{_MODULE_NAMES[nxt]}」！",
+            msg.effect_gained(actor.name, _MODULE_NAMES[nxt]),
             {"sourceId": actor.unique_id, "targetId": actor.unique_id},
         )
 
@@ -207,7 +208,7 @@ class JifangfangLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 展开防火墙，为全队罩上护盾！",
+            msg.effect_gained(actor.name, "防火墙"),
             {"sourceId": actor.unique_id, "targetId": actor.unique_id},
         )
 
@@ -226,7 +227,7 @@ class JifangfangLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 为 {target.name} 架起便携防火墙，获得了 {gained} 点护盾！",
+            msg.shield_gain(target.name, "防火墙", source=actor.name),
             {"sourceId": actor.unique_id, "targetId": target.unique_id},
         )
 
@@ -254,7 +255,7 @@ class JifangfangLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 进入超限模块，强化 / 急速 / 抵御三模块同时生效！",
+            msg.effect_gained(actor.name, "超限模块"),
             {"sourceId": actor.unique_id, "targetId": actor.unique_id},
         )
 

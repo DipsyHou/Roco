@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..battle import messages as msg
 from ..battle.types import BattleLogType, BattleSpirit, DamageType, EffectType, StatType
 from ..battle.utils import (
     apply_damage,
@@ -72,14 +73,14 @@ class GuifashiShowEffectsMixin:
             )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{card_name}使 {actor.name} 造成的伤害提高24%（1回合）。",
+                msg.effect_gained(actor.name, card_name),
                 {"targetId": actor.unique_id},
             )
         elif card == "moon":
             if state.pending_moon_energy:
                 ctx.add_log(
                     BattleLogType.effect_applied,
-                    f"{card_name}效果已生效，无法叠加。",
+                    msg.effect_blocked(card_name),
                     {"targetId": actor.unique_id},
                 )
             else:
@@ -88,7 +89,7 @@ class GuifashiShowEffectsMixin:
                 save_cards(actor, state)
                 ctx.add_log(
                     BattleLogType.effect_applied,
-                    f"{card_name}使 {actor.name} 下一次行动提前24%，且下回合开始时回复1点能量。",
+                    msg.effect_gained(actor.name, card_name),
                     {"targetId": actor.unique_id},
                 )
         elif card == "star":
@@ -97,8 +98,8 @@ class GuifashiShowEffectsMixin:
                 heal = apply_heal(target, mag * 0.48)
                 ctx.add_log(
                     BattleLogType.heal_applied,
-                    f"{card_name}为 {target.name} 回复 {heal} 点生命！",
-                    {"targetId": target.unique_id, "heal": heal},
+                    msg.heal(card_name, target.name, heal),
+                    msg.data_heal(actor.unique_id, target.unique_id, heal),
                 )
         elif card == "temperance":
             target = self._enemy_target(ctx, opponent_id, action.get("targetId"))
@@ -113,7 +114,7 @@ class GuifashiShowEffectsMixin:
                 )
                 ctx.add_log(
                     BattleLogType.effect_applied,
-                    f"{card_name}使 {target.name} 全属性降低9%（1回合）。",
+                    msg.effect_gained(target.name, card_name),
                     {"targetId": target.unique_id},
                 )
         elif card == "judgment":
@@ -124,7 +125,7 @@ class GuifashiShowEffectsMixin:
                     ctx.delay_action(target, 0.20)
                     ctx.add_log(
                         BattleLogType.effect_applied,
-                        f"{card_name}使 {target.name} 行动延后20%。",
+                        msg.effect_gained(target.name, card_name),
                         {"targetId": target.unique_id},
                     )
         elif card == "tower":
@@ -140,7 +141,7 @@ class GuifashiShowEffectsMixin:
                 )
                 ctx.add_log(
                     BattleLogType.effect_applied,
-                    f"{card_name}使 {target.name} 物攻与魔攻提升18%（1回合）。",
+                    msg.effect_gained(target.name, card_name),
                     {"targetId": target.unique_id},
                 )
         elif card == "chariot":
@@ -156,7 +157,7 @@ class GuifashiShowEffectsMixin:
                 )
                 ctx.add_log(
                     BattleLogType.effect_applied,
-                    f"{card_name}使 {target.name} 物防与魔防提升18%（1回合）。",
+                    msg.effect_gained(target.name, card_name),
                     {"targetId": target.unique_id},
                 )
         elif card == "hermit":
@@ -172,7 +173,7 @@ class GuifashiShowEffectsMixin:
                 )
                 ctx.add_log(
                     BattleLogType.effect_applied,
-                    f"{card_name}使 {target.name} 速度提升18%（1回合）。",
+                    msg.effect_gained(target.name, card_name),
                     {"targetId": target.unique_id},
                 )
         elif card == "death":
@@ -212,8 +213,8 @@ class GuifashiShowEffectsMixin:
         actual = apply_damage(target, dmg, ctx=ctx)
         ctx.add_log(
             BattleLogType.damage_dealt,
-            f"{card_name}对 {target.name} 造成了 {actual} 点魔法伤害！",
-            {"attackerId": actor.unique_id, "targetId": target.unique_id, "damage": actual},
+            msg.damage(card_name, target.name, actual, kind=msg.KIND_MAGICAL),
+            msg.data_damage(actor.unique_id, target.unique_id, actual),
         )
         ctx.notify_damage_taken(actor, target, actual, source=DamageSource.skill)
         return actual

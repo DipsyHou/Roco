@@ -73,10 +73,12 @@ def apply_lifesteal_from_segment(
         return 0
     actual = apply_heal(healer, heal)
     if actual > 0:
-        msg = log_message or f"{healer.name} 回复了 {actual} 点血量！"
+        from . import messages as battle_msg
+
+        text = log_message or battle_msg.heal_self(healer.name, actual)
         ctx.add_log(
             BattleLogType.heal_applied,
-            msg,
+            text,
             {"actorId": healer.unique_id, "targetId": healer.unique_id, "heal": actual},
         )
     return actual
@@ -90,17 +92,22 @@ def execute_damage_segment(
     *,
     source: DamageSource = DamageSource.other,
     describe: Optional[DamageMessage] = None,
+    critical: bool = False,
     log_crit: Optional[Callable[[], None]] = None,
     lifesteal_ratio: float = 0.0,
     lifesteal_healer: Optional[BattleSpirit] = None,
     lifesteal_log: Optional[str] = None,
+    log_extra: Optional[dict] = None,
 ) -> int:
-    """Apply one calculated damage segment to ``primary_target`` (and share recipients)."""
+    """Apply one calculated damage segment to ``primary_target`` (and share recipients).
+
+    ``critical`` folds the crit flag into the damage log (no separate crit line).
+    ``log_crit`` is kept for backward compatibility but ignored when set — prefer
+    ``critical=True``.
+    """
+    del log_crit  # merged into the damage entry via ``critical``
     if segment_amount <= 0 or not primary_target.is_alive:
         return 0
-
-    if log_crit is not None:
-        log_crit()
 
     applications = resolve_damage_applications(ctx, primary_target, segment_amount)
     if not applications:
@@ -117,23 +124,35 @@ def execute_damage_segment(
             primary_reported = reported
 
     if describe is not None and primary_reported > 0:
+        from . import messages as battle_msg
+
+        text = describe(primary_reported)
+        if critical:
+            text = battle_msg.mark_critical(text)
+        data = {
+            "attackerId": attacker.unique_id if attacker else None,
+            "targetId": primary_target.unique_id,
+            "damage": primary_reported,
+        }
+        if critical:
+            data["critical"] = True
+        if log_extra:
+            data.update(log_extra)
         ctx.add_log(
             BattleLogType.damage_dealt,
-            describe(primary_reported),
-            {
-                "attackerId": attacker.unique_id if attacker else None,
-                "targetId": primary_target.unique_id,
-                "damage": primary_reported,
-            },
+            text,
+            data,
         )
 
     for app, reported in applied:
         if app.emit_damage_event and reported > 0:
             ctx.notify_damage_taken(attacker, app.target, reported, source=source)
         if not app.target.is_alive:
+            from . import messages as battle_msg
+
             ctx.add_log(
                 BattleLogType.spirit_defeated,
-                f"{app.target.name} 被击败了！",
+                battle_msg.defeated(app.target.name),
                 {"targetId": app.target.unique_id},
             )
 

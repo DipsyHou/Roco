@@ -55,7 +55,7 @@ def _calculate_fixed_damage(
     *,
     mode: DamageModifierMode,
 ) -> int:
-    """Fixed damage: no crit; only explicit fixed-% effects and 硬化肌肤-style hooks."""
+    """Fixed damage: no crit; fixed-% effects, 硬化肌肤-style hooks, then 灵珏."""
     from ..spirits import get_spirit_logic
 
     result = raw_damage
@@ -78,6 +78,9 @@ def _calculate_fixed_damage(
     if DamageType.fixed in caps:
         result = min(result, caps[DamageType.fixed])
 
+    if logic:
+        result = logic.apply_passive_flat_mitigation(defender, result)
+
     return max(0, int(result + 1e-9))
 
 
@@ -91,15 +94,17 @@ def calculate_damage(
     crit_flag: Optional[List[bool]] = None,
     rng: Optional[random.Random] = None,
 ) -> int:
-    """Apply the shared damage pipeline and return final integer damage."""
+    """Apply the shared damage pipeline and return final integer damage.
+
+    Sustained burn/parasite use the same percent modifiers as normal damage
+    (plus sustained-tagged amps), but never crit. Poison uses the fixed path.
+    """
     from ..spirits import get_spirit_logic
 
     mode = _modifier_mode(sustained)
     is_sustained = sustained is not None
 
     if damage_type == DamageType.fixed:
-        if sustained == "poison":
-            return max(0, int(raw_damage + 1e-9))
         return _calculate_fixed_damage(
             raw_damage, attacker, defender, mode=mode
         )
@@ -112,6 +117,7 @@ def calculate_damage(
     )
     base = (raw_damage * 100 / def_val) if def_val > 0 else raw_damage * 100
 
+    # 持续伤害不暴击
     if is_sustained or attacker is None:
         result = base
     else:
@@ -127,8 +133,7 @@ def calculate_damage(
             DamageType.physical: att_pi - att_pd,
             DamageType.magical: att_mi - att_md,
         }[damage_type]
-        if not is_sustained:
-            net_inc += _sum_ally_aura(attacker, "get_aura_damage_percent_bonus")
+        net_inc += _sum_ally_aura(attacker, "get_aura_damage_percent_bonus")
         result *= 1 + net_inc
 
     def_pr, def_mr, _ = get_incoming_damage_modifiers(defender, damage_type, mode)
@@ -138,11 +143,10 @@ def calculate_damage(
     }[damage_type]
 
     logic = get_spirit_logic(defender.template_id)
-    if logic and not is_sustained:
+    if logic:
         dec_pct += logic.get_damage_reduction(defender)
 
-    if not is_sustained:
-        dec_pct += _sum_ally_aura(defender, "get_aura_taken_damage_reduction")
+    dec_pct += _sum_ally_aura(defender, "get_aura_taken_damage_reduction")
 
     dec_pct = min(dec_pct, 0.8)
     result *= 1 - dec_pct
@@ -150,9 +154,8 @@ def calculate_damage(
     if logic:
         result = logic.apply_passive_flat_mitigation(defender, result)
 
-    if not is_sustained:
-        caps = get_damage_caps(defender)
-        if damage_type in caps:
-            result = min(result, caps[damage_type])
+    caps = get_damage_caps(defender)
+    if damage_type in caps:
+        result = min(result, caps[damage_type])
 
     return max(0, int(result + 1e-9))

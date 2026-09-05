@@ -35,7 +35,6 @@ def test_moon_gain_bonus_on_starweaver_burst(engine_factory):
 
     assert cast_skill(engine, star, "starweaver_skill3")
     assert star.energy == 5
-    assert any("获得5点秘能" in e.message for e in engine.state.battle_log)
 
 
 def test_moon_gain_bonus_on_parsas_sole_target(engine_factory):
@@ -59,11 +58,13 @@ def test_moon_gain_bonus_on_parsas_sole_target(engine_factory):
 def test_blessing_grants_amplified_energy(engine_factory):
     """圣洁给目标 1 点秘能，再被月盈放大为实际获得 2 点。"""
     engine = engine_factory(
-        ("shengyu", "parsas", "flora", "tita", "fanying"),
+        ("shengyu", "starweaver", "flora", "tita", "fanying"),
         ("clawdragon", "flora", "chaosling", "steamdragon", "tita"),
     )
     priest = by_template(engine, P1, "shengyu")
-    parsas = by_template(engine, P1, "parsas")
+    star = by_template(engine, P1, "starweaver")
+    before = star.energy or 0
 
-    assert cast_skill(engine, priest, "shengyu_skill1", parsas)
-    assert any("额外回复了2点秘能" in e.message for e in engine.state.battle_log)
+    assert cast_skill(engine, priest, "shengyu_skill1", star)
+    # 圣洁额外给 1 点秘能，再被月盈放大为实际 +2（不再打能量日志）。
+    assert (star.energy or 0) == before + 2

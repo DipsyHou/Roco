@@ -139,16 +139,21 @@ def test_crit_applies_to_base_before_damage_modifiers(standard_engine):
     with patch("roco.core.battle.damage.random.random", return_value=0.0):
         crit = calculate_damage(200, DamageType.physical, attacker, defender)
 
-    assert crit == 200
+    # base 100 × (150% default + 100% buff) = 250
+    assert crit == 250
 
 
-def test_crit_default_is_no_bonus_without_buffs(standard_engine):
+def test_crit_default_effect_is_fifty_percent(standard_engine):
+    """Forced crit with no buffs multiplies by default 150% ( +50% 暴击效果 )."""
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
     defender.base_stats.def_ = 200
+    attacker.effects.append(
+        make_effect(EffectType.buff_crit_rate, "a", duration_turns=1, value=1.0)
+    )
 
     with patch("roco.core.battle.damage.random.random", return_value=0.0):
-        assert calculate_damage(200, DamageType.physical, attacker, defender) == 100
+        assert calculate_damage(200, DamageType.physical, attacker, defender) == 150
 
 
 def test_crit_rate_zero_skips_roll(standard_engine):
@@ -233,12 +238,14 @@ def test_critical_log_is_generated_by_shared_combat_helper(standard_engine):
     )
 
     new_logs = standard_engine.state.battle_log[start:]
-    crit_logs = [log for log in new_logs if log.data and log.data.get("critical")]
+    crit_logs = [
+        log
+        for log in new_logs
+        if log.data and log.data.get("critical") and log.data.get("damage")
+    ]
     assert len(crit_logs) == 1
     assert crit_logs[0].message.startswith("暴击！")
-    assert new_logs.index(crit_logs[0]) < next(
-        i for i, log in enumerate(new_logs) if log.message.startswith("测试伤害")
-    )
+    assert "测试伤害" in crit_logs[0].message
 
 
 def test_critical_log_is_generated_for_default_normal_attack(standard_engine):

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List
 
+from ..battle import messages as msg
 from ..battle.effect_meta import stack_count
 from ..battle.types import (
     BattleLogType,
@@ -121,8 +122,8 @@ class DeerleLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{target.name} 获得了「破绽」（{FLAW_DURATION}回合）！",
-            {"targetId": target.unique_id, "sourceId": actor.unique_id},
+            msg.effect_gained(target.name, "破绽"),
+            msg.data_effect(target.unique_id, actor.unique_id),
         )
 
     def _spread_flaws(self, ctx: BattleContext, actor: BattleSpirit, exclude: BattleSpirit) -> None:
@@ -147,8 +148,8 @@ class DeerleLogic(SpiritLogic):
         target.effects.remove(shortest)
         ctx.add_log(
             BattleLogType.effect_removed,
-            f"{target.name} 的一条「破绽」被清除了！",
-            {"targetId": target.unique_id},
+            msg.effect_cleared(target.name, "破绽"),
+            msg.data_effect(target.unique_id),
         )
 
     def _apply_keen_damage_boost(self, actor: BattleSpirit):
@@ -197,7 +198,7 @@ class DeerleLogic(SpiritLogic):
                 actor,
                 target,
                 NORMAL_ATK_RATIO,
-                lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+                lambda a: msg.physical_hit(actor.name, target.name, a),
             )
         finally:
             self._clear_keen_damage_boost(actor)
@@ -207,8 +208,8 @@ class DeerleLogic(SpiritLogic):
         if keen_triggered:
             ctx.add_log(
                 BattleLogType.passive_triggered,
-                f"「敏锐」触发！{actor.name} 获得一次额外行动！",
-                {"targetId": actor.unique_id},
+                msg.passive(actor.name, "敏锐"),
+                msg.data_effect(actor.unique_id),
             )
             ctx.queue_extra_actions(
                 [ExtraActionSlot(actor_id=actor.unique_id, source="deerle_keen")]
@@ -249,8 +250,8 @@ class DeerleLogic(SpiritLogic):
             actor.effects.append(eff)
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 释放了剑花，剑舞层数：{eff.stacks}！",
-            {"targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "剑舞", stacks=eff.stacks),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     def _skill_stab(
@@ -269,7 +270,7 @@ class DeerleLogic(SpiritLogic):
             actor,
             target,
             PIERCE_ATK_RATIO,
-            lambda a: f"{actor.name} 的穿刺对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "穿刺", target.name, a),
             source=DamageSource.skill,
         )
 

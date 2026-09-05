@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional
 
-from ..battle.crit import log_critical_hit
 from ..battle.damage_segment import execute_damage_segment
 from ..battle.events import DamageSource
 from ..battle.types import BattleLogType, BattleSpirit, DamageType, StatType
@@ -123,7 +122,7 @@ def deal_damage(
         dmg,
         source=source,
         describe=describe,
-        log_crit=(lambda: log_critical_hit(ctx, actor, target)) if crit_flag else None,
+        critical=bool(crit_flag),
         lifesteal_ratio=lifesteal_ratio,
         lifesteal_healer=lifesteal_healer,
     )
@@ -210,10 +209,12 @@ def grant_burn(
         return False
     if not apply_burn_stacks(target, actor.unique_id, stacks):
         return False
-    msg = log_message or f"{target.name} 获得 {stacks} 层灼烧！"
+    from ..battle import messages as battle_msg
+
+    text = log_message or battle_msg.gained_stacks(target.name, stacks, "灼烧")
     ctx.add_log(
         BattleLogType.effect_applied,
-        msg,
+        text,
         {"targetId": target.unique_id, "sourceId": actor.unique_id, "stacks": stacks},
     )
     if target.is_alive and get_poison_stacks(target) > 0:
@@ -234,11 +235,15 @@ def grant_parasite(
         return False
     if not apply_parasite_stacks(target, actor.unique_id, stacks):
         return False
+    from ..battle import messages as battle_msg
+
     total = get_total_parasite_stacks(target)
-    msg = log_message or f"{target.name} 获得 {stacks} 层寄生（当前 {total} 层）！"
+    text = log_message or battle_msg.gained_stacks(
+        target.name, stacks, "寄生", total=total
+    )
     ctx.add_log(
         BattleLogType.effect_applied,
-        msg,
+        text,
         {"targetId": target.unique_id, "sourceId": actor.unique_id, "stacks": stacks},
     )
     return True
@@ -257,12 +262,14 @@ def grant_poison(
         return False
     if not apply_poison_stacks(target, actor.unique_id, stacks):
         return False
-    msg = log_message or (
-        f"{target.name} 获得 {stacks} 层中毒（当前 {get_poison_stacks(target)} 层）！"
+    from ..battle import messages as battle_msg
+
+    text = log_message or battle_msg.gained_stacks(
+        target.name, stacks, "中毒", total=get_poison_stacks(target)
     )
     ctx.add_log(
         BattleLogType.effect_applied,
-        msg,
+        text,
         {"targetId": target.unique_id, "sourceId": actor.unique_id, "stacks": stacks},
     )
     if target.is_alive:

@@ -20,7 +20,7 @@ STEAMDRAGON = SpiritTemplate(
     passive_skill=PassiveSkillDef(
         id="steamdragon_passive",
         name="热启动",
-        description="自身回合开始时，获得2层升温。",
+        description="自身回合开始时，获得1层升温。",
     ),
     normal_attack=SkillDef(
         id="steamdragon_normal",

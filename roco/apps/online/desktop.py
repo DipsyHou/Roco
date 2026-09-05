@@ -340,10 +340,13 @@ class OnlineDesktopGameApp(DesktopGameApp):
         self._my_player_id: Optional[str] = None
         self._refresh_pending = False
         self._dead_sync_requested = False
+        self._fx_pending_log_start: Optional[int] = None
+        self._fx_pending_highlight_id: Optional[str] = None
         super().__init__()
         self.title("Roco Online")
-        # Parent defaults to local vs-AI; online battles are always human vs human.
-        self.vs_ai = False
+        # Online battles are always human vs human; no local AI hosting.
+        self.ai_host_p1 = False
+        self.ai_host_p2 = False
         self._cancel_ai_job()
 
     def _schedule_ai_turn(self) -> None:
@@ -372,6 +375,7 @@ class OnlineDesktopGameApp(DesktopGameApp):
             except Exception:
                 pass
             self._net_client = None
+        self._cancel_combat_fx()
         self.eng = None
         self._clear_log_widget()
         self.header_var.set("请连接联机服务器")
@@ -391,7 +395,8 @@ class OnlineDesktopGameApp(DesktopGameApp):
         self._my_slot = slot
         self._my_player_id = eng.my_player_id
         self.eng = eng
-        self.vs_ai = False
+        self.ai_host_p1 = False
+        self.ai_host_p2 = False
         self._cancel_ai_job()
         self.p1 = "p1"
         self.p2 = "p2"
@@ -432,6 +437,8 @@ class OnlineDesktopGameApp(DesktopGameApp):
             self._maybe_request_dead_actor_sync(eng)
 
     def _turn_block_reason(self, actor: BattleSpirit) -> Optional[str]:
+        if getattr(self, "_fx_busy", False):
+            return "结算中…"
         eng = self.eng
         if eng is None or eng.is_my_turn():
             return None
@@ -459,6 +466,7 @@ class OnlineDesktopGameApp(DesktopGameApp):
         pass
 
     def _handle_net_disconnect(self) -> None:
+        self._cancel_combat_fx()
         self.eng = None
         self._clear_action_row()
         self.action_hint.set("与服务器连接已断开")
@@ -482,6 +490,15 @@ class OnlineDesktopGameApp(DesktopGameApp):
             return
         if mtype == MSG_STATE_UPDATE and isinstance(self.eng, RemoteBattleEngine):
             if msg.get("state"):
+                # Capture presentation anchors before the mirror jumps forward.
+                if self._fx_busy:
+                    # Mid-FX push: drop the old queue and only play the new delta.
+                    self._cancel_combat_fx()
+                    self._fx_pending_log_start = self._rendered_log_count
+                    self._fx_pending_highlight_id = self.eng.state.active_actor_id
+                elif not self._refresh_pending:
+                    self._fx_pending_log_start = self._rendered_log_count
+                    self._fx_pending_highlight_id = self.eng.state.active_actor_id
                 try:
                     self.eng.apply_server_snapshot(
                         msg["state"],
@@ -513,10 +530,21 @@ class OnlineDesktopGameApp(DesktopGameApp):
 
     def _refresh_debounced(self) -> None:
         self._refresh_pending = False
-        self._refresh()
+        log_start = (
+            self._fx_pending_log_start
+            if self._fx_pending_log_start is not None
+            else self._rendered_log_count
+        )
+        highlight_id = self._fx_pending_highlight_id
+        self._fx_pending_log_start = None
+        self._fx_pending_highlight_id = None
         from roco.apps.desktop.skill_flows import resume_pending_tengjiao_serve
 
-        resume_pending_tengjiao_serve(self)
+        self._play_action_fx(
+            log_start,
+            highlight_actor_id=highlight_id,
+            on_complete=lambda: resume_pending_tengjiao_serve(self),
+        )
 
 
 def main() -> None:

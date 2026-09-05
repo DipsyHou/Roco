@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle import messages as msg
 from ..battle.types import BattleLogType, EffectType, StatType, BattleSpirit
 from ..battle.utils import (
     apply_heal,
@@ -66,15 +67,25 @@ class FloraLogic(SpiritLogic):
         heal = apply_heal(target, mag * 1.0)
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{flora.name} 的紧急支援触发！为 {target.name} 回复了 {heal} 点血量！",
-            {"floraId": flora.unique_id, "targetId": target.unique_id},
+            msg.passive(flora.name, "紧急支援"),
+            {
+                "floraId": flora.unique_id,
+                "actorId": flora.unique_id,
+                "targetId": target.unique_id,
+            },
         )
+        if heal > 0:
+            ctx.add_log(
+                BattleLogType.heal_applied,
+                msg.heal(flora.name, target.name, heal),
+                msg.data_heal(flora.unique_id, target.unique_id, heal),
+            )
         removed = purge_debuffs(target)
         if removed:
             ctx.add_log(
                 BattleLogType.effect_removed,
-                f"{target.name} 的负面效果被净化了！",
-                {"targetId": target.unique_id},
+                msg.purged_debuffs(target.name),
+                msg.data_effect(target.unique_id),
             )
         target.effects.append(
             make_effect(
@@ -83,12 +94,13 @@ class FloraLogic(SpiritLogic):
                 duration_turns=1,
                 stat_type=StatType.speed,
                 value=0.25,
+                display_name="紧急支援",
             )
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{target.name} 速度提升了25%，持续1回合！",
-            {"targetId": target.unique_id},
+            msg.effect_gained(target.name, "紧急支援"),
+            msg.data_effect(target.unique_id, flora.unique_id),
         )
 
     def _skill_heal(
@@ -109,8 +121,8 @@ class FloraLogic(SpiritLogic):
         actual = apply_heal(target, mag * 0.80)
         ctx.add_log(
             BattleLogType.heal_applied,
-            f"{actor.name} 为 {target.name} 回复了 {actual} 点血量！",
-            {"actorId": actor.unique_id, "targetId": target.unique_id, "heal": actual},
+            msg.heal(actor.name, target.name, actual),
+            msg.data_heal(actor.unique_id, target.unique_id, actual),
         )
         if target.unique_id == actor.unique_id:
             debuffs = [e for e in target.effects if is_debuff_effect(e.type)]
@@ -119,8 +131,8 @@ class FloraLogic(SpiritLogic):
                 target.effects = [e for e in target.effects if e.id != removed.id]
                 ctx.add_log(
                     BattleLogType.effect_removed,
-                    f"{target.name} 的一个负面效果被解除了！",
-                    {"targetId": target.unique_id},
+                    msg.purged_one_debuff(target.name),
+                    msg.data_effect(target.unique_id),
                 )
 
     def _skill_pain_relief(
@@ -143,6 +155,7 @@ class FloraLogic(SpiritLogic):
                 actor.unique_id,
                 duration_turns=2,
                 value=0.20,
+                display_name="抗逆",
             )
         )
 
@@ -161,7 +174,9 @@ class FloraLogic(SpiritLogic):
                 actor,
                 target,
                 0.5,
-                lambda a, t=target: f"{actor.name} 的麻醉对 {t.name} 造成了 {a} 点魔法伤害！",
+                lambda a, t=target: msg.skill_damage(
+                    actor.name, "麻醉", t.name, a, kind=msg.KIND_MAGICAL
+                ),
             )
             if target.is_alive and not is_debuff_immune(target):
                 target.effects.append(
@@ -171,12 +186,13 @@ class FloraLogic(SpiritLogic):
                         duration_turns=2,
                         stat_type=StatType.speed,
                         value=0.1,
+                        display_name="麻醉",
                     )
                 )
                 ctx.add_log(
                     BattleLogType.effect_applied,
-                    f"{target.name} 速度降低了10%，持续2回合！",
-                    {"targetId": target.unique_id},
+                    msg.effect_gained(target.name, "麻醉"),
+                    msg.data_effect(target.unique_id, actor.unique_id),
                 )
 
 

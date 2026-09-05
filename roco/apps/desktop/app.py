@@ -12,6 +12,7 @@ from roco.core.battle.engine import BattleEngine, MAX_TEAM_SIZE, MIN_TEAM_SIZE
 from roco.core.battle.rules import MAX_DEAD_ACTOR_SKIPS
 from roco.core.battle.types import ActionType, BattlePhase, BattleSpirit
 
+from .combat_fx import CombatFxMixin
 from .constants import DEFAULT_P1, DEFAULT_P2
 from .helpers import _runtime_root, _templates_from_ids
 from .panel_action import ActionBarMixin
@@ -31,6 +32,7 @@ class DesktopGameApp(
     StatusPanelMixin,
     LogPanelMixin,
     ActionBarMixin,
+    CombatFxMixin,
     tk.Tk,
 ):
     """Local battle window.
@@ -50,10 +52,14 @@ class DesktopGameApp(
         self.eng: Optional[BattleEngine] = None
         self.p1 = "p1"
         self.p2 = "p2"
-        self.vs_ai = True
+        self.ai_host_p1 = False
+        self.ai_host_p2 = False
+        self._host_p1_var = tk.BooleanVar(value=False)
+        self._host_p2_var = tk.BooleanVar(value=False)
         self._ai_job: Optional[str] = None
         self.selected_spirit_id: Optional[str] = None
         self._rendered_log_count = 0
+        self._init_combat_fx()
         self.asset_dir = _runtime_root() / "assets" / "spirits"
         self.marks_dir = _runtime_root() / "assets" / "marks"
         self._image_cache: Dict[str, tk.PhotoImage] = {}
@@ -124,7 +130,34 @@ class DesktopGameApp(
             style="Primary.TButton",
             command=self._open_team_selector,
         ).pack(side=tk.LEFT, padx=(0, 8))
-        ttk.Button(top, text="战斗日志", command=self._show_battle_log).pack(side=tk.LEFT)
+        ttk.Button(top, text="战斗日志", command=self._show_battle_log).pack(
+            side=tk.LEFT, padx=(0, 12)
+        )
+        ttk.Label(top, text="AI托管").pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Checkbutton(
+            top,
+            text="P1",
+            variable=self._host_p1_var,
+            command=self._on_host_toggle,
+        ).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Checkbutton(
+            top,
+            text="P2",
+            variable=self._host_p2_var,
+            command=self._on_host_toggle,
+        ).pack(side=tk.LEFT)
+
+    def _on_host_toggle(self) -> None:
+        """Apply mid-battle AI hosting for P1/P2 and resume the turn loop."""
+        self.ai_host_p1 = bool(self._host_p1_var.get())
+        self.ai_host_p2 = bool(self._host_p2_var.get())
+        self._cancel_ai_job()
+        if self.eng and self.eng.state.phase != BattlePhase.finished:
+            self._refresh()
+
+    def _sync_host_vars_from_state(self) -> None:
+        self._host_p1_var.set(bool(self.ai_host_p1))
+        self._host_p2_var.set(bool(self.ai_host_p2))
 
     def _dock_aux_windows(self, _event=None) -> None:
         if _event is not None and _event.widget is not self:
@@ -150,7 +183,7 @@ class DesktopGameApp(
         self.log_text.configure(state="disabled")
 
     def _start_default_battle(self) -> None:
-        self._start_battle(DEFAULT_P1[:], DEFAULT_P2[:], vs_ai=True)
+        self._start_battle(DEFAULT_P1[:], DEFAULT_P2[:])
 
     def _open_team_selector(self) -> None:
         TeamSelectWindow(self, self._start_battle)
@@ -167,7 +200,6 @@ class DesktopGameApp(
         self,
         p1_ids: List[str],
         p2_ids: List[str],
-        vs_ai: bool = True,
     ) -> None:
         if not (MIN_TEAM_SIZE <= len(p1_ids) <= MAX_TEAM_SIZE):
             messagebox.showerror("错误", f"Player 1 阵容数量需在 {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE}。")
@@ -181,15 +213,26 @@ class DesktopGameApp(
             messagebox.showerror("错误", "默认队伍模板缺失，无法开始。")
             return
         self._cancel_ai_job()
-        self.vs_ai = bool(vs_ai)
+        self._cancel_combat_fx()
+        # 开局默认双方手动；对局中用顶部「AI托管」切换。
+        self.ai_host_p1 = False
+        self.ai_host_p2 = False
+        self._sync_host_vars_from_state()
         self.eng = BattleEngine(str(uuid.uuid4()), self.p1, self.p2, p1_tpls, p2_tpls)
         if self.eng.state.players[self.p1].spirits:
             self.selected_spirit_id = self.eng.state.players[self.p1].spirits[0].unique_id
-        mode = "人机" if self.vs_ai else "本地双人"
-        self.title(f"Roco（{mode}）")
+        self.title("Roco")
         self._clear_log_widget()
         self._reset_pet_strip()
         self._refresh()
+
+    def _player_is_ai(self, player_id: str) -> bool:
+        """Whether ``player_id`` is driven by local AI hosting."""
+        if player_id == self.p1:
+            return bool(self.ai_host_p1)
+        if player_id == self.p2:
+            return bool(self.ai_host_p2)
+        return False
 
     def _force_pick_next_actor(self) -> None:
         """Fallback: directly repick next alive actor if submit_action fails."""
@@ -220,7 +263,9 @@ class DesktopGameApp(
 
     def _turn_block_reason(self, actor: BattleSpirit) -> Optional[str]:
         """Hint to show instead of action buttons, or ``None`` when we may act."""
-        if self.vs_ai and actor.owner_id == self.p2:
+        if getattr(self, "_fx_busy", False):
+            return "结算中…"
+        if self._player_is_ai(actor.owner_id):
             return f"人机操作中（{actor.name}）…"
         return None
 
@@ -231,8 +276,9 @@ class DesktopGameApp(
             return "战斗结束"
         if actor is None:
             return "等待行动…"
-        if self.vs_ai and actor.owner_id == self.p2:
-            return f"行动 #{eng.state.action_count + 1} | 人机: {actor.name}"
+        if self._player_is_ai(actor.owner_id):
+            side = "P1" if actor.owner_id == self.p1 else "P2"
+            return f"行动 #{eng.state.action_count + 1} | 人机({side}): {actor.name}"
         player_num = 1 if actor.owner_id == self.p1 else 2
         return f"行动 #{eng.state.action_count + 1} | Player {player_num}: {actor.name}"
 
@@ -241,49 +287,59 @@ class DesktopGameApp(
 
     def _after_submit(self) -> None:
         """Post-submit step; online instead waits for the server's state push."""
-        self._refresh()
+        log_start = getattr(self, "_fx_pending_log_start", self._rendered_log_count)
+        highlight_id = getattr(self, "_fx_pending_highlight_id", None)
         from .skill_flows import resume_pending_tengjiao_serve
 
-        resume_pending_tengjiao_serve(self)
+        self._play_action_fx(
+            log_start,
+            highlight_actor_id=highlight_id,
+            on_complete=lambda: resume_pending_tengjiao_serve(self),
+        )
 
     def _schedule_ai_turn(self) -> None:
-        """Queue one AI action if it is currently the AI player's turn."""
+        """Queue one AI action if the active player is AI-controlled."""
         self._cancel_ai_job()
-        if not self.vs_ai or not self.eng:
+        if not self.eng:
             return
         if self.eng.state.phase == BattlePhase.finished:
             return
         actor = self._find_active_actor()
-        if not actor or not actor.is_alive or actor.owner_id != self.p2:
+        if not actor or not actor.is_alive or not self._player_is_ai(actor.owner_id):
             return
 
         def _run_ai() -> None:
             self._ai_job = None
             eng = self.eng
-            if not eng or not self.vs_ai:
+            if not eng:
                 return
             if eng.state.phase == BattlePhase.finished:
                 return
             actor_now = eng.find_spirit_anywhere(eng.state.active_actor_id or "")
-            if not actor_now or actor_now.owner_id != self.p2:
+            if not actor_now or not self._player_is_ai(actor_now.owner_id):
                 return
+            pid = actor_now.owner_id
+            log_start = self._rendered_log_count
+            highlight_id = eng.state.active_actor_id
             try:
                 # Stunned turns: UI normally asks for skip; AI picks legal skip/skill.
                 if eng.state.active_turn_stunned:
                     action = {
                         "type": ActionType.skip.value,
-                        "playerId": actor_now.owner_id,
+                        "playerId": pid,
                         "actorId": actor_now.unique_id,
                     }
                 else:
-                    action = choose_action(eng, self.p2)
-                ok = eng.submit_action(self.p2, action)
+                    action = choose_action(eng, pid)
+                ok = eng.submit_action(pid, action)
             except Exception as exc:  # noqa: BLE001
                 messagebox.showwarning("人机", f"人机行动失败：{exc}")
                 return
             if not ok:
                 messagebox.showwarning("人机", "人机行动未通过校验。")
-            self._refresh()
+                self._refresh()
+                return
+            self._play_action_fx(log_start, highlight_actor_id=highlight_id)
 
         self._ai_job = self.after(180, _run_ai)
 
@@ -345,9 +401,11 @@ class DesktopGameApp(
         if eng.state.phase == BattlePhase.finished:
             self._cancel_ai_job()
             self._clear_action_row()
-            winner = "Player 1" if eng.state.winner_id == self.p1 else "Player 2"
-            if self.vs_ai:
-                winner = "我方" if eng.state.winner_id == self.p1 else "人机"
+            winner_id = eng.state.winner_id
+            if winner_id == self.p1:
+                winner = "人机 P1" if self.ai_host_p1 else "Player 1"
+            else:
+                winner = "人机 P2" if self.ai_host_p2 else "Player 2"
             self.action_hint.set(f"战斗结束：{winner} 获胜")
             self.header_var.set(self._header_text(None))
             return
@@ -360,7 +418,7 @@ class DesktopGameApp(
 
         self.header_var.set(self._header_text(actor))
         self._render_actions()
-        if self.vs_ai and actor.owner_id == self.p2:
+        if self._player_is_ai(actor.owner_id):
             self._schedule_ai_turn()
 
 

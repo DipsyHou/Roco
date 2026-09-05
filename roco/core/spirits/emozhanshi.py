@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List
 
+from ..battle import messages as msg
 from ..battle.events import DamageSource
 from ..battle.hp import execute_instant_defeat
 from ..battle.types import (
@@ -64,8 +65,8 @@ class EmozhanshiLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{spirit.name} 化身肉盾，以自身双防庇护全队，但自身受到的伤害提高50%！",
-            {"sourceId": spirit.unique_id, "targetId": spirit.unique_id},
+            msg.effect_gained(spirit.name, "肉盾"),
+            msg.data_effect(spirit.unique_id, spirit.unique_id),
         )
 
     def get_damage_reduction(self, spirit: BattleSpirit) -> float:
@@ -100,8 +101,8 @@ class EmozhanshiLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 竖起血墙，消耗自身生命换取50%双防提升！",
-            {"sourceId": actor.unique_id, "targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "血墙"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     def _skill_kuangyan(
@@ -118,7 +119,7 @@ class EmozhanshiLogic(SpiritLogic):
             actor,
             actor,
             missing * KUANGYAN_HEAL_RATIO,
-            lambda a: f"{actor.name} 大快朵颐，回复了 {a} 点生命！",
+            lambda a: msg.heal_self(actor.name, a, skill="狂宴"),
         )
 
     def _skill_linxing(
@@ -145,14 +146,16 @@ class EmozhanshiLogic(SpiritLogic):
                 target,
                 raw,
                 DamageType.magical,
-                lambda a, t=target: f"{actor.name} 的「临行留念」对 {t.name} 造成了 {a} 点魔法伤害！",
+                lambda a, t=target: msg.skill_damage(
+                    actor.name, "临行留念", t.name, a, kind=msg.KIND_MAGICAL
+                ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("emozhanshi_linxing_crit", actor.unique_id, target.unique_id),
             )
         execute_instant_defeat(
             actor,
             ctx=ctx,
-            log_message=f"{actor.name} 临行留念，燃尽自身、倒下了！",
+            log_message=msg.defeated(actor.name),
         )
 
 

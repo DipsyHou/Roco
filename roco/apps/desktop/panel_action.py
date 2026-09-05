@@ -104,12 +104,16 @@ class ActionBarMixin:
     def _submit_action(self, action: Dict[str, object]) -> None:
         eng = self.eng
         assert eng
+        if getattr(self, "_fx_busy", False):
+            return
         actor = eng.find_spirit_anywhere(eng.state.active_actor_id or "")
         if not actor:
             return
         if self._turn_block_reason(actor) is not None:
             messagebox.showinfo("提示", "还没轮到你行动。")
             return
+        log_start = self._rendered_log_count
+        highlight_id = eng.state.active_actor_id
         try:
             ok = eng.submit_action(actor.owner_id, action)
         except RuntimeError as exc:
@@ -118,6 +122,9 @@ class ActionBarMixin:
             return
         if not ok:
             messagebox.showwarning("无效行动", "行动未通过校验，请重试。")
+            return
+        self._fx_pending_log_start = log_start
+        self._fx_pending_highlight_id = highlight_id
         self._after_submit()
 
     def _submit_stun_skip(self) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle import messages as msg
 from ..battle.types import BattleSpirit
 from ..battle.utils import get_total_burn_stacks
 from ._combat import deal_atk_ratio, grant_burn, grant_poison, target_enemy
@@ -33,7 +34,7 @@ class HuxianLogic(SpiritLogic):
             actor,
             target,
             1.0,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -53,7 +54,7 @@ class HuxianLogic(SpiritLogic):
             actor,
             target,
             0.5,
-            lambda a: f"{actor.name} 的烙印对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "烙印", target.name, a),
             source=DamageSource.skill,
         )
         if target.is_alive:
@@ -90,7 +91,7 @@ class HuxianLogic(SpiritLogic):
             actor,
             target,
             4,
-            log_message=f"{target.name} 被扇风赋予了 4 层灼烧！",
+            log_message=msg.gained_stacks(target.name, 4, "灼烧"),
         )
         if not target.is_alive:
             return
@@ -104,7 +105,7 @@ class HuxianLogic(SpiritLogic):
                     actor,
                     adj,
                     splash,
-                    log_message=f"{adj.name} 被扇风溅射了 {splash} 层灼烧！",
+                    log_message=msg.gained_stacks(adj.name, splash, "灼烧"),
                 )
 
 
