@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional
 
+from ..battle import messages as msg
 from ..battle.types import BattleLogType, BattleSpirit
 from ..spirit_logic import BattleContext
 from .guifashi_cards import (
@@ -43,28 +44,28 @@ class GuifashiLogMixin:
     def _log_draw(self, ctx: BattleContext, actor: BattleSpirit, card_id: str) -> None:
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 抽取了 {label(card_id)}",
+            msg.drew_card(actor.name, label(card_id)),
             {"targetId": actor.unique_id, "cardId": card_id},
         )
 
     def _log_discard(self, ctx: BattleContext, actor: BattleSpirit, card_id: str) -> None:
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 弃置了 {label(card_id)}",
+            msg.discarded_card(actor.name, label(card_id)),
             {"targetId": actor.unique_id, "cardId": card_id},
         )
 
     def _log_play(self, ctx: BattleContext, actor: BattleSpirit, card_id: str) -> None:
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 打出了 {label(card_id)}",
+            msg.played_card(actor.name, label(card_id)),
             {"targetId": actor.unique_id, "cardId": card_id},
         )
 
     def _log_consume(self, ctx: BattleContext, actor: BattleSpirit, card_id: str) -> None:
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 消耗了 {label(card_id)}",
+            msg.consumed_card(actor.name, label(card_id)),
             {"targetId": actor.unique_id, "cardId": card_id},
         )
 
@@ -73,7 +74,7 @@ class GuifashiLogMixin:
     ) -> None:
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 将 {label(old_id)} 变为 {label(new_id)}",
+            msg.transformed_card(actor.name, label(old_id), label(new_id)),
             {"targetId": actor.unique_id, "from": old_id, "to": new_id},
         )
 

@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from .effects import adjust_skill_energy_cost
 from .rules import TEAM_ENERGY_CAP_MAX, TEAM_ENERGY_MAX
-from .types import BattleLogType, BattleSpirit
-from . import messages as msg
+from .types import BattleSpirit
 from ..spirits import get_spirit_logic
 
 if TYPE_CHECKING:
@@ -87,18 +86,8 @@ class EnergyManager:
         before = pd.team_energy
         pd.team_energy = min(pd.max_team_energy, pd.team_energy + amount)
         gained = pd.team_energy - before
-        if gained > 0 and not silent:
-            if reason:
-                message = msg.team_energy_reason(reason, pd.team_energy, pd.max_team_energy)
-            else:
-                message = msg.team_energy_gain(
-                    player_id, gained, pd.team_energy, pd.max_team_energy
-                )
-            self._eng.add_log(
-                log_type or BattleLogType.effect_applied,
-                message,
-                {"playerId": player_id, "teamEnergy": pd.team_energy},
-            )
+        # Team-energy changes are shown on the energy bar; do not spam battle_log.
+        del reason, log_type, silent
         return gained
 
     def sync_cap(self, player_id: str) -> int:

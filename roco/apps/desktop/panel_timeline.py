@@ -123,15 +123,15 @@ class TimelineMixin:
             if is_extra:
                 av_text = "+"
                 value_color = Colors.TIMELINE_EXTRA
+            elif is_current:
+                av_text = "0"
+                value_color = (
+                    Colors.LOG_DAMAGE if is_enemy else Colors.ACCENT
+                )
             else:
                 speed = max(1, eng.get_effective_speed(s))
                 av_text = str(round(action_value(s.charge, speed)))
-                if is_current and is_enemy:
-                    value_color = Colors.LOG_DAMAGE
-                elif is_current:
-                    value_color = Colors.ACCENT
-                else:
-                    value_color = Colors.TEXT_MUTED
+                value_color = Colors.TEXT_MUTED
             av_lbl = tk.Label(
                 row,
                 text=av_text,

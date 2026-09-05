@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle import messages as msg
 from ..battle.types import BattleLogType, EffectType, StatType, BattleSpirit
 from ..battle.utils import (
     is_debuff_effect,
@@ -81,11 +82,12 @@ class ChaoslingLogic(SpiritLogic):
                     display_name="梦想潮汐",
                 )
             )
+        pos = STAT_NAMES.get(positive_stat.value, "?")
+        neg = STAT_NAMES.get(negative_stat.value, "?")
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{actor.name} 的梦想潮汐：{STAT_NAMES.get(positive_stat.value, '?')}提升10%，"
-            f"{STAT_NAMES.get(negative_stat.value, '?')}降低10%！",
-            {"targetId": actor.unique_id},
+            msg.passive(actor.name, "梦想潮汐"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     def _process_channeling(self, ctx: BattleContext, spirit: BattleSpirit) -> None:
@@ -118,8 +120,8 @@ class ChaoslingLogic(SpiritLogic):
                 )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{spirit.name} 愿力凝聚第2阶段：物攻提升10%，物防降低10%！",
-                {"targetId": spirit.unique_id},
+                msg.effect_gained(spirit.name, "愿力凝聚"),
+                msg.data_effect(spirit.unique_id, spirit.unique_id),
             )
             channeling.channel_phase = 2
         elif phase == 2:
@@ -144,8 +146,8 @@ class ChaoslingLogic(SpiritLogic):
                 )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{spirit.name} 愿力凝聚第3阶段：物攻提升10%，魔防降低10%！",
-                {"targetId": spirit.unique_id},
+                msg.effect_gained(spirit.name, "愿力凝聚"),
+                msg.data_effect(spirit.unique_id, spirit.unique_id),
             )
             spirit.effects = [
                 e for e in spirit.effects if e.type != EffectType.state_channeling_skill
@@ -193,8 +195,8 @@ class ChaoslingLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 开始愿力凝聚！物攻提升10%，魔攻降低10%。",
-            {"targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "愿力凝聚"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     def _skill_storm(
@@ -212,7 +214,9 @@ class ChaoslingLogic(SpiritLogic):
                 actor,
                 target,
                 0.6,
-                lambda a, t=target: f"{actor.name} 的精神风暴对 {t.name} 造成了 {a} 点物理伤害！",
+                lambda a, t=target: msg.skill_damage(
+                    actor.name, "精神风暴", t.name, a
+                ),
                 source=DamageSource.skill,
             )
 
@@ -230,8 +234,8 @@ class ChaoslingLogic(SpiritLogic):
                 eff.display_name = "命运逆转"
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 反转了自身所有能力值降低效果！",
-            {"targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "命运逆转"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
         tid = action.get("targetId")
         if not tid:
@@ -243,7 +247,7 @@ class ChaoslingLogic(SpiritLogic):
                 actor,
                 target,
                 1.5,
-                lambda a: f"{actor.name} 的命运逆转对 {target.name} 造成了 {a} 点物理伤害！",
+                lambda a: msg.skill_damage(actor.name, "命运逆转", target.name, a),
                 source=DamageSource.skill,
             )
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List, Optional
 
+from ..battle import messages as msg
 from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
 from ..battle.events import DamageEvent
 from ..battle.types import (
@@ -95,19 +96,19 @@ class BahamutLogic(SpiritLogic):
             spirit.effects.append(make_effect(EffectType.state_chejia, spirit.unique_id))
             ctx.add_log(
                 BattleLogType.passive_triggered,
-                f"{spirit.name} 位于队伍首位，获得「彻甲」路线！",
-                {"targetId": spirit.unique_id},
+                msg.effect_gained(spirit.name, "彻甲"),
+                msg.data_effect(spirit.unique_id),
             )
         else:
             spirit.effects.append(make_effect(EffectType.state_cunjin, spirit.unique_id))
             ctx.add_log(
                 BattleLogType.passive_triggered,
-                f"{spirit.name} 位于队伍非首位，获得「寸劲」路线！",
-                {"targetId": spirit.unique_id},
+                msg.effect_gained(spirit.name, "寸劲"),
+                msg.data_effect(spirit.unique_id),
             )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{spirit.name} 开局获得 {GANGQI_CAP} 层罡气！",
+            msg.effect_gained(spirit.name, "罡气", stacks=GANGQI_CAP),
             {"targetId": spirit.unique_id, "gangqi": GANGQI_CAP},
         )
 
@@ -123,7 +124,7 @@ class BahamutLogic(SpiritLogic):
             return
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{actor.name} 的招架触发额外行动（{zhaojia} 层）！",
+            msg.passive(actor.name, "招架"),
             {"targetId": actor.unique_id, "zhaojiaStacks": zhaojia},
         )
         ctx.queue_extra_actions(
@@ -266,8 +267,8 @@ class BahamutLogic(SpiritLogic):
                 target,
                 atk * 0.50,
                 DamageType.physical,
-                lambda a, n=i + 1: (
-                    f"{actor.name} 的疾风拳第{n}段对 {target.name} 造成了 {a} 点物理伤害！"
+                lambda a, n=i + 1: msg.skill_damage(
+                    actor.name, f"疾风拳第{n}段", target.name, a
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
@@ -315,8 +316,8 @@ class BahamutLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 使用龙之舞，物攻+20%、速度+20%！",
-            {"targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "龙之舞"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     # --- 截拳（招架额外行动专用）---
@@ -344,8 +345,8 @@ class BahamutLogic(SpiritLogic):
                 target,
                 atk * 0.30,
                 DamageType.physical,
-                lambda a, n=i + 1: (
-                    f"{actor.name} 的截拳第{n}段对 {target.name} 造成了 {a} 点物理伤害！"
+                lambda a, n=i + 1: msg.skill_damage(
+                    actor.name, f"截拳第{n}段", target.name, a
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
@@ -376,7 +377,7 @@ class BahamutLogic(SpiritLogic):
             target,
             atk * 0.30,
             DamageType.physical,
-            lambda a: f"{actor.name} 的反扑对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "反扑", target.name, a),
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
         )
@@ -395,8 +396,8 @@ class BahamutLogic(SpiritLogic):
                 bounce_target,
                 atk * 0.30,
                 DamageType.physical,
-                lambda a, n=i + 1, t=bounce_target: (
-                    f"{actor.name} 的反扑弹射第{n}段对 {t.name} 造成了 {a} 点物理伤害！"
+                lambda a, n=i + 1, t=bounce_target: msg.skill_damage(
+                    actor.name, f"反扑弹射第{n}段", t.name, a
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
@@ -445,7 +446,7 @@ class BahamutLogic(SpiritLogic):
             target,
             raw,
             DamageType.physical,
-            lambda a: f"{actor.name} 的{verb}对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, verb, target.name, a),
             source=DamageSource.attack,
             crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
         )

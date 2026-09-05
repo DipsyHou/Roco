@@ -229,7 +229,7 @@ class TeamSelectWindow(tk.Toplevel):
     def __init__(
         self,
         master: tk.Tk,
-        on_confirm: Callable[[List[str], List[str], bool], None],
+        on_confirm: Callable[[List[str], List[str]], None],
     ) -> None:
         super().__init__(master)
         self.title("选择精灵阵容")
@@ -242,7 +242,6 @@ class TeamSelectWindow(tk.Toplevel):
         self._p2_selected_order: List[int] = []
         self._p1_selected_set: set[int] = set()
         self._p2_selected_set: set[int] = set()
-        self._vs_ai = tk.BooleanVar(value=True)
 
         wrap = ttk.Frame(self, padding=10)
         wrap.pack(fill=tk.BOTH, expand=True)
@@ -265,14 +264,8 @@ class TeamSelectWindow(tk.Toplevel):
             self.lb1.insert(tk.END, tpl.name)
             self.lb2.insert(tk.END, tpl.name)
 
-        ttk.Checkbutton(
-            wrap,
-            text="对手为人机（取消则为本地双人对战）",
-            variable=self._vs_ai,
-        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(10, 0))
-
         btn_row = ttk.Frame(wrap)
-        btn_row.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        btn_row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         ttk.Button(btn_row, text="使用默认阵容", command=self._use_default).pack(side=tk.LEFT)
         ttk.Button(
             btn_row,
@@ -308,9 +301,8 @@ class TeamSelectWindow(tk.Toplevel):
         return [ALL_SPIRITS[i].id for i in ordered]
 
     def _use_default(self) -> None:
-        vs_ai = bool(self._vs_ai.get())
         self.destroy()
-        self._on_confirm(DEFAULT_P1[:], DEFAULT_P2[:], vs_ai)
+        self._on_confirm(DEFAULT_P1[:], DEFAULT_P2[:])
 
     def _submit(self) -> None:
         p1_ids = self._ids_from_selection(1)
@@ -324,7 +316,6 @@ class TeamSelectWindow(tk.Toplevel):
         if len(p1_ids) != len(p2_ids):
             messagebox.showwarning("选择无效", "两边精灵数量需相同。")
             return
-        vs_ai = bool(self._vs_ai.get())
         self.destroy()
-        self._on_confirm(p1_ids, p2_ids, vs_ai)
+        self._on_confirm(p1_ids, p2_ids)
 

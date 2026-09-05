@@ -95,13 +95,13 @@ def test_lingjue_no_effect_below_ten_stacks(engine_factory):
     assert get_lingqi_stacks(xz) == 9
 
 
-def test_lingjue_does_not_reduce_fixed_damage(engine_factory):
+def test_lingjue_reduces_fixed_damage(engine_factory):
     engine = engine_factory(TEAM)
     xz = _xz(engine)
     add_lingqi(xz, 300)
 
-    assert _calc_fixed(engine, xz, 24) == 24
-    assert get_lingqi_stacks(xz) == 300
+    assert _calc_fixed(engine, xz, 24) == 0
+    assert get_lingqi_stacks(xz) == 324
 
 
 def test_lingjue_reduces_without_generic_flat_debuff(engine_factory):
@@ -116,9 +116,9 @@ def test_lingjue_reduces_without_generic_flat_debuff(engine_factory):
         )
     )
 
-    # 固定值减伤效果已取消；灵珏也不减固伤。
-    assert _calc_fixed(engine, xz, 24) == 24
-    assert get_lingqi_stacks(xz) == 300
+    # 固定值减伤效果已取消；灵珏仍减固伤。
+    assert _calc_fixed(engine, xz, 24) == 0
+    assert get_lingqi_stacks(xz) == 324
 
 
 # --- 通灵复活 -------------------------------------------------------------
@@ -132,10 +132,10 @@ def test_fatal_hit_revives_with_tongling(engine_factory):
     dmg = _calc_fixed(engine, xz, 9999)
     apply_damage(xz, dmg, ctx=engine)
 
-    # 固伤不吃灵珏减伤；40 层灵气复活续命至 40。
+    # 固伤也吃灵珏：算伤时减 4 并叠 4 层灵气（40→44），仍致死后按灵气续命。
     assert xz.is_alive
-    assert xz.current_hp == 40
-    assert get_lingqi_stacks(xz) == 40
+    assert xz.current_hp == 44
+    assert get_lingqi_stacks(xz) == 44
     assert has_tongling(xz)
 
 

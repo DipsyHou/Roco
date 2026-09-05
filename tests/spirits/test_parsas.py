@@ -96,4 +96,7 @@ def test_crossing_threshold_extends_terror(engine_factory):
     assert normal_attack(engine, enemy, parsas)
     assert parsas.energy >= 13
     assert effects_of(parsas, EffectType.buff_def_pierce)[0].duration_turns == 3
-    assert any("恐怖延长" in e.message for e in engine.state.battle_log)
+    assert any(
+        e.type.value == "passive_triggered" and "收藏灵魂" in e.message
+        for e in engine.state.battle_log
+    )

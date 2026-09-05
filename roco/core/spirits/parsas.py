@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, Optional
 
+from ..battle import messages as msg
+from ..battle import messages as msg
 from ..battle.types import BattleLogType, BattleSpirit, DamageType, EffectType
 from ..battle.utils import make_effect
 from ._combat import deal_atk_ratio, deal_mag_ratio, grant_personal_energy, target_enemy
@@ -78,18 +80,11 @@ class ParsasLogic(SpiritLogic):
             )
             if terror is not None and terror.duration_turns is not None:
                 terror.duration_turns += TERROR_EXTEND_ON_THRESHOLD
-                ctx.add_log(
-                    BattleLogType.passive_triggered,
-                    f"{spirit.name} 的秘能达到 {after} 点，收藏灵魂触发，"
-                    f"下回合提前100%，恐怖延长{TERROR_EXTEND_ON_THRESHOLD}回合！",
-                    {"actorId": spirit.unique_id},
-                )
-            else:
-                ctx.add_log(
-                    BattleLogType.passive_triggered,
-                    f"{spirit.name} 的秘能达到 {after} 点，收藏灵魂触发，下回合提前100%！",
-                    {"actorId": spirit.unique_id},
-                )
+            ctx.add_log(
+                BattleLogType.passive_triggered,
+                msg.passive(spirit.name, "收藏灵魂"),
+                {"actorId": spirit.unique_id},
+            )
         return gained
 
     def on_ally_turn_start(
@@ -127,7 +122,7 @@ class ParsasLogic(SpiritLogic):
             actor,
             target,
             1.0,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         self._grant_energy(ctx, actor, 1)
         actor.last_attack_target_id = target.unique_id
@@ -155,15 +150,10 @@ class ParsasLogic(SpiritLogic):
             actor.current_hp -= cost
             ctx.add_log(
                 BattleLogType.damage_dealt,
-                f"{actor.name} 为恶魔契约消耗了 {cost} 点生命！",
-                {"targetId": actor.unique_id, "damage": cost},
+                msg.hp_cost(actor.name, cost, skill="恶魔契约"),
+                msg.data_hp_cost(actor.unique_id, cost),
             )
-        gained = self._grant_energy(ctx, actor, CONTRACT_ENERGY_GAIN)
-        ctx.add_log(
-            BattleLogType.effect_applied,
-            f"{actor.name} 的恶魔契约回复了 {gained} 点秘能！当前秘能：{actor.energy}",
-            {"targetId": actor.unique_id},
-        )
+        self._grant_energy(ctx, actor, CONTRACT_ENERGY_GAIN)
 
     def _skill_troll_eye(
         self,
@@ -197,8 +187,8 @@ class ParsasLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 消耗{TROLL_ENERGY_COST}点秘能，获得了恐怖（{TERROR_DURATION}回合）！",
-            {"targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "恐怖"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
         deal_mag_ratio(
@@ -206,7 +196,9 @@ class ParsasLogic(SpiritLogic):
             actor,
             target,
             TROLL_ATK_RATIO,
-            lambda a: f"{actor.name} 的巨魔之眼对 {target.name} 造成了 {a} 点魔法伤害！",
+            lambda a: msg.skill_damage(
+                actor.name, "巨魔之眼", target.name, a, kind=msg.KIND_MAGICAL
+            ),
         )
 
     def _skill_crescent_dance(
@@ -220,18 +212,15 @@ class ParsasLogic(SpiritLogic):
         if not target:
             return
         actor.energy = max(0, (actor.energy or 0) - MOON_ENERGY_COST)
-        ctx.add_log(
-            BattleLogType.effect_applied,
-            f"{actor.name} 消耗{MOON_ENERGY_COST}点秘能，释放了新月乱舞！",
-            {"targetId": actor.unique_id},
-        )
 
         deal_mag_ratio(
             ctx,
             actor,
             target,
             MOON_MAIN_ATK_RATIO,
-            lambda a: f"{actor.name} 的新月乱舞对 {target.name} 造成了 {a} 点魔法伤害！",
+            lambda a: msg.skill_damage(
+                actor.name, "新月乱舞", target.name, a, kind=msg.KIND_MAGICAL
+            ),
         )
 
         opponent_id = ctx.get_opponent_id(player_id)
@@ -241,7 +230,9 @@ class ParsasLogic(SpiritLogic):
                 actor,
                 enemy,
                 MOON_AOE_ATK_RATIO,
-                lambda a, t=enemy: f"{actor.name} 的新月乱舞对 {t.name} 造成了 {a} 点魔法伤害！",
+                lambda a, t=enemy: msg.skill_damage(
+                    actor.name, "新月乱舞", t.name, a, kind=msg.KIND_MAGICAL
+                ),
             )
 
 

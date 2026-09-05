@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, Optional
 
+from ..battle import messages as msg
 from ..battle.events import DamageEvent
 from ..battle.types import (
     BattleLogType,
@@ -37,7 +38,6 @@ def _get_shengen(spirit: BattleSpirit):
 
 def _has_shengen(spirit: BattleSpirit) -> bool:
     return _get_shengen(spirit) is not None
-
 
 class GulumLogic(SpiritLogic):
     template_id = TEMPLATE_ID
@@ -85,24 +85,26 @@ class GulumLogic(SpiritLogic):
 
         spirit_ratio = spirit.current_hp / spirit.max_hp if spirit.max_hp > 0 else 0.0
         if spirit_ratio > 0.5:
+            # 队友已在本段伤害中倒下则不再输送（通灵等复活后仍 is_alive，可继续奶）。
+            if not target.is_alive:
+                return
             recipient = target
-            log_line = (
-                f"{spirit.name} 的养分输送为 {target.name} 回复了 {{actual}} 点血量！"
-            )
+            self_heal = False
         else:
             recipient = spirit
-            log_line = f"{spirit.name} 的养分输送为自己回复了 {{actual}} 点血量！"
+            self_heal = True
 
         actual = apply_heal(recipient, heal_amt)
         if actual > 0:
             ctx.add_log(
+                BattleLogType.passive_triggered,
+                msg.passive(spirit.name, "养分输送"),
+                {"actorId": spirit.unique_id, "targetId": recipient.unique_id},
+            )
+            ctx.add_log(
                 BattleLogType.heal_applied,
-                log_line.format(actual=actual),
-                {
-                    "actorId": spirit.unique_id,
-                    "targetId": recipient.unique_id,
-                    "heal": actual,
-                },
+                msg.heal(spirit.name, recipient.name, actual),
+                msg.data_heal(spirit.unique_id, recipient.unique_id, actual),
             )
 
     def execute_normal_attack(
@@ -122,9 +124,7 @@ class GulumLogic(SpiritLogic):
             actor,
             target,
             NORMAL_ATK_RATIO,
-            lambda actual: (
-                f"{actor.name} 的普通攻击对 {target.name} 造成了 {actual} 点物理伤害！"
-            ),
+            lambda a: msg.skill_damage(actor.name, "普通攻击", target.name, a),
         )
         return True
 
@@ -152,8 +152,8 @@ class GulumLogic(SpiritLogic):
             existing.duration_turns = SHENGEN_DURATION
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{actor.name} 刷新了「深根」！",
-                {"targetId": actor.unique_id, "sourceId": actor.unique_id},
+                msg.effect_gained(actor.name, "深根"),
+                msg.data_effect(actor.unique_id, actor.unique_id),
             )
             return
         actor.effects.append(
@@ -166,8 +166,8 @@ class GulumLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 获得了「深根」！",
-            {"targetId": actor.unique_id, "sourceId": actor.unique_id},
+            msg.effect_gained(actor.name, "深根"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     def _skill_tangle(

@@ -233,12 +233,14 @@ def test_critical_log_is_generated_by_shared_combat_helper(standard_engine):
     )
 
     new_logs = standard_engine.state.battle_log[start:]
-    crit_logs = [log for log in new_logs if log.data and log.data.get("critical")]
+    crit_logs = [
+        log
+        for log in new_logs
+        if log.data and log.data.get("critical") and log.data.get("damage")
+    ]
     assert len(crit_logs) == 1
     assert crit_logs[0].message.startswith("暴击！")
-    assert new_logs.index(crit_logs[0]) < next(
-        i for i, log in enumerate(new_logs) if log.message.startswith("测试伤害")
-    )
+    assert "测试伤害" in crit_logs[0].message
 
 
 def test_critical_log_is_generated_for_default_normal_attack(standard_engine):

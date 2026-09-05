@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List, Optional
 
+from ..battle import messages as msg
 from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
 from ..battle.types import (
     ActionType,
@@ -98,7 +99,7 @@ class TengjiaoLogic(SpiritLogic):
             actor,
             target,
             1.0,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -211,7 +212,7 @@ class TengjiaoLogic(SpiritLogic):
                 )
                 ctx.add_log(
                     BattleLogType.passive_triggered,
-                    f"{spirit.name} 的热火朝天触发额外出锅（{thr}层）！",
+                    msg.passive(spirit.name, "热火朝天"),
                     {"targetId": spirit.unique_id, "threshold": thr, "dish": dish},
                 )
         set_pending_free(spirit, pending)
@@ -274,7 +275,7 @@ class TengjiaoLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 浇油！物攻提升20%（3回合）！",
+            msg.effect_gained(actor.name, "浇油"),
             {"targetId": actor.unique_id},
         )
 
@@ -300,7 +301,7 @@ class TengjiaoLogic(SpiritLogic):
                 extended += 1
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 炝锅！延长了 {extended} 个菜品效果！",
+            msg.passive(actor.name, "炝锅"),
             {"actorId": actor.unique_id, "extended": extended},
         )
 
@@ -371,7 +372,7 @@ class TengjiaoLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 端出辣子鸡，{target.name} 双攻提升！",
+            msg.effect_gained_from(actor.name, target.name, "辣子鸡"),
             {"targetId": target.unique_id, "sourceId": actor.unique_id},
         )
 
@@ -387,7 +388,7 @@ class TengjiaoLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 端出水煮鱼，全体己方双攻提升！",
+            msg.effect_gained(actor.name, "水煮鱼"),
             {"targetId": actor.unique_id},
         )
 
@@ -406,9 +407,7 @@ class TengjiaoLogic(SpiritLogic):
             refresh_maoxuewang(enemy, actor.unique_id)
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 端出毛血旺，消耗{spent}层火力"
-            + (f"，全体敌方获得{burns}层灼烧" if burns > 0 else "")
-            + "，受到的持续伤害提高15%！",
+            msg.effect_gained(actor.name, "毛血旺"),
             {
                 "actorId": actor.unique_id,
                 "huoliSpent": spent,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List
 
+from ..battle import messages as msg
 from ..battle.effects import apply_infusion, has_infusion, purge_random_buff
 from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
 from ..battle.types import BattleLogType, BattleSpirit, DamageType
@@ -64,7 +65,7 @@ class CuidingLogic(SpiritLogic):
             actor,
             target,
             amount,
-            lambda a: f"{actor.name} 为 {target.name} 回复了 {a} 点血量！",
+            lambda a: msg.heal(actor.name, target.name, a),
         )
         if actual > 0 and target.owner_id == player_id and actor.template_id == "cuiding":
             self._trigger_chenjing(ctx, player_id, actor, target)
@@ -88,8 +89,8 @@ class CuidingLogic(SpiritLogic):
         apply_infusion(target, actor.unique_id, duration_turns=1)
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{target.name} 获得了浸润（1回合）！",
-            {"targetId": target.unique_id},
+            msg.effect_gained(target.name, "浸润"),
+            msg.data_effect(target.unique_id, actor.unique_id),
         )
 
     def _skill_warm_current(
@@ -123,7 +124,9 @@ class CuidingLogic(SpiritLogic):
                 enemy,
                 raw,
                 DamageType.magical,
-                lambda a, t=enemy: f"{actor.name} 的涟漪对 {t.name} 造成了 {a} 点魔法伤害！",
+                lambda a, t=enemy: msg.skill_damage(
+                    actor.name, "涟漪", t.name, a, kind=msg.KIND_MAGICAL
+                ),
                 source=DamageSource.skill,
             )
             removed = purge_random_buff(
@@ -132,8 +135,8 @@ class CuidingLogic(SpiritLogic):
             if removed:
                 ctx.add_log(
                     BattleLogType.effect_removed,
-                    f"{enemy.name} 的一个正面效果被驱散了！",
-                    {"targetId": enemy.unique_id},
+                    msg.purged_one_buff(enemy.name),
+                    msg.data_effect(enemy.unique_id, actor.unique_id),
                 )
 
     def _skill_dance(
@@ -161,15 +164,15 @@ class CuidingLogic(SpiritLogic):
             names = "、".join(ally.name for ally in teammates)
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{actor.name} 的共舞使 {names} 立刻获得一次额外行动！",
+                msg.extra_action(actor.name, names),
                 {"actorId": actor.unique_id},
             )
         for ally in ctx.get_active_spirits(player_id):
             ctx.delay_action(ally, 0.50)
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{ally.name} 的下一回合将延后50%！",
-                {"targetId": ally.unique_id},
+                msg.effect_gained(ally.name, "共舞延后"),
+                msg.data_effect(ally.unique_id, actor.unique_id),
             )
 
 

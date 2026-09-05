@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List, Optional
 
+from ..battle import messages as msg
 from ..battle.events import DamageSource
 from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
 from ..battle.types import (
@@ -201,8 +202,8 @@ class GuaguaLogic(SpiritLogic):
         _apply_state_once(first, EffectType.state_shifu, spirit.unique_id, display_name="师傅")
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{spirit.name} 开局拜 {first.name} 为师傅！",
-            {"sourceId": spirit.unique_id, "targetId": first.unique_id},
+            msg.effect_gained_from(spirit.name, first.name, "师傅"),
+            msg.data_effect(first.unique_id, spirit.unique_id),
         )
 
     def on_turn_start(self, ctx: BattleContext, actor: BattleSpirit) -> None:
@@ -299,7 +300,7 @@ class GuaguaLogic(SpiritLogic):
             actor,
             target,
             1.0,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
             source=DamageSource.attack,
             crit_rng=ctx.next_rng("guagua_normal_crit", actor.unique_id, target.unique_id),
         )
@@ -338,8 +339,12 @@ class GuaguaLogic(SpiritLogic):
         ])
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{observer.name} 观察师傅出手，获得一次额外行动，准备自动使用「学会了！」！",
-            {"sourceId": observer.unique_id, "teacherId": actor.unique_id, "targetId": target.unique_id},
+            msg.passive(observer.name, "观察"),
+            {
+                "sourceId": observer.unique_id,
+                "teacherId": actor.unique_id,
+                "targetId": target.unique_id,
+            },
         )
 
     def on_attack(
@@ -367,15 +372,19 @@ class GuaguaLogic(SpiritLogic):
             target,
             raw,
             dtype,
-            lambda a: f"{actor.name} 的「学神」使师傅 {master.name} 追击 {target.name}，造成了 {a} 点附加伤害！",
+            lambda a: msg.skill_damage(master.name, "学神", target.name, a),
             source=DamageSource.additional,
             crit_rng=ctx.next_rng("guagua_xueshen_crit", master.unique_id, target.unique_id),
         )
         if dealt > 0:
             ctx.add_log(
                 BattleLogType.passive_triggered,
-                f"{actor.name} 的「学神不学形」触发！",
-                {"sourceId": actor.unique_id, "teacherId": master.unique_id, "targetId": target.unique_id},
+                msg.passive(actor.name, "学神不学形"),
+                {
+                    "sourceId": actor.unique_id,
+                    "teacherId": master.unique_id,
+                    "targetId": target.unique_id,
+                },
             )
 
     def _skill_learned_manual(
@@ -396,7 +405,7 @@ class GuaguaLogic(SpiritLogic):
             actor,
             target,
             LEARNED_RATIO,
-            lambda a: f"{actor.name} 使用「学会了！」对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "学会了！", target.name, a),
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("guagua_learned_crit", actor.unique_id, target.unique_id),
         )
@@ -406,8 +415,8 @@ class GuaguaLogic(SpiritLogic):
         _refresh_biyouwoshi(master, actor.unique_id, duration_turns=2)
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{master.name} 获得「必有我师」加成，持续2回合！",
-            {"sourceId": actor.unique_id, "targetId": master.unique_id},
+            msg.effect_gained(master.name, "必有我师"),
+            msg.data_effect(master.unique_id, actor.unique_id),
         )
 
     def _skill_serve_tea(
@@ -438,8 +447,8 @@ class GuaguaLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 请 {target.name} 喝茶，改拜其为师傅，并使自身速度提高10%！",
-            {"sourceId": actor.unique_id, "targetId": target.unique_id},
+            msg.effect_gained_from(actor.name, target.name, "师傅"),
+            msg.data_effect(target.unique_id, actor.unique_id),
         )
 
     def _skill_baijia(
@@ -457,7 +466,7 @@ class GuaguaLogic(SpiritLogic):
             actor,
             target,
             BAIJIA_RATIO,
-            lambda a: f"{actor.name} 使用「百家拳法」对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "百家拳法", target.name, a),
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("guagua_baijia_crit", actor.unique_id, target.unique_id),
         )
@@ -473,7 +482,7 @@ class GuaguaLogic(SpiritLogic):
             target,
             power * BAIJIA_EXTRA_RATIO,
             dtype,
-            lambda a: f"{actor.name} 借师傅 {master.name} 之长，对 {target.name} 追加造成了 {a} 点附加伤害！",
+            lambda a: msg.skill_damage(actor.name, "借师傅", target.name, a),
             source=DamageSource.additional,
             crit_rng=ctx.next_rng("guagua_baijia_extra_crit", actor.unique_id, target.unique_id),
         )
@@ -495,8 +504,8 @@ class GuaguaLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 获得「学神」状态！",
-            {"sourceId": actor.unique_id, "targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "学神"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
 

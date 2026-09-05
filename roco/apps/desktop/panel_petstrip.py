@@ -49,7 +49,12 @@ class PetStripMixin:
 
     def _pet_card_bg(self, spirit_id: str) -> str:
         eng = self.eng
-        if eng and spirit_id == eng.state.active_actor_id:
+        # During combat FX, keep the pre-action actor highlighted so the
+        # timeline does not jump to the next spirit before numbers finish.
+        active_id = getattr(self, "_fx_highlight_actor_id", None)
+        if active_id is None and eng:
+            active_id = eng.state.active_actor_id
+        if active_id and spirit_id == active_id:
             return Colors.TIMELINE_ACTIVE
         return Colors.BG
 

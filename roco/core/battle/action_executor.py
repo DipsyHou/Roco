@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .actions import ActionDict
-from .crit import log_critical_hit
 from .damage import calculate_damage
 from .damage_segment import execute_damage_segment
 from .events import DamageSource
@@ -262,7 +261,7 @@ class ActionExecutor:
             phys,
             source=DamageSource.attack,
             describe=lambda actual: msg.physical_hit(actor.name, target.name, actual),
-            log_crit=(lambda: log_critical_hit(eng, actor, target)) if crit_flag else None,
+            critical=bool(crit_flag),
         )
 
     def _resolve_targets(

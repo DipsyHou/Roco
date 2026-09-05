@@ -10,7 +10,7 @@ from .damage_segment import execute_damage_segment
 from .effect_meta import stack_count
 from .effects import get_burn_effects, get_parasite_effects, get_poison_effect
 from .events import DamageSource
-from .hp import apply_damage, execute_instant_defeat
+from .hp import execute_instant_defeat
 from .stats import get_effective_stat
 from .types import BattleLogType, BattleSpirit, DamageType, EffectType, StatType
 
@@ -140,7 +140,7 @@ def process_poison_damage(
     *,
     decrease: bool = False,
 ) -> None:
-    """Resolve poison fixed damage, optionally reducing stacks."""
+    """Resolve poison fixed damage via the shared segment pipeline (灵珏 / 深根)."""
     if not target.is_alive:
         return
     effect = get_poison_effect(target)
@@ -159,25 +159,17 @@ def process_poison_damage(
         sustained="poison",
     )
     if damage > 0:
-        actual = apply_damage(target, damage, ctx=ctx)
-        if hasattr(ctx, "notify_damage_taken"):
-            ctx.notify_damage_taken(target, target, actual)
-        ctx.add_log(
-            BattleLogType.damage_dealt,
-            msg.poison_tick(target.name, actual),
-            {
-                "attackerId": None,
-                "targetId": target.unique_id,
-                "damage": actual,
-                "effectType": EffectType.debuff_poison.value,
-            },
+        # 无发起者：attacker=None；走段分配以便深根分摊。
+        execute_damage_segment(
+            ctx,
+            None,
+            target,
+            damage,
+            source=DamageSource.dot,
+            describe=lambda a, t=target.name: msg.poison_tick(t, a),
+            log_extra={"effectType": EffectType.debuff_poison.value},
         )
         if not target.is_alive:
-            ctx.add_log(
-                BattleLogType.spirit_defeated,
-                msg.defeated(target.name),
-                {"targetId": target.unique_id},
-            )
             return
 
     if decrease:

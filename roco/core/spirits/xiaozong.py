@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, Optional
 
+from ..battle import messages as msg
 from ..battle.effect_meta import stack_count
 from ..battle.types import (
     BattleLogType,
@@ -120,10 +121,11 @@ class XiaozongLogic(SpiritLogic):
         spirit.is_alive = True
         grant_tongling(spirit)
         if ctx is not None:
+            restored = spirit.current_hp
             ctx.add_log(
                 BattleLogType.passive_triggered,
-                f"{spirit.name} 的灵珏御光触发！通灵将其生命续至 {spirit.current_hp} 点！",
-                {"targetId": spirit.unique_id},
+                msg.passive(spirit.name, "灵珏御光"),
+                msg.data_heal(spirit.unique_id, spirit.unique_id, restored),
             )
         return True
 
@@ -163,14 +165,18 @@ class XiaozongLogic(SpiritLogic):
         *,
         lifesteal_ratio: float = 0.0,
     ) -> int:
-        type_label = "物理" if damage_type == DamageType.physical else "魔法"
+        kind = (
+            msg.KIND_PHYSICAL
+            if damage_type == DamageType.physical
+            else msg.KIND_MAGICAL
+        )
         return deal_damage(
             ctx,
             actor,
             target,
             raw,
             damage_type,
-            lambda a: f"{actor.name} 的{verb}对 {target.name} 造成了 {a} 点{type_label}伤害！",
+            lambda a: msg.skill_damage(actor.name, verb, target.name, a, kind=kind),
             source=source,
             lifesteal_ratio=lifesteal_ratio,
             lifesteal_healer=actor,
@@ -237,8 +243,8 @@ class XiaozongLogic(SpiritLogic):
         self._apply_cost_reduction(actor)
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 获得了 {int(reduction * 100)}% 减伤，日月齐光与华采若英能量消耗降低1点",
-            {"targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "灵珏护体"),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
         if not tongling:
             self._grant_lingqi(ctx, actor, LINGQI_PER_SKILL)
@@ -257,8 +263,8 @@ class XiaozongLogic(SpiritLogic):
         add_lingqi(actor, amount)
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{actor.name} 凝聚了 {amount} 层灵气",
-            {"targetId": actor.unique_id},
+            msg.effect_gained(actor.name, "灵气", stacks=amount),
+            msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
     def _apply_mitigation_reduction(self, actor: BattleSpirit, reduction: float) -> None:

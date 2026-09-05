@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle import messages as msg
 from ..battle.effects import (
     apply_freeze_stacks,
     apply_skill_energy_cost_increase,
@@ -44,7 +45,7 @@ class DaermaoLogic(SpiritLogic):
             actor,
             target,
             1.0,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -69,8 +70,8 @@ class DaermaoLogic(SpiritLogic):
         ):
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 受到轻雾影响，全技能能耗+1（3回合）！",
-                {"targetId": target.unique_id, "sourceId": actor.unique_id},
+                msg.effect_gained(target.name, "全技能能耗+1"),
+                msg.data_effect(target.unique_id, actor.unique_id),
             )
 
     def _skill_feixian(
@@ -87,12 +88,14 @@ class DaermaoLogic(SpiritLogic):
         if apply_freeze_stacks(target, actor.unique_id, 6):
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 获得 6 层冰冻！",
-                {
-                    "targetId": target.unique_id,
-                    "sourceId": actor.unique_id,
-                    "stacks": get_freeze_stacks(target),
-                },
+                msg.gained_stacks(
+                    target.name, 6, "冰冻", total=get_freeze_stacks(target)
+                ),
+                msg.data_effect(
+                    target.unique_id,
+                    actor.unique_id,
+                    stacks=get_freeze_stacks(target),
+                ),
             )
         for adj in ctx.get_adjacent_enemies(target):
             if not adj.is_alive:
@@ -100,12 +103,14 @@ class DaermaoLogic(SpiritLogic):
             if apply_freeze_stacks(adj, actor.unique_id, 3):
                 ctx.add_log(
                     BattleLogType.effect_applied,
-                    f"{adj.name} 获得 3 层冰冻！",
-                    {
-                        "targetId": adj.unique_id,
-                        "sourceId": actor.unique_id,
-                        "stacks": get_freeze_stacks(adj),
-                    },
+                    msg.gained_stacks(
+                        adj.name, 3, "冰冻", total=get_freeze_stacks(adj)
+                    ),
+                    msg.data_effect(
+                        adj.unique_id,
+                        actor.unique_id,
+                        stacks=get_freeze_stacks(adj),
+                    ),
                 )
 
     def _skill_menghua(
@@ -142,8 +147,8 @@ class DaermaoLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{target.name} 被萌化，造成伤害降低33%（2回合）！",
-            {"targetId": target.unique_id, "sourceId": actor.unique_id},
+            msg.effect_gained(target.name, "萌化"),
+            msg.data_effect(target.unique_id, actor.unique_id),
         )
 
     def _trigger_chunbai(
@@ -165,12 +170,10 @@ class DaermaoLogic(SpiritLogic):
             return
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{actor.name} 的纯白清除了 {target.name} 的 {len(removed)} 个正面效果！",
-            {
-                "sourceId": actor.unique_id,
-                "targetId": target.unique_id,
-                "count": len(removed),
-            },
+            msg.purged_buffs(target.name, len(removed), source=actor.name),
+            msg.data_effect(
+                target.unique_id, actor.unique_id, count=len(removed)
+            ),
         )
 
 

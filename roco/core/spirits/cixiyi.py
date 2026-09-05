@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List
 
+from ..battle import messages as msg
 from ..battle.events import DamageEvent, DamageSource
 from ..battle.shield import grant_shield, total_shield
 from ..battle.types import (
@@ -72,8 +73,8 @@ class CixiyiLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{spirit.name} 的硬化肌肤生效，受到的固定伤害降低50%！",
-            {"sourceId": spirit.unique_id, "targetId": spirit.unique_id},
+            msg.passive(spirit.name, "硬化肌肤"),
+            msg.data_effect(spirit.unique_id, spirit.unique_id),
         )
 
     def get_incoming_damage_reduction(
@@ -129,8 +130,8 @@ class CixiyiLogic(SpiritLogic):
             )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 的棘皮被触发，获得了 {gained} 点护盾！",
-                {"targetId": target.unique_id, "sourceId": spirit.unique_id},
+                msg.effect_gained(target.name, "棘皮护盾"),
+                msg.data_effect(target.unique_id, spirit.unique_id),
             )
         # 再生：自身受击后加防减费
         if target.unique_id == spirit.unique_id and spirit.is_alive:
@@ -155,8 +156,8 @@ class CixiyiLogic(SpiritLogic):
             )
         ctx.add_log(
             BattleLogType.passive_triggered,
-            f"{spirit.name} 的再生生效，双防提升、棘皮能耗降低！",
-            {"sourceId": spirit.unique_id, "targetId": spirit.unique_id},
+            msg.passive(spirit.name, "再生"),
+            msg.data_effect(spirit.unique_id, spirit.unique_id),
         )
 
     # --- 技能 ---
@@ -184,8 +185,8 @@ class CixiyiLogic(SpiritLogic):
         if applied:
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{actor.name} 为全队披上棘皮，受击即可化伤为盾！",
-                {"sourceId": actor.unique_id, "targetId": actor.unique_id},
+                msg.effect_gained(actor.name, "棘皮"),
+                msg.data_effect(actor.unique_id, actor.unique_id),
             )
 
     def _skill_yanci(
@@ -203,7 +204,7 @@ class CixiyiLogic(SpiritLogic):
             actor,
             actor,
             YANCI_SELF_RATIO,
-            lambda a: f"{actor.name} 的岩刺刺入自身，造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "岩刺", actor.name, a),
             source=DamageSource.other,
         )
         if not actor.is_alive or not target.is_alive:
@@ -216,7 +217,7 @@ class CixiyiLogic(SpiritLogic):
             target,
             raw,
             DamageType.physical,
-            lambda a: f"{actor.name} 的岩刺对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "岩刺", target.name, a),
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("cixiyi_yanci_crit", actor.unique_id, target.unique_id),
         )

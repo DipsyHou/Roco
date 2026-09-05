@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict
 
+from ..battle import messages as msg
 from ..battle.types import BattleLogType, BattleSpirit, EffectType, StatType
 from ..battle.utils import is_debuff_immune, make_effect
 from ._combat import deal_atk_ratio, target_enemy
@@ -69,8 +70,8 @@ class FanyingLogic(SpiritLogic):
         if target.charge < before:
             ctx.add_log(
                 BattleLogType.passive_triggered,
-                f"{target.name} 的羽翼守护使其行动提前5%！",
-                {"targetId": target.unique_id, "sourceId": spirit.unique_id},
+                msg.passive(target.name, "羽翼守护"),
+                msg.data_effect(target.unique_id, spirit.unique_id),
             )
 
     def on_spirit_defeated(
@@ -103,7 +104,7 @@ class FanyingLogic(SpiritLogic):
             actor,
             target,
             1.0,
-            lambda a: f"{actor.name} 对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -123,7 +124,7 @@ class FanyingLogic(SpiritLogic):
             actor,
             target,
             0.8,
-            lambda a: f"{actor.name} 的气旋对 {target.name} 造成了 {a} 点物理伤害！",
+            lambda a: msg.skill_damage(actor.name, "气旋", target.name, a),
         )
         if target.is_alive and not is_debuff_immune(target):
             target.effects.append(
@@ -133,12 +134,13 @@ class FanyingLogic(SpiritLogic):
                     duration_turns=1,
                     stat_type=StatType.speed,
                     value=0.15,
+                    display_name="气旋",
                 )
             )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 的速度降低15%（1回合）！",
-                {"targetId": target.unique_id},
+                msg.effect_gained(target.name, "气旋"),
+                msg.data_effect(target.unique_id, actor.unique_id),
             )
         for adj in ctx.get_adjacent_enemies(target):
             deal_atk_ratio(
@@ -146,7 +148,7 @@ class FanyingLogic(SpiritLogic):
                 actor,
                 adj,
                 0.4,
-                lambda a, t=adj: f"{actor.name} 的气旋余波对 {t.name} 造成了 {a} 点物理伤害！",
+                lambda a, t=adj: msg.skill_damage(actor.name, "气旋", t.name, a),
             )
 
     def _skill_wing_guard(
@@ -174,8 +176,8 @@ class FanyingLogic(SpiritLogic):
         )
         ctx.add_log(
             BattleLogType.effect_applied,
-            f"{target.name} 获得了羽翼守护！",
-            {"targetId": target.unique_id, "sourceId": actor.unique_id},
+            msg.effect_gained(target.name, "羽翼守护"),
+            msg.data_effect(target.unique_id, actor.unique_id),
         )
 
     def _skill_your_turn(
@@ -203,8 +205,8 @@ class FanyingLogic(SpiritLogic):
             )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 获得了20%伤害提升（1回合）！",
-                {"targetId": target.unique_id},
+                msg.effect_gained(target.name, "伤害提升"),
+                msg.data_effect(target.unique_id, actor.unique_id),
             )
         elif not is_debuff_immune(target):
             target.effects.append(
@@ -212,12 +214,12 @@ class FanyingLogic(SpiritLogic):
             )
             ctx.add_log(
                 BattleLogType.effect_applied,
-                f"{target.name} 被晕眩1回合！",
-                {"targetId": target.unique_id},
+                msg.effect_gained(target.name, "眩晕"),
+                msg.data_effect(target.unique_id, actor.unique_id),
             )
         ctx.add_log(
             BattleLogType.action_executed,
-            f"{actor.name} 使 {target.name} 下一回合提前100%！",
+            msg.turn_advanced(actor.name, target.name),
             {"actorId": actor.unique_id, "targetId": target.unique_id},
         )
 
