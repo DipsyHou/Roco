@@ -1,7 +1,7 @@
 """帕尔萨斯 — 收藏灵魂 / 恶魔契约 / 巨魔之眼 / 新月乱舞
 
 秘能机制说明：
-- 秘能上限 20，开局 2 点；成为普攻/技能唯一目标时 +2（含自身技能）；普攻命中 +1。
+- 秘能上限 20，开局 2 点；成为己方精灵技能的唯一目标时 +2（含自身技能）；普攻命中 +1。
 - 被动是**边沿触发**：只有秘能从 <13 越过到 >=13 的那一刻才提前 100%，
   并若已有「恐怖」则延长 1 回合；持续停留在线以上不会重复触发。
 - 恐怖（buff_def_pierce，魔法）不修改目标的真实防御值，只在结算魔法伤害时让
@@ -13,8 +13,7 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict, Optional
 
 from ..battle import messages as msg
-from ..battle import messages as msg
-from ..battle.types import BattleLogType, BattleSpirit, DamageType, EffectType
+from ..battle.types import ActionType, BattleLogType, BattleSpirit, DamageType, EffectType
 from ..battle.utils import make_effect
 from ._combat import deal_atk_ratio, deal_mag_ratio, grant_personal_energy, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
@@ -102,8 +101,13 @@ class ParsasLogic(SpiritLogic):
         spirit: BattleSpirit,
         action: Dict[str, Any],
     ) -> None:
-        del action
         if spirit.template_id != self.template_id or not spirit.is_alive:
+            return
+        # 仅己方精灵的技能（含自身）把帕尔萨斯作为唯一目标时回秘能；普攻与敌方技能不计。
+        if action.get("type") != ActionType.use_skill.value:
+            return
+        actor = ctx.find_spirit_anywhere(action.get("actorId") or "")
+        if not actor or actor.owner_id != spirit.owner_id:
             return
         self._grant_energy(ctx, spirit, SOLE_TARGET_ENERGY)
 
