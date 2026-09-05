@@ -343,7 +343,7 @@ class SpiritLogic:
     def get_crit_damage_bonus(
         self, spirit: BattleSpirit, target: Optional[BattleSpirit] = None
     ) -> float:
-        """Additive crit damage percent points (50 = +50% on top of base 100%)."""
+        """Additive crit damage percent points (40 = +40% on top of base 150%)."""
         return 0.0
 
     def get_stat_percent_bonus(self, spirit: BattleSpirit, stat: StatType) -> float:

@@ -12,7 +12,8 @@ from typing import Optional, Tuple
 
 from .types import BattleSpirit, EffectType
 
-DEFAULT_CRIT_DAMAGE_PERCENT = 100.0
+# Baseline crit multiplier: 150% means crit deals 1.5× base ( +50% 暴击效果 ).
+DEFAULT_CRIT_DAMAGE_PERCENT = 150.0
 
 
 def get_crit_stats(
@@ -20,8 +21,8 @@ def get_crit_stats(
 ) -> Tuple[float, float]:
     """Return ``(crit_rate, crit_damage_percent)`` for one damage segment.
 
-    ``crit_rate`` is clamped to 0~1. ``crit_damage_percent`` uses 100 as the
-    no-bonus baseline, so +60% crit damage is represented as 160.
+    ``crit_rate`` is clamped to 0~1. ``crit_damage_percent`` uses 150 as the
+    default (+50% 暴击效果); buffs add percentage points on top (e.g. +40 → 190).
     """
     from ..spirits import get_spirit_logic
 

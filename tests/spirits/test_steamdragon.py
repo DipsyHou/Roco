@@ -13,7 +13,7 @@ def test_warmup_is_added_at_turn_start(engine_factory):
     engine.state.turn_prepared_actor_id = None
     engine.ensure_active_turn_begun()
 
-    assert get_warmup_stacks(dragon) == 2
+    assert get_warmup_stacks(dragon) == 1
 
 
 def test_brand_applies_burn_stacks(engine_factory):
@@ -25,7 +25,7 @@ def test_brand_applies_burn_stacks(engine_factory):
 
     burn = effects_of(enemy, EffectType.debuff_burn)[0]
     assert burn.source_id == dragon.unique_id
-    assert burn.stacks == 7
+    assert burn.stacks == 6
 
 
 def test_boil_adds_warmup_stacks(engine_factory):
@@ -35,4 +35,4 @@ def test_boil_adds_warmup_stacks(engine_factory):
 
     assert cast_skill(engine, dragon, "steamdragon_skill3")
 
-    assert get_warmup_stacks(dragon) == 9
+    assert get_warmup_stacks(dragon) == 8

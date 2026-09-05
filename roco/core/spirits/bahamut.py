@@ -31,8 +31,7 @@ ZHENSHA_CAP = 2
 ZHAOJIA_CAP = 5
 ZHAOJIA_POLICY_ID = "bahamut_zhaojia"
 
-CHEJIA_CRIT_RATE = {2: 0.20, 3: 0.30, 4: 0.40}
-CHEJIA_CRIT_DMG = {2: 50.0, 3: 50.0, 4: 50.0}
+CHEJIA_CRIT_RATE = {2: 0.25, 3: 0.35, 4: 0.60}
 ZHAOJIA_DR_PER_STACK = 0.05
 
 
@@ -209,19 +208,6 @@ class BahamutLogic(SpiritLogic):
             return 0.0
         quxie = get_stacks(target, EffectType.state_quxie)
         return CHEJIA_CRIT_RATE.get(quxie, 0.0)
-
-    def get_crit_damage_bonus(
-        self, spirit: BattleSpirit, target: Optional[BattleSpirit] = None
-    ) -> float:
-        if spirit.template_id != TEMPLATE_ID:
-            return 0.0
-        if not has_effect(spirit, EffectType.state_chejia):
-            return 0.0
-        if target is None:
-            return 0.0
-        quxie = get_stacks(target, EffectType.state_quxie)
-        return CHEJIA_CRIT_DMG.get(quxie, 0.0)
-
 
     # ===== normal attack ======================================================
 

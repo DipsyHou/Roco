@@ -27,7 +27,7 @@ class SteamdragonLogic(SpiritLogic):
     }
 
     def on_turn_start(self, ctx: BattleContext, spirit: BattleSpirit) -> None:
-        add_warmup_stacks(spirit, spirit.unique_id, 2)
+        add_warmup_stacks(spirit, spirit.unique_id, 1)
         stacks = get_warmup_stacks(spirit)
         ctx.add_log(
             BattleLogType.passive_triggered,
