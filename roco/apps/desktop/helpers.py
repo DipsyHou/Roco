@@ -21,12 +21,14 @@ def _templates_from_ids(ids: List[str]):
 
 
 def pick_targets(engine, actor: BattleSpirit, mode: str) -> List[BattleSpirit]:
-    """Ordered candidate targets for ``mode`` ("enemy" / "ally" / any-on-field).
+    """Ordered candidate targets for ``mode`` ("enemy" / "ally" / "self" / any-on-field).
 
     Works for both the local and the remote engine via their public surface;
     UIs must not read engine-private player-id lists.
     """
     pid = actor.owner_id
+    if mode == "self":
+        return [actor] if actor.is_alive else []
     if mode == "enemy":
         opp = engine.get_opponent_id(pid)
         return sorted(engine.get_active_spirits(opp), key=lambda s: s.slot)

@@ -1,4 +1,4 @@
-"""Timeline battle engine — 5v5 action-value scheduler."""
+"""Timeline battle engine — action-value scheduler."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .extra_action_queue import ExtraActionQueueMixin
 from .factory import bind_and_start_spirit, create_battle_spirit
 from .lifecycle import BattleLifecycleMixin
 from .rng import RandomSource
-from .rules import MAX_TEAM_SIZE, MIN_TEAM_SIZE
+from .rules import MIN_TEAM_SIZE
 from .timeline_api import TimelineMixin
 from .timeline_controller import TimelineController
 from .turn_pipeline import TurnPipeline
@@ -40,9 +40,9 @@ class BattleEngine(
     ) -> None:
         for label, team in [("Player 1", p1_templates), ("Player 2", p2_templates)]:
             n = len(team)
-            if n < MIN_TEAM_SIZE or n > MAX_TEAM_SIZE:
+            if n < MIN_TEAM_SIZE:
                 raise ValueError(
-                    f"{label} needs {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE} spirits, got {n}"
+                    f"{label} needs at least {MIN_TEAM_SIZE} spirit(s), got {n}"
                 )
 
         self._player_ids = [player1_id, player2_id]
@@ -87,4 +87,4 @@ class BattleEngine(
         self._refresh_timeline_preview()
 
 
-__all__ = ["BattleEngine", "create_battle_spirit"]
+__all__ = ["BattleEngine", "create_battle_spirit", "MIN_TEAM_SIZE"]

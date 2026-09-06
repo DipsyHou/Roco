@@ -4,103 +4,20 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import Callable, List
+from typing import Callable, Dict, List, Optional
 
-from roco.core.battle.engine import MAX_TEAM_SIZE, MIN_TEAM_SIZE
+from roco.core.battle.engine import MIN_TEAM_SIZE
 from roco.core.battle.types import BattleSpirit
 from roco.core.spirits import ALL_SPIRITS
 
 from .constants import DEFAULT_P1, DEFAULT_P2, UI_FONT
 from .helpers import center_on_parent
-from .theme import (
-    apply_theme,
-    configure_listbox,
-    configure_log_widget,
-    configure_status_widget,
-)
+from .theme import Colors, apply_theme, configure_listbox
 
 
 def _style_popup(window: tk.Toplevel) -> None:
     apply_theme(window)
 
-
-class SpiritDetailWindow(tk.Toplevel):
-    """Non-modal spirit detail panel; hide on close so the Text widget is reused."""
-
-    def __init__(self, master: tk.Tk) -> None:
-        super().__init__(master)
-        self.title("精灵详情")
-        self.geometry("340x620")
-        self.minsize(300, 420)
-        _style_popup(self)
-        wrap = ttk.Frame(self, padding=10)
-        wrap.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(wrap, text="精灵详情", style="Section.TLabel").pack(anchor="w", pady=(0, 6))
-        self.status_text = tk.Text(wrap, wrap="word", state="disabled")
-        configure_status_widget(self.status_text)
-        self.status_text.pack(fill=tk.BOTH, expand=True)
-        self.protocol("WM_DELETE_WINDOW", self.hide)
-        self.withdraw()
-
-    def show(self) -> None:
-        if not self.winfo_ismapped():
-            self.deiconify()
-            self.update_idletasks()
-        self.dock()
-        self.lift()
-
-    def dock(self) -> None:
-        """Attach to the left of the main window with aligned top edges."""
-        master = self.master
-        width = 340
-        height = max(420, master.winfo_height())
-        x = max(0, master.winfo_x() - width)
-        y = max(0, master.winfo_y())
-        self.geometry(f"{width}x{height}{x:+d}{y:+d}")
-
-    def hide(self) -> None:
-        self.withdraw()
-
-
-class BattleLogWindow(tk.Toplevel):
-    """Non-modal battle log; hide on close so incremental append keeps working."""
-
-    def __init__(self, master: tk.Tk) -> None:
-        super().__init__(master)
-        self.title("战斗日志")
-        self.geometry("340x640")
-        self.minsize(300, 360)
-        _style_popup(self)
-        wrap = ttk.Frame(self, padding=10)
-        wrap.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(wrap, text="战斗记录", style="Section.TLabel").pack(anchor="w", pady=(0, 6))
-        self.log_text = tk.Text(wrap, wrap="word", state="disabled")
-        configure_log_widget(self.log_text)
-        self.log_text.pack(fill=tk.BOTH, expand=True)
-        self.protocol("WM_DELETE_WINDOW", self.hide)
-        self.withdraw()
-
-    def show(self) -> None:
-        if not self.winfo_ismapped():
-            self.deiconify()
-            self.update_idletasks()
-        self.dock()
-        self.lift()
-
-    def dock(self) -> None:
-        """Attach to the right of the main window with aligned top edges."""
-        master = self.master
-        width = 340
-        height = max(360, master.winfo_height())
-        x = min(
-            master.winfo_screenwidth() - width,
-            master.winfo_x() + master.winfo_width(),
-        )
-        y = max(0, master.winfo_y())
-        self.geometry(f"{width}x{height}{x:+d}{y:+d}")
-
-    def hide(self) -> None:
-        self.withdraw()
 
 class TargetWindow(tk.Toplevel):
     def __init__(
@@ -226,6 +143,10 @@ class MultiPickWindow(tk.Toplevel):
 
 
 class TeamSelectWindow(tk.Toplevel):
+    _TEAM_COLS = 4
+    _SELECT_BORDER = "#2563eb"
+    _TILE_AVATAR = 64
+
     def __init__(
         self,
         master: tk.Tk,
@@ -240,32 +161,39 @@ class TeamSelectWindow(tk.Toplevel):
         self._on_confirm = on_confirm
         self._p1_selected_order: List[int] = []
         self._p2_selected_order: List[int] = []
-        self._p1_selected_set: set[int] = set()
-        self._p2_selected_set: set[int] = set()
+        self._image_refs: List[tk.PhotoImage] = []
+        self._p1_tiles: Dict[int, tk.Frame] = {}
+        self._p2_tiles: Dict[int, tk.Frame] = {}
+        self._p1_badges: Dict[int, tk.Label] = {}
+        self._p2_badges: Dict[int, tk.Label] = {}
 
-        wrap = ttk.Frame(self, padding=10)
+        wrap = ttk.Frame(self, padding=12)
         wrap.pack(fill=tk.BOTH, expand=True)
-        hint = f"两边各选 {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE} 只，且数量相同"
+        hint = (
+            f"每边至少 {MIN_TEAM_SIZE} 只，人数可不限、可不同，可重复选同宠；"
+            "左键添加、右键减少（点击顺序即上场顺序）"
+        )
         ttk.Label(wrap, text=hint).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
-        self.lb1 = tk.Listbox(wrap, selectmode=tk.MULTIPLE, exportselection=False, height=10, width=24)
-        self.lb2 = tk.Listbox(wrap, selectmode=tk.MULTIPLE, exportselection=False, height=10, width=24)
-        configure_listbox(self.lb1)
-        configure_listbox(self.lb2)
-        self.lb1.grid(row=1, column=0, padx=(0, 8))
-        self.lb2.grid(row=1, column=1)
-        self.lb1.bind("<<ListboxSelect>>", lambda _e: self._sync_selection_order(self.lb1, 1))
-        self.lb2.bind("<<ListboxSelect>>", lambda _e: self._sync_selection_order(self.lb2, 2))
+        ttk.Label(wrap, text="我方 (Player 1)", style="Section.TLabel").grid(
+            row=1, column=0, sticky="w", padx=(0, 12)
+        )
+        ttk.Label(wrap, text="对手 (Player 2)", style="Section.TLabel").grid(
+            row=1, column=1, sticky="w"
+        )
 
-        ttk.Label(wrap, text="我方 (Player 1)").grid(row=2, column=0, sticky="w", pady=(4, 0))
-        ttk.Label(wrap, text="对手 (Player 2)").grid(row=2, column=1, sticky="w", pady=(4, 0))
+        p1_grid = ttk.Frame(wrap)
+        p1_grid.grid(row=2, column=0, sticky="nw", padx=(0, 12))
+        p2_grid = ttk.Frame(wrap)
+        p2_grid.grid(row=2, column=1, sticky="nw")
 
-        for tpl in ALL_SPIRITS:
-            self.lb1.insert(tk.END, tpl.name)
-            self.lb2.insert(tk.END, tpl.name)
+        for idx, tpl in enumerate(ALL_SPIRITS):
+            row, col = divmod(idx, self._TEAM_COLS)
+            self._build_spirit_tile(p1_grid, idx, tpl, row, col, side=1)
+            self._build_spirit_tile(p2_grid, idx, tpl, row, col, side=2)
 
         btn_row = ttk.Frame(wrap)
-        btn_row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        btn_row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         ttk.Button(btn_row, text="使用默认阵容", command=self._use_default).pack(side=tk.LEFT)
         ttk.Button(
             btn_row,
@@ -277,24 +205,143 @@ class TeamSelectWindow(tk.Toplevel):
         self.update_idletasks()
         center_on_parent(self, master)
 
-    def _sync_selection_order(self, lb: tk.Listbox, side: int) -> None:
-        current = set(lb.curselection())
+    def _load_tile_avatar(self, tpl) -> Optional[tk.PhotoImage]:
+        loader = getattr(self.master, "_load_avatar", None)
+        if not callable(loader):
+            return None
+        img = loader(
+            tpl.name,
+            template_id=tpl.id,
+            max_size=self._TILE_AVATAR,
+        )
+        if img is not None:
+            self._image_refs.append(img)
+        return img
+
+    def _build_spirit_tile(
+        self,
+        parent: ttk.Frame,
+        idx: int,
+        tpl,
+        row: int,
+        col: int,
+        *,
+        side: int,
+    ) -> None:
+        cell = tk.Frame(
+            parent,
+            padx=2,
+            pady=2,
+            relief=tk.FLAT,
+            borderwidth=1,
+            bg=Colors.PANEL,
+            highlightbackground=Colors.BORDER,
+            highlightthickness=1,
+        )
+        cell.grid(row=row, column=col, padx=4, pady=4)
+        tiles = self._p1_tiles if side == 1 else self._p2_tiles
+        badges = self._p1_badges if side == 1 else self._p2_badges
+        tiles[idx] = cell
+
+        img = self._load_tile_avatar(tpl)
+        if img:
+            img_lbl = tk.Label(
+                cell, image=img, cursor="hand2", bg=Colors.PANEL, borderwidth=0
+            )
+            img_lbl.image = img
+        else:
+            img_lbl = tk.Label(
+                cell,
+                text="无图",
+                width=8,
+                height=4,
+                cursor="hand2",
+                bg=Colors.PANEL,
+                fg=Colors.TEXT_MUTED,
+                borderwidth=0,
+            )
+        img_lbl.pack()
+        name_lbl = tk.Label(
+            cell,
+            text=tpl.name,
+            font=UI_FONT,
+            cursor="hand2",
+            bg=Colors.PANEL,
+            fg=Colors.TEXT,
+            borderwidth=0,
+        )
+        name_lbl.pack(pady=(2, 0))
+
+        badge = tk.Label(
+            cell,
+            text="",
+            font=("Microsoft YaHei UI", 11, "bold"),
+            fg="white",
+            bg=self._SELECT_BORDER,
+            padx=5,
+            pady=1,
+        )
+        badge.place(x=4, y=4, anchor="nw")
+        badge.place_forget()
+        badges[idx] = badge
+
+        for widget in (cell, img_lbl, name_lbl, badge):
+            widget.bind(
+                "<Button-1>",
+                lambda _e, i=idx, s=side: self._add_spirit(i, s),
+            )
+            widget.bind(
+                "<Button-3>",
+                lambda _e, i=idx, s=side: self._remove_spirit(i, s),
+            )
+
+    def _add_spirit(self, idx: int, side: int) -> None:
+        ordered = self._p1_selected_order if side == 1 else self._p2_selected_order
+        ordered.append(idx)
+        self._refresh_side_ui(side)
+
+    def _remove_spirit(self, idx: int, side: int) -> None:
+        ordered = self._p1_selected_order if side == 1 else self._p2_selected_order
+        for i in range(len(ordered) - 1, -1, -1):
+            if ordered[i] == idx:
+                ordered.pop(i)
+                self._refresh_side_ui(side)
+                return
+
+    def _refresh_side_ui(self, side: int) -> None:
         if side == 1:
-            old = self._p1_selected_set
             ordered = self._p1_selected_order
+            badges = self._p1_badges
+            tiles = self._p1_tiles
         else:
-            old = self._p2_selected_set
             ordered = self._p2_selected_order
-        removed = old - current
-        added = [i for i in lb.curselection() if i not in old]
-        if removed:
-            ordered[:] = [i for i in ordered if i not in removed]
-        for i in added:
-            ordered.append(i)
-        if side == 1:
-            self._p1_selected_set = current
-        else:
-            self._p2_selected_set = current
+            badges = self._p2_badges
+            tiles = self._p2_tiles
+        counts: Dict[int, int] = {}
+        for spirit_idx in ordered:
+            counts[spirit_idx] = counts.get(spirit_idx, 0) + 1
+        for idx, badge in badges.items():
+            count = counts.get(idx, 0)
+            if count:
+                badge.configure(text=str(count) if count == 1 else f"×{count}")
+                badge.place(x=4, y=4, anchor="nw")
+                badge.lift()
+            else:
+                badge.configure(text="")
+                badge.place_forget()
+        for idx, cell in tiles.items():
+            if counts.get(idx, 0):
+                cell.configure(
+                    highlightthickness=2,
+                    highlightbackground=self._SELECT_BORDER,
+                    highlightcolor=self._SELECT_BORDER,
+                )
+            else:
+                cell.configure(
+                    highlightthickness=1,
+                    highlightbackground=Colors.BORDER,
+                    highlightcolor=Colors.BORDER,
+                )
 
     def _ids_from_selection(self, side: int) -> List[str]:
         ordered = self._p1_selected_order if side == 1 else self._p2_selected_order
@@ -307,14 +354,11 @@ class TeamSelectWindow(tk.Toplevel):
     def _submit(self) -> None:
         p1_ids = self._ids_from_selection(1)
         p2_ids = self._ids_from_selection(2)
-        if not (MIN_TEAM_SIZE <= len(p1_ids) <= MAX_TEAM_SIZE):
-            messagebox.showwarning("选择无效", f"Player 1 需要选择 {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE} 只精灵。")
+        if len(p1_ids) < MIN_TEAM_SIZE:
+            messagebox.showwarning("选择无效", f"Player 1 至少需要 {MIN_TEAM_SIZE} 只精灵。")
             return
-        if not (MIN_TEAM_SIZE <= len(p2_ids) <= MAX_TEAM_SIZE):
-            messagebox.showwarning("选择无效", f"Player 2 需要选择 {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE} 只精灵。")
-            return
-        if len(p1_ids) != len(p2_ids):
-            messagebox.showwarning("选择无效", "两边精灵数量需相同。")
+        if len(p2_ids) < MIN_TEAM_SIZE:
+            messagebox.showwarning("选择无效", f"Player 2 至少需要 {MIN_TEAM_SIZE} 只精灵。")
             return
         self.destroy()
         self._on_confirm(p1_ids, p2_ids)

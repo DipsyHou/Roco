@@ -3,7 +3,6 @@
 from .engine import BattleEngine, create_battle_spirit
 from .events import DamageEvent, DamageSource, dispatch_damage
 from .rules import (
-    MAX_TEAM_SIZE,
     MIN_TEAM_SIZE,
     TEAM_ENERGY_CAP_MAX,
     TEAM_ENERGY_MAX,
@@ -16,7 +15,6 @@ __all__ = [
     "DamageEvent",
     "DamageSource",
     "TurnPipeline",
-    "MAX_TEAM_SIZE",
     "MIN_TEAM_SIZE",
     "TEAM_ENERGY_MAX",
     "TEAM_ENERGY_CAP_MAX",

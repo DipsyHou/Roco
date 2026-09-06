@@ -6,9 +6,9 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Optional, Union
 
-from roco.core.battle.types import BattleLogType, BattleSpirit
-
 from roco.core.battle.effects import get_freeze_stacks
+from roco.core.battle.shield import max_shield
+from roco.core.battle.types import BattleLogType, BattleSpirit
 
 from .constants import UI_FONT, UI_FONT_TITLE, UI_MONO_FONT
 
@@ -30,6 +30,7 @@ class Colors:
     HP_MID = "#eab308"
     HP_LOW = "#ef4444"
     FREEZE = "#7dd3fc"
+    SHIELD = "#9ca3af"
     TIMELINE_ACTIVE = "#1e3a5f"
     TIMELINE_ALLY = "#17263a"
     LOG_DAMAGE = "#f87171"
@@ -43,6 +44,7 @@ class Colors:
     TIMELINE_ENEMY = "#3a2026"
     TIMELINE_ENEMY_ACTIVE = "#512731"
     TIMELINE_EXTRA = "#f59e0b"
+    TARGET_PULSE = ()  # unused; target pick pulses avatar brightness instead
 
 
 def apply_theme(root: WindowLike) -> ttk.Style:
@@ -287,44 +289,67 @@ def draw_vertical_spirit_hp_bar(
     width: int,
     height: int,
 ) -> None:
-    """Draw a bottom-up HP bar, including the freeze execute zone."""
+    """Draw a bottom-up HP bar with a white shield outline from the bottom.
+
+    HP fill is inset so the shield frame can sit slightly outside it (as in the
+    mock). Shield height uses ``max_shield / max_hp`` of the full bar scale.
+    """
     canvas.delete("all")
     max_hp = max(1, spirit.max_hp)
     hp = max(0, min(spirit.current_hp, max_hp))
     hp_ratio = hp / max_hp
     hp_height = int(height * hp_ratio)
-    canvas.create_rectangle(0, 0, width, height, fill=Colors.BORDER, outline="")
-    if hp_height <= 0:
-        return
+    # Inset HP so the white shield stroke can wrap outside the green fill.
+    pad = 2 if width >= 10 else 1
+    x0, x1 = pad, width - pad
+
+    canvas.create_rectangle(x0, 0, x1, height, fill=Colors.BORDER, outline="")
 
     fill_top = height - hp_height
-    stacks = get_freeze_stacks(spirit)
-    if stacks > 0:
-        threshold_height = max(1, int(height * min(1.0, 0.01 * stacks)))
-        freeze_top = max(fill_top, height - threshold_height)
-        if freeze_top > fill_top:
+    if hp_height > 0:
+        stacks = get_freeze_stacks(spirit)
+        if stacks > 0:
+            threshold_height = max(1, int(height * min(1.0, 0.01 * stacks)))
+            freeze_top = max(fill_top, height - threshold_height)
+            if freeze_top > fill_top:
+                canvas.create_rectangle(
+                    x0,
+                    fill_top,
+                    x1,
+                    freeze_top,
+                    fill=hp_bar_fill_color(hp_ratio),
+                    outline="",
+                )
             canvas.create_rectangle(
-                0,
-                fill_top,
-                width,
+                x0,
                 freeze_top,
+                x1,
+                height,
+                fill=Colors.FREEZE,
+                outline="",
+            )
+        else:
+            canvas.create_rectangle(
+                x0,
+                fill_top,
+                x1,
+                height,
                 fill=hp_bar_fill_color(hp_ratio),
                 outline="",
             )
-        canvas.create_rectangle(
-            0,
-            freeze_top,
-            width,
-            height,
-            fill=Colors.FREEZE,
-            outline="",
-        )
-    else:
-        canvas.create_rectangle(
-            0,
-            fill_top,
-            width,
-            height,
-            fill=hp_bar_fill_color(hp_ratio),
-            outline="",
-        )
+
+    shield = max_shield(spirit)
+    if shield <= 0:
+        return
+    shield_h = max(2, int(height * min(1.0, shield / max_hp)))
+    shield_top = max(0, height - shield_h)
+    # Hollow white frame from the trough bottom upward (slightly wider than HP).
+    canvas.create_rectangle(
+        1,
+        shield_top,
+        width - 1,
+        height - 1,
+        fill="",
+        outline=Colors.SHIELD,
+        width=2,
+    )

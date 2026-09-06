@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Optional, Tuple
 
-from roco.core.battle.types import BattleSpirit
+from roco.core.battle.types import BattlePhase, BattleSpirit
 from roco.core.spirits import get_spirit_logic
 
 from .constants import UI_FONT, UI_FONT_BADGE, UI_FONT_TITLE
@@ -15,7 +15,10 @@ from .theme import Colors, draw_vertical_spirit_hp_bar
 # Larger portraits / bars for the main battlefield layout.
 AVATAR_SIZE = 150
 MARK_SIZE = 24
-VERTICAL_HP_WIDTH = 14
+VERTICAL_HP_WIDTH = 18
+CROSSHAIR_SIZE = 110
+CROSSHAIR_BASENAME = "crosshair_plain"
+CROSSHAIR_HOVER_BASENAME = "crosshair"
 
 
 class PetStripMixin:
@@ -72,6 +75,113 @@ class PetStripMixin:
             widget = widgets.get(key)
             if isinstance(widget, (tk.Frame, tk.Label, tk.Canvas)) and widget.winfo_exists():
                 widget.configure(bg=bg)
+        frame = widgets.get("frame")
+        pick = getattr(self, "_target_pick", None)
+        if isinstance(frame, tk.Frame) and frame.winfo_exists():
+            ids = (pick or {}).get("ids") or set()
+            if pick is not None and spirit_id in ids:
+                frame.configure(highlightthickness=0, cursor="hand2")
+            else:
+                frame.configure(
+                    highlightthickness=0,
+                    cursor="arrow" if pick is not None else "hand2",
+                )
+
+    def _stop_target_pulse(self) -> None:
+        self._target_hover_id = None
+        self._restore_avatar_photos()
+
+    def _restore_avatar_photos(self) -> None:
+        """Put original portraits back after target-pick ends."""
+        for widgets in self._pet_card_widgets.values():
+            label = widgets.get("avatar_label")
+            photo = widgets.get("avatar_photo")
+            if not isinstance(label, tk.Label) or not label.winfo_exists():
+                continue
+            # ImageTk.PhotoImage is not a subclass of tk.PhotoImage.
+            if photo is None:
+                continue
+            try:
+                label.configure(image=photo)
+                label.image = photo
+            except tk.TclError:
+                continue
+            widgets.pop("avatar_pulse_photo", None)
+
+    def _on_target_spirit_enter(self, spirit_id: str) -> None:
+        pick = getattr(self, "_target_pick", None)
+        if pick is None:
+            return
+        ids = pick.get("ids") or set()
+        if spirit_id not in ids:
+            return
+        if getattr(self, "_target_hover_id", None) == spirit_id:
+            return
+        self._target_hover_id = spirit_id
+        self._refresh_target_crosshairs()
+
+    def _on_target_spirit_leave(self, spirit_id: str, event=None) -> None:
+        if getattr(self, "_target_hover_id", None) != spirit_id:
+            return
+        widgets = self._pet_card_widgets.get(spirit_id) or {}
+        frame = widgets.get("frame")
+        # Ignore Leave when the pointer merely moved onto a child of this card.
+        if isinstance(frame, tk.Frame) and frame.winfo_exists():
+            try:
+                x = frame.winfo_pointerx()
+                y = frame.winfo_pointery()
+                under = frame.winfo_containing(x, y)
+                cur = under
+                while cur is not None:
+                    if cur == frame:
+                        return
+                    cur = getattr(cur, "master", None)
+            except tk.TclError:
+                pass
+        self._target_hover_id = None
+        self._refresh_target_crosshairs()
+
+    def _start_target_pulse(self) -> None:
+        """Show static black crosshairs on valid targets."""
+        self._stop_target_pulse()
+        self._target_hover_id = None
+        self._update_pet_selection_highlights()
+        self._refresh_target_crosshairs()
+
+    def _refresh_target_crosshairs(self) -> None:
+        pick = getattr(self, "_target_pick", None)
+        if pick is None:
+            return
+        ids = pick.get("ids") or set()
+        plain = self._load_ui_pil(CROSSHAIR_BASENAME, max_size=CROSSHAIR_SIZE)
+        locked = self._load_ui_pil(CROSSHAIR_HOVER_BASENAME, max_size=CROSSHAIR_SIZE)
+        if plain is None and locked is None:
+            return
+        hover_id = getattr(self, "_target_hover_id", None)
+        for spirit_id in ids:
+            widgets = self._pet_card_widgets.get(spirit_id)
+            if not widgets:
+                continue
+            label = widgets.get("avatar_label")
+            pil = widgets.get("avatar_pil")
+            if not isinstance(label, tk.Label) or not label.winfo_exists():
+                continue
+            if pil is None:
+                continue
+            overlay = (
+                locked
+                if spirit_id == hover_id and locked is not None
+                else plain
+            )
+            if overlay is None:
+                continue
+            try:
+                framed = self._avatar_with_overlay_photo(pil, overlay)
+            except Exception:
+                continue
+            widgets["avatar_pulse_photo"] = framed
+            label.configure(image=framed)
+            label.image = framed
 
     def _avatar_badge_info(self, spirit: BattleSpirit) -> Optional[Tuple[str, str]]:
         logic = get_spirit_logic(spirit.template_id)
@@ -147,6 +257,14 @@ class PetStripMixin:
 
     def _bind_spirit_click(self, widget: tk.Misc, spirit_id: str) -> None:
         widget.bind("<Button-1>", lambda _e, sid=spirit_id: self._select_spirit(sid))
+        widget.bind(
+            "<Enter>",
+            lambda _e, sid=spirit_id: self._on_target_spirit_enter(sid),
+        )
+        widget.bind(
+            "<Leave>",
+            lambda e, sid=spirit_id: self._on_target_spirit_leave(sid, e),
+        )
 
     def _update_pet_selection_highlights(self) -> None:
         for spirit_id, widgets in self._pet_card_widgets.items():
@@ -254,6 +372,12 @@ class PetStripMixin:
             template_id=spirit.template_id,
             max_size=AVATAR_SIZE,
         )
+        avatar_pil = self._load_avatar_pil(
+            spirit.name,
+            mirror=mirror_avatars,
+            template_id=spirit.template_id,
+            max_size=AVATAR_SIZE,
+        )
         has_image = img is not None
         portrait_height = img.height() if img is not None else AVATAR_SIZE
         bar_height = max(24, portrait_height // 2)
@@ -338,6 +462,8 @@ class PetStripMixin:
             "hp_side": hp_side,
             "avatar_wrap": avatar_wrap,
             "avatar_label": avatar_label,
+            "avatar_photo": img,
+            "avatar_pil": avatar_pil,
             "badge": badge_widgets.get("badge"),
             "badge_caption": badge_widgets.get("caption_label"),
             "hp_canvas": hp_canvas,
@@ -380,10 +506,20 @@ class PetStripMixin:
                 hp_label.configure(text=str(s.current_hp))
 
     def _select_spirit(self, spirit_id: str) -> None:
+        pick = getattr(self, "_target_pick", None)
+        if pick is not None:
+            ids = pick.get("ids") or set()
+            if spirit_id not in ids:
+                return
+            callback = pick.get("callback")
+            self._clear_target_pick(restore_actions=False)
+            eng = self.eng
+            spirit = eng.find_spirit_anywhere(spirit_id) if eng else None
+            if spirit is not None and callable(callback):
+                callback(spirit)
+            elif self.eng and self.eng.state.phase != BattlePhase.finished:
+                self._render_actions()
+            return
         self.selected_spirit_id = spirit_id
         self._update_pet_selection_highlights()
-        show = getattr(self, "_show_spirit_detail", None)
-        if callable(show):
-            show()
-        else:
-            self._render_status_panel()
+        self._render_status_panel()
