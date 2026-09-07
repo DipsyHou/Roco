@@ -43,6 +43,8 @@ STACK_COUNT_EFFECT_TYPES: frozenset[EffectType] = frozenset(
         EffectType.state_zhaojia,
         EffectType.state_jianwu,
         EffectType.state_huoli,
+        EffectType.state_mirror_damage,
+        EffectType.state_mirror_energy,
     }
 )
 

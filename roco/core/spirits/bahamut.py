@@ -223,7 +223,7 @@ class BahamutLogic(SpiritLogic):
             return True
         self._try_apply_route_mark(ctx, actor, target)
         self._deal_physical(
-            ctx, actor, target, get_effective_stat(actor, StatType.atk) * 1.0,
+            ctx, actor, target, get_effective_stat(actor, StatType.atk) * 0.5,
             "普通攻击",
         )
         actor.last_attack_target_id = target.unique_id

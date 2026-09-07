@@ -31,7 +31,7 @@ XIAOZONG = SpiritTemplate(
         id="xiaozong_normal",
         name="普通攻击",
         description=(
-            "对一个敌方精灵造成（100%自身物攻）点物理伤害。"
+            "对一个敌方精灵造成（50%自身物攻）点物理伤害。"
             "通灵状态：消耗30层灵气，改为造成（100%自身魔攻）点魔法伤害。"
         ),
         cooldown=0,

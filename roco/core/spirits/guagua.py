@@ -299,7 +299,7 @@ class GuaguaLogic(SpiritLogic):
             ctx,
             actor,
             target,
-            1.0,
+            0.5,
             lambda a: msg.physical_hit(actor.name, target.name, a),
             source=DamageSource.attack,
             crit_rng=ctx.next_rng("guagua_normal_crit", actor.unique_id, target.unique_id),

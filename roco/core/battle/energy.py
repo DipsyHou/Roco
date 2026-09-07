@@ -79,6 +79,8 @@ class EnergyManager:
         reason: Optional[str] = None,
         log_type: Any = None,
         silent: bool = False,
+        source: Optional[BattleSpirit] = None,
+        notify: bool = True,
     ) -> int:
         pd = self._state.players.get(player_id)
         if not pd or amount <= 0:
@@ -88,6 +90,16 @@ class EnergyManager:
         gained = pd.team_energy - before
         # Team-energy changes are shown on the energy bar; do not spam battle_log.
         del reason, log_type, silent
+        # Notify with the requested amount so overflow (e.g. 分流 at cap) still counts.
+        if notify and amount > 0:
+            for spirit in self._eng.get_all_spirits(player_id):
+                if not spirit.is_alive:
+                    continue
+                observer_logic = get_spirit_logic(spirit.template_id)
+                if observer_logic:
+                    observer_logic.on_team_energy_gained(
+                        self._eng, player_id, spirit, amount, source
+                    )
         return gained
 
     def sync_cap(self, player_id: str) -> int:

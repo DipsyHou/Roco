@@ -29,6 +29,7 @@ from .emozhanshi import EMOZHANSHI
 from .cixiyi import CIXIYI
 from .jifangfang import JIFANGFANG
 from .gulum import GULUM
+from .liuguangjing import LIUGUANGJING
 
 ALL_SPIRITS: List[SpiritTemplate] = [
     FLORA,
@@ -54,6 +55,7 @@ ALL_SPIRITS: List[SpiritTemplate] = [
     CIXIYI,
     JIFANGFANG,
     GULUM,
+    LIUGUANGJING,
 ]
 
 SPIRIT_BY_ID: Dict[str, SpiritTemplate] = {s.id: s for s in ALL_SPIRITS}
@@ -67,5 +69,5 @@ __all__ = [
     'ALL_SPIRITS',
     'SPIRIT_BY_ID',
     'get_spirit_template',
-    'FLORA', 'CLAWDRAGON', 'PARSAS', 'CHAOSLING', 'STARWEAVER', 'STEAMDRAGON', 'QIUKA', 'FANYING', 'TITA', 'CUIDING', 'GUIFASHI', 'GUAGUA', 'XIAOZONG', 'BAHAMUT', 'DAERMAO', 'HUXIAN', 'SHENGYU', 'DEERLE', 'TENGJIAO',     'EMOZHANSHI', 'CIXIYI', 'JIFANGFANG', 'GULUM',
+    'FLORA', 'CLAWDRAGON', 'PARSAS', 'CHAOSLING', 'STARWEAVER', 'STEAMDRAGON', 'QIUKA', 'FANYING', 'TITA', 'CUIDING', 'GUIFASHI', 'GUAGUA', 'XIAOZONG', 'BAHAMUT', 'DAERMAO', 'HUXIAN', 'SHENGYU', 'DEERLE', 'TENGJIAO',     'EMOZHANSHI', 'CIXIYI', 'JIFANGFANG', 'GULUM', 'LIUGUANGJING',
 ]

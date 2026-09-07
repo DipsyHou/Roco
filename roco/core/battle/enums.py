@@ -102,6 +102,9 @@ class EffectType(str, Enum):
     state_jipi = "state_jipi"
     state_zaisheng = "state_zaisheng"
     state_shengen = "state_shengen"
+    # 流光镜：映像伤害 / 映像能量（可叠层计数，无上限/无持续）
+    state_mirror_damage = "state_mirror_damage"
+    state_mirror_energy = "state_mirror_energy"
     # 机械方方：多色模块 / 超限模块
     state_module_qianghua = "state_module_qianghua"
     state_module_jisu = "state_module_jisu"

@@ -38,22 +38,20 @@ def test_moon_gain_bonus_on_starweaver_burst(engine_factory):
 
 
 def test_moon_gain_bonus_on_parsas_sole_target(engine_factory):
-    """帕尔萨斯成为唯一目标 +2 也吃月盈 → 实际 +3。"""
-    from tests.conftest import P2, normal_attack
-
+    """帕尔萨斯成为己方技能唯一目标 +2 也吃月盈 → 实际 +3。"""
     engine = engine_factory(
         ("parsas", "shengyu", "flora", "tita", "fanying"),
         ("clawdragon", "flora", "chaosling", "steamdragon", "tita"),
     )
     parsas = by_template(engine, P1, "parsas")
-    enemy = by_template(engine, P2, "clawdragon")
+    flora = by_template(engine, P1, "flora")
     parsas.energy = 5
-    engine.state.active_actor_id = enemy.unique_id
-    engine.state.turn_prepared_actor_id = enemy.unique_id
+    engine.state.players[P1].team_energy = 10
+    engine.state.active_actor_id = flora.unique_id
+    engine.state.turn_prepared_actor_id = flora.unique_id
 
-    assert normal_attack(engine, enemy, parsas)
+    assert cast_skill(engine, flora, "flora_skill1", parsas)
     assert parsas.energy == 8
-
 
 def test_blessing_grants_amplified_energy(engine_factory):
     """圣洁给目标 1 点秘能，再被月盈放大为实际获得 2 点。"""

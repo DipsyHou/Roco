@@ -82,6 +82,8 @@ class BattleContext(Protocol):
         reason: Optional[str] = None,
         log_type: Any = None,
         silent: bool = False,
+        source: Optional["BattleSpirit"] = None,
+        notify: bool = True,
     ) -> int: ...
 
     def sync_team_energy_cap(self, player_id: str) -> int: ...

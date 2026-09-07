@@ -148,7 +148,7 @@ class XiaozongLogic(SpiritLogic):
         else:
             self._hit(
                 ctx, actor, target,
-                get_effective_stat(actor, StatType.atk) * 1.0,
+                get_effective_stat(actor, StatType.atk) * 0.5,
                 DamageType.physical, "普通攻击", source=DamageSource.attack,
             )
         return True

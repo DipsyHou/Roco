@@ -21,6 +21,7 @@ from .extended import (
     TengjiaoPolicy,
     TitaPolicy,
     XiaozongPolicy,
+    GulumPolicy,
 )
 
 POLICY_BY_TEMPLATE = {
@@ -46,6 +47,7 @@ POLICY_BY_TEMPLATE = {
     TengjiaoPolicy.template_id: TengjiaoPolicy(),
     EmozhanshiPolicy.template_id: EmozhanshiPolicy(),
     XiaozongPolicy.template_id: XiaozongPolicy(),
+    GulumPolicy.template_id: GulumPolicy(),
 }
 
 __all__ = ["POLICY_BY_TEMPLATE"]

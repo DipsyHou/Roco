@@ -41,6 +41,7 @@ AVATAR_BY_TEMPLATE_ID: Dict[str, str] = {
     "shengyu": "圣域祭司",
     "deerle": "梅花德尔勒",
     "tengjiao": "藤椒小巴",
+    "liuguangjing": "流光镜",
 }
 
 # Corner-mark PNG stem under ``assets/marks/`` (same stem as portrait when shared).

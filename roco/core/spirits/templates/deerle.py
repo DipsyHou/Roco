@@ -32,7 +32,7 @@ DEERLE = SpiritTemplate(
     normal_attack=SkillDef(
         id="deerle_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（100%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -44,7 +44,7 @@ DEERLE = SpiritTemplate(
             description=(
                 "目标为自身。若拥有「剑舞」，则将「剑舞」的持续时间重置为5回合，"
                 "并叠加一层「剑舞」；否则获得1层「剑舞」，持续5回合。"
-                "（剑舞：状态效果，可叠加，最多6层。每层提升5%物攻与20%速度；"
+                "（剑舞：状态效果，可叠加，最多6层。每层提升20%物攻与20%速度；"
                 "释放普通攻击后叠加一层「剑舞」，不重置持续时间。"
                 "游戏开始时，获得1层「剑舞」，持续5回合。）"
             ),
@@ -55,7 +55,7 @@ DEERLE = SpiritTemplate(
         SkillDef(
             id="deerle_skill2",
             name="穿刺",
-            description="对一个敌方精灵赋予「破绽」，持续3回合；然后对其造成（100%自身物攻）点物理伤害。",
+            description="对一个敌方精灵赋予「破绽」，持续3回合；然后对其造成（50%自身物攻）点物理伤害。",
             cooldown=0,
             target_type=TargetType.single_enemy,
             energy_cost=1,
