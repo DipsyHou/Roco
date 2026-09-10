@@ -7,10 +7,19 @@ from typing import Dict
 DEFAULT_P1 = ["flora", "clawdragon", "guifashi"]
 DEFAULT_P2 = ["starweaver", "steamdragon", "qiuka"]
 
+# Main battle window (embedded detail top-right, log bottom-right).
+WINDOW_WIDTH = 1920
+WINDOW_HEIGHT = 1280
+SIDE_PANEL_WIDTH = 360
+
 UI_FONT = ("Microsoft YaHei UI", 10)
 UI_FONT_TITLE = ("Microsoft YaHei UI", 11, "bold")
 UI_FONT_BADGE = ("Microsoft YaHei UI", 8, "bold")
 UI_MONO_FONT = ("Consolas", 10)
+
+# Shared UI animation cadence (target pick pulse, float numbers, …).
+UI_FX_FPS = 60
+UI_FX_FRAME_MS = 1000 // UI_FX_FPS
 
 # Avatar PNG basename by template id (stable even if display name encoding breaks).
 AVATAR_BY_TEMPLATE_ID: Dict[str, str] = {
@@ -32,6 +41,7 @@ AVATAR_BY_TEMPLATE_ID: Dict[str, str] = {
     "shengyu": "圣域祭司",
     "deerle": "梅花德尔勒",
     "tengjiao": "藤椒小巴",
+    "liuguangjing": "流光镜",
 }
 
 # Corner-mark PNG stem under ``assets/marks/`` (same stem as portrait when shared).

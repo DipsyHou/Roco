@@ -38,7 +38,7 @@ class QiukaLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        self._hit_physical(ctx, actor, target, 1.0)
+        self._hit_physical(ctx, actor, target, 0.5)
         actor.last_attack_target_id = target.unique_id
         return True
 

@@ -184,6 +184,10 @@ def _resolve_display_name(eff: BattleEffect) -> str:
         return "扩容"
     if t == EffectType.state_lingqi:
         return "灵气"
+    if t == EffectType.state_mirror_damage:
+        return "映像伤害"
+    if t == EffectType.state_mirror_energy:
+        return "映像能量"
     if t == EffectType.state_tongling:
         return "通灵"
     if t == EffectType.buff_debuff_immunity:
@@ -368,6 +372,10 @@ def _format_one(eff: BattleEffect, source_names: Dict[str, str]) -> str:
         amount = int(eff.value or 0)
         label = eff.display_name or "护盾"
         return f"[{category}]{label} {amount}{_turn_suffix(eff)}"
+    if eff.type == EffectType.state_mirror_damage:
+        return f"[{category}]映像伤害: {stack_count(eff)}"
+    if eff.type == EffectType.state_mirror_energy:
+        return f"[{category}]映像能量: {stack_count(eff)}"
 
     name = _resolve_display_name(eff)
     if eff.type == STACKABLE_BURN:

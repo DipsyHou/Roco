@@ -41,6 +41,7 @@ class SkillFlowPanel(Protocol):
         callback: Callable[[BattleSpirit], None],
         *,
         cancellable: bool = True,
+        source: str = "",
     ) -> None: ...
 
 
@@ -145,10 +146,10 @@ def _show(panel: SkillFlowPanel, actor: BattleSpirit) -> None:
             panel._submit_action(action)
 
         if card_id in ALLY_TARGET_CARDS:
-            panel._pick_target("ally", _after_target)
+            panel._pick_target("ally", _after_target, source="guifashi_show")
             return
         if card_id in ENEMY_TARGET_CARDS:
-            panel._pick_target("enemy", _after_target)
+            panel._pick_target("enemy", _after_target, source="guifashi_show")
             return
         if card_id == "demon":
             _consume_for_demon(panel, actor, action, hand_idx)
@@ -193,6 +194,7 @@ def _tengjiao_after_dish(
             "ally",
             lambda t: panel._submit_action({**base, "targetId": t.unique_id}),
             cancellable=False,
+            source="tengjiao_skill3",
         )
         return
     panel._submit_action(base)

@@ -77,7 +77,7 @@ class SteamdragonLogic(SpiritLogic):
             ctx,
             actor,
             target,
-            0.5,
+            0.40,
             lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         for adj in ctx.get_adjacent_enemies(target):
@@ -86,7 +86,7 @@ class SteamdragonLogic(SpiritLogic):
                     ctx,
                     actor,
                     adj,
-                    0.25,
+                    0.20,
                     lambda a, t=adj: msg.physical_hit(actor.name, t.name, a),
                 )
         actor.last_attack_target_id = target.unique_id

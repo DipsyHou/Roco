@@ -103,7 +103,7 @@ class FanyingLogic(SpiritLogic):
             ctx,
             actor,
             target,
-            1.0,
+            0.5,
             lambda a: msg.physical_hit(actor.name, target.name, a),
         )
         actor.last_attack_target_id = target.unique_id

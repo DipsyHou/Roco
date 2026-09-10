@@ -87,6 +87,17 @@ class SpiritLogic:
         """Team energy was spent by ``spender`` (``amount`` points)."""
         pass
 
+    def on_team_energy_gained(
+        self,
+        ctx: BattleContext,
+        player_id: str,
+        observer: BattleSpirit,
+        amount: int,
+        source: Optional[BattleSpirit],
+    ) -> None:
+        """Team energy gain was attempted (``amount`` is requested, may overflow cap)."""
+        del ctx, player_id, observer, amount, source
+
     def on_after_actor_acts(self, ctx: BattleContext, actor: BattleSpirit) -> None:
         """After ``ACTION_GAP`` is added to ``actor.charge`` at turn end."""
         pass
@@ -137,6 +148,26 @@ class SpiritLogic:
     ) -> None:
         """Ally dealt damage (``event.attacker`` is on observer's team)."""
         pass
+
+    def on_ally_damage_recorded(
+        self,
+        ctx: BattleContext,
+        observer: BattleSpirit,
+        attacker: BattleSpirit,
+        defender: BattleSpirit,
+        amount: int,
+    ) -> None:
+        """Ally dealt a damage segment, recorded before 灵珏-style flat edits.
+
+        ``amount`` is post percent-mitigation (and post fixed caps), pre
+        ``apply_passive_flat_mitigation``, and before deep-root share. Fires for
+        living teammates including the attacker; does not fire for poison ticks.
+        """
+        del ctx, observer, attacker, defender, amount
+
+    def on_gather_energy(self, ctx: BattleContext, actor: BattleSpirit) -> None:
+        """``actor`` just used 聚能."""
+        del ctx, actor
 
     def on_ally_action(
         self,

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 
 from roco.core.battle.engine import BattleEngine
-from roco.core.battle.rules import MAX_DEAD_ACTOR_SKIPS, MAX_TEAM_SIZE, MIN_TEAM_SIZE
+from roco.core.battle.rules import MAX_DEAD_ACTOR_SKIPS, MIN_TEAM_SIZE
 from roco.core.battle.types import ActionType, BattlePhase, player_action_from_dict
 from roco.core.spirits import get_spirit_template
 from roco.core.spirits.templates import SpiritTemplate
@@ -132,8 +132,8 @@ class Room:
                 return None
             for slot in ("p1", "p2"):
                 team = self.teams.get(slot) or []
-                if not (MIN_TEAM_SIZE <= len(team) <= MAX_TEAM_SIZE):
-                    return err(f"{slot} 阵容数量需在 {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE}")
+                if len(team) < MIN_TEAM_SIZE:
+                    return err(f"{slot} 阵容至少需要 {MIN_TEAM_SIZE} 只精灵")
 
             p1_tpls = _templates_from_ids(self.teams.get("p1") or [])
             p2_tpls = _templates_from_ids(self.teams.get("p2") or [])

@@ -9,8 +9,9 @@ from typing import Any, Callable, Dict, List, Optional
 from roco.apps.desktop.app import DesktopGameApp
 from roco.apps.desktop.constants import UI_FONT
 from roco.apps.desktop.helpers import center_on_parent
+from roco.apps.desktop.theme import Colors
 from roco.core.battle.types import BattlePhase, BattleSpirit
-from roco.core.battle.engine import MAX_TEAM_SIZE, MIN_TEAM_SIZE
+from roco.core.battle.engine import MIN_TEAM_SIZE
 from roco.net.client import BattleNetClient
 from roco.net.protocol import (
     MSG_ACTION_RESULT,
@@ -44,7 +45,6 @@ class OnlineLobbyWindow(tk.Toplevel):
         self._room_id: Optional[str] = None
         self._slot: Optional[str] = None
         self._selected_order: List[int] = []
-        self._selected_set: set[int] = set()
         self._spirit_tiles: Dict[int, tk.Frame] = {}
         self._order_badges: Dict[int, tk.Label] = {}
 
@@ -93,7 +93,10 @@ class OnlineLobbyWindow(tk.Toplevel):
 
         ttk.Label(
             wrap,
-            text=f"选择你的阵容（最多{MAX_TEAM_SIZE} 只，点击顺序即上场顺序）",
+            text=(
+                f"选择阵容（至少 {MIN_TEAM_SIZE} 只，人数不限，可重复；"
+                "左键添加、右键减少，顺序即上场顺序）"
+            ),
             font=UI_FONT,
         ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 4))
 
@@ -120,18 +123,46 @@ class OnlineLobbyWindow(tk.Toplevel):
         row: int,
         col: int,
     ) -> None:
-        cell = tk.Frame(parent, padx=2, pady=2, relief=tk.RAISED, borderwidth=1)
+        cell = tk.Frame(
+            parent,
+            padx=2,
+            pady=2,
+            relief=tk.FLAT,
+            borderwidth=1,
+            bg=Colors.PANEL,
+            highlightbackground=Colors.BORDER,
+            highlightthickness=1,
+        )
         cell.grid(row=row, column=col, padx=4, pady=4)
         self._spirit_tiles[idx] = cell
 
         img = self._app._load_avatar(tpl.name)
         if img:
-            img_lbl = tk.Label(cell, image=img, cursor="hand2")
+            img_lbl = tk.Label(
+                cell, image=img, cursor="hand2", bg=Colors.PANEL, borderwidth=0
+            )
             img_lbl.image = img
         else:
-            img_lbl = tk.Label(cell, text="无图", width=8, height=4, cursor="hand2")
+            img_lbl = tk.Label(
+                cell,
+                text="无图",
+                width=8,
+                height=4,
+                cursor="hand2",
+                bg=Colors.PANEL,
+                fg=Colors.TEXT_MUTED,
+                borderwidth=0,
+            )
         img_lbl.pack()
-        name_lbl = tk.Label(cell, text=tpl.name, font=UI_FONT, cursor="hand2")
+        name_lbl = tk.Label(
+            cell,
+            text=tpl.name,
+            font=UI_FONT,
+            cursor="hand2",
+            bg=Colors.PANEL,
+            fg=Colors.TEXT,
+            borderwidth=0,
+        )
         name_lbl.pack(pady=(2, 0))
 
         # 顺序标号必须在图片之后创建并置顶，否则会被 pack 的控件挡住
@@ -149,44 +180,46 @@ class OnlineLobbyWindow(tk.Toplevel):
         self._order_badges[idx] = badge
 
         for widget in (cell, img_lbl, name_lbl, badge):
-            widget.bind("<Button-1>", lambda _e, i=idx: self._toggle_spirit(i))
+            widget.bind("<Button-1>", lambda _e, i=idx: self._add_spirit(i))
+            widget.bind("<Button-3>", lambda _e, i=idx: self._remove_spirit(i))
 
-    def _toggle_spirit(self, idx: int) -> None:
-        if idx in self._selected_set:
-            self._selected_set.remove(idx)
-            self._selected_order[:] = [i for i in self._selected_order if i != idx]
-        else:
-            if len(self._selected_order) >= MAX_TEAM_SIZE:
-                messagebox.showwarning(
-                    "阵容已满",
-                    f"最多选择 {MAX_TEAM_SIZE} 只精灵，请先取消一只再选。",
-                    parent=self,
-                )
-                return
-            self._selected_set.add(idx)
-            self._selected_order.append(idx)
+    def _add_spirit(self, idx: int) -> None:
+        self._selected_order.append(idx)
         self._refresh_team_selection_ui()
 
+    def _remove_spirit(self, idx: int) -> None:
+        for i in range(len(self._selected_order) - 1, -1, -1):
+            if self._selected_order[i] == idx:
+                self._selected_order.pop(i)
+                self._refresh_team_selection_ui()
+                return
+
     def _refresh_team_selection_ui(self) -> None:
-        order_map = {spirit_idx: pos + 1 for pos, spirit_idx in enumerate(self._selected_order)}
+        counts: Dict[int, int] = {}
+        for spirit_idx in self._selected_order:
+            counts[spirit_idx] = counts.get(spirit_idx, 0) + 1
         for idx, badge in self._order_badges.items():
-            order = order_map.get(idx)
-            if order:
-                badge.configure(text=str(order))
+            count = counts.get(idx, 0)
+            if count:
+                badge.configure(text=str(count) if count == 1 else f"×{count}")
                 badge.place(x=4, y=4, anchor="nw")
                 badge.lift()
             else:
                 badge.configure(text="")
                 badge.place_forget()
         for idx, cell in self._spirit_tiles.items():
-            if idx in self._selected_set:
+            if counts.get(idx, 0):
                 cell.configure(
                     highlightthickness=2,
                     highlightbackground=self._SELECT_BORDER,
                     highlightcolor=self._SELECT_BORDER,
                 )
             else:
-                cell.configure(highlightthickness=0)
+                cell.configure(
+                    highlightthickness=1,
+                    highlightbackground=Colors.BORDER,
+                    highlightcolor=Colors.BORDER,
+                )
 
     def _on_wss_toggle(self) -> None:
         if self.use_wss_var.get():
@@ -321,10 +354,10 @@ class OnlineLobbyWindow(tk.Toplevel):
         if not self._client:
             return
         ids = self._team_ids()
-        if not (MIN_TEAM_SIZE <= len(ids) <= MAX_TEAM_SIZE):
+        if len(ids) < MIN_TEAM_SIZE:
             messagebox.showwarning(
                 "阵容无效",
-                f"请选择 {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE} 只精灵。",
+                f"请至少选择 {MIN_TEAM_SIZE} 只精灵。",
                 parent=self,
             )
             return
@@ -354,8 +387,7 @@ class OnlineDesktopGameApp(DesktopGameApp):
         self._cancel_ai_job()
 
     def _build_header_buttons(self, top: ttk.Frame) -> None:
-        ttk.Button(top, text="离开房间", command=self._leave_room).pack(side=tk.LEFT, padx=(0, 8))
-        ttk.Button(top, text="战斗日志", command=self._show_battle_log).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(top, text="离开房间", command=self._leave_room).pack(side=tk.LEFT)
 
     def _leave_room(self) -> None:
         if not messagebox.askyesno("离开房间", "确定离开当前房间并返回联机大厅？", parent=self):

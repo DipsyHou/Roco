@@ -195,7 +195,7 @@ def test_tongling_normal_attack_below_thirty_uses_tongling_version(engine_factor
         enemy,
     )
     expected_phys = calculate_damage(
-        get_effective_stat(xz, StatType.atk) * 1.0,
+        get_effective_stat(xz, StatType.atk) * 0.5,
         DamageType.physical,
         xz,
         enemy,

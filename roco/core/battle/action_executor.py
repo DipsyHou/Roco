@@ -13,7 +13,7 @@ from .actions import ActionDict
 from .damage import calculate_damage
 from .damage_segment import execute_damage_segment
 from .events import DamageSource
-from .rules import TEAM_GATHER_ENERGY_GAIN
+from .rules import TEAM_GATHER_ENERGY_GAIN, NORMAL_ATTACK_ATK_RATIO
 from .stats import get_effective_stat
 from .types import (
     ActionType,
@@ -58,7 +58,11 @@ class ActionExecutor:
                 msg.used_gather(name),
                 {"actorId": actor.unique_id if actor else None, "playerId": player_id},
             )
-            eng._energy.gain(player_id, TEAM_GATHER_ENERGY_GAIN)
+            eng._energy.gain(player_id, TEAM_GATHER_ENERGY_GAIN, source=actor)
+            if actor and actor.is_alive:
+                gather_logic = get_spirit_logic(actor.template_id)
+                if gather_logic:
+                    gather_logic.on_gather_energy(eng, actor)
         elif at == ActionType.skip.value:
             actor = eng.find_spirit(player_id, action.get("actorId") or "")
             name = actor.name if actor else "未知精灵"
@@ -247,7 +251,7 @@ class ActionExecutor:
         atk = get_effective_stat(actor, StatType.atk)
         crit_flag: List[bool] = []
         phys = calculate_damage(
-            atk,
+            atk * NORMAL_ATTACK_ATK_RATIO,
             DamageType.physical,
             actor,
             target,

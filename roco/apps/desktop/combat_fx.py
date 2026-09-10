@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import ttk
 from dataclasses import dataclass
 from typing import List, Optional, Sequence
 
 from roco.core.battle.types import BattleLogEntry, BattleLogType
 
+from .constants import UI_FX_FRAME_MS, UI_FX_FPS
 from .theme import Colors
 
 # Pacing knobs — adjust here without touching call sites.
 FX_STAGGER_MS = 500
 FX_FLOAT_LIFE_MS = 1000
-FX_FLOAT_STEPS = 30
+FX_FLOAT_STEPS = max(1, FX_FLOAT_LIFE_MS * UI_FX_FPS // 1000)
 FX_HOLD_AFTER_MS = 0
 FX_EMPTY_HOLD_MS = 0
 
@@ -128,7 +130,7 @@ class CombatFxMixin:
         self._fx_on_complete = on_complete
 
         self._clear_action_row()
-        self.action_hint.set("结算中…")
+        ttk.Label(self.action_row, text="结算中…", style="Muted.TLabel").pack(side=tk.LEFT)
 
         # HP / energy / log catch up immediately; turn highlight stays frozen.
         self._update_pet_strip()
@@ -219,7 +221,7 @@ class CombatFxMixin:
         overlay.geometry(f"+{base_x}+{base_y}")
         self._fx_overlays.append(overlay)
 
-        step_ms = max(1, FX_FLOAT_LIFE_MS // FX_FLOAT_STEPS)
+        step_ms = UI_FX_FRAME_MS
         dy = 28 / FX_FLOAT_STEPS
 
         def _tick(frame: int, y_off: float) -> None:

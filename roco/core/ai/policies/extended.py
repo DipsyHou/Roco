@@ -1110,6 +1110,41 @@ class XiaozongPolicy:
         return 0.0
 
 
+class GulumPolicy:
+    """深根将断或未挂时优先开深根；否则聚能。"""
+
+    template_id = "gulum"
+    SHENGEN_COST = 4
+
+    def score(self, engine: BattleEngine, actor: BattleSpirit, action: Dict[str, Any]) -> float:
+        at = action.get("type")
+        energy = F.team_energy(engine, actor.owner_id)
+        shengen = next(
+            (e for e in actor.effects if e.type == EffectType.state_shengen),
+            None,
+        )
+        # 无深根，或剩余持续 ≤1 回合：需要（重新）开深根
+        need_shengen = shengen is None or (
+            shengen.duration_turns is not None and shengen.duration_turns <= 1
+        )
+        can_shengen = need_shengen and energy >= self.SHENGEN_COST
+
+        if at == ActionType.skip.value:
+            return -100.0
+        if at == ActionType.gather_energy.value:
+            return 20.0 if can_shengen else 200.0
+        if at == ActionType.normal_attack.value:
+            return 5.0
+        if at != ActionType.use_skill.value:
+            return 0.0
+
+        skill_id = action.get("skillId")
+        if skill_id == "gulum_skill2":  # 深根
+            return 250.0 if can_shengen else -50.0
+        # 寄生种子 / 紧缠：本策略不主动用
+        return -20.0
+
+
 __all__ = [
     "ParsasPolicy",
     "ChaoslingPolicy",
@@ -1126,4 +1161,5 @@ __all__ = [
     "TengjiaoPolicy",
     "EmozhanshiPolicy",
     "XiaozongPolicy",
+    "GulumPolicy",
 ]

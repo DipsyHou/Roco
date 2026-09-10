@@ -48,12 +48,47 @@ def _sum_ally_aura(spirit: BattleSpirit, hook_name: str) -> float:
     return total
 
 
+def _notify_ally_damage_recorded(
+    attacker: Optional[BattleSpirit],
+    defender: BattleSpirit,
+    amount: float,
+    *,
+    sustained: SustainedKind = None,
+) -> None:
+    """Record pre-灵珏 segment damage for living teammates (includes attacker).
+
+    Fires after percent mitigation (and fixed-damage caps), immediately before
+    ``apply_passive_flat_mitigation``. Poison is excluded (no ally-dealt damage).
+    """
+    if attacker is None or sustained == "poison" or amount <= 0:
+        return
+    recorded = max(0, int(amount + 1e-9))
+    if recorded <= 0:
+        return
+    engine = getattr(attacker, _STAT_ENGINE_ATTR, None)
+    if engine is None:
+        engine = getattr(defender, _STAT_ENGINE_ATTR, None)
+    if engine is None:
+        return
+    from ..spirits import get_spirit_logic
+
+    for spirit in engine.get_all_spirits(attacker.owner_id):
+        if not spirit.is_alive:
+            continue
+        logic = get_spirit_logic(spirit.template_id)
+        if logic is not None:
+            logic.on_ally_damage_recorded(
+                engine, spirit, attacker, defender, recorded
+            )
+
+
 def _calculate_fixed_damage(
     raw_damage: float,
     attacker: Optional[BattleSpirit],
     defender: BattleSpirit,
     *,
     mode: DamageModifierMode,
+    sustained: SustainedKind = None,
 ) -> int:
     """Fixed damage: no crit; fixed-% effects, 硬化肌肤-style hooks, then 灵珏."""
     from ..spirits import get_spirit_logic
@@ -77,6 +112,8 @@ def _calculate_fixed_damage(
     caps = get_damage_caps(defender)
     if DamageType.fixed in caps:
         result = min(result, caps[DamageType.fixed])
+
+    _notify_ally_damage_recorded(attacker, defender, result, sustained=sustained)
 
     if logic:
         result = logic.apply_passive_flat_mitigation(defender, result)
@@ -106,7 +143,7 @@ def calculate_damage(
 
     if damage_type == DamageType.fixed:
         return _calculate_fixed_damage(
-            raw_damage, attacker, defender, mode=mode
+            raw_damage, attacker, defender, mode=mode, sustained=sustained
         )
 
     pierce = get_def_pierce(attacker, damage_type) if attacker else 0.0
@@ -150,6 +187,8 @@ def calculate_damage(
 
     dec_pct = min(dec_pct, 0.8)
     result *= 1 - dec_pct
+
+    _notify_ally_damage_recorded(attacker, defender, result, sustained=sustained)
 
     if logic:
         result = logic.apply_passive_flat_mitigation(defender, result)

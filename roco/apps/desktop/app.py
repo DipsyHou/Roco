@@ -8,12 +8,12 @@ from tkinter import messagebox, ttk
 from typing import Dict, List, Optional
 
 from roco.core.ai import choose_action
-from roco.core.battle.engine import BattleEngine, MAX_TEAM_SIZE, MIN_TEAM_SIZE
+from roco.core.battle.engine import BattleEngine, MIN_TEAM_SIZE
 from roco.core.battle.rules import MAX_DEAD_ACTOR_SKIPS
 from roco.core.battle.types import ActionType, BattlePhase, BattleSpirit
 
 from .combat_fx import CombatFxMixin
-from .constants import DEFAULT_P1, DEFAULT_P2
+from .constants import DEFAULT_P1, DEFAULT_P2, SIDE_PANEL_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH
 from .helpers import _runtime_root, _templates_from_ids
 from .panel_action import ActionBarMixin
 from .panel_avatar import AvatarMixin
@@ -21,8 +21,8 @@ from .panel_log import LogPanelMixin
 from .panel_petstrip import PetStripMixin
 from .panel_status import StatusPanelMixin
 from .panel_timeline import TimelineMixin
-from .theme import Colors, apply_theme
-from .windows import BattleLogWindow, SpiritDetailWindow, TeamSelectWindow
+from .theme import Colors, apply_theme, configure_log_widget, configure_status_widget
+from .windows import TeamSelectWindow
 
 
 class DesktopGameApp(
@@ -47,8 +47,8 @@ class DesktopGameApp(
         # Force Tcl/Tk to use UTF-8; cp936 can render some CJK as \uXXXX escapes.
         self.tk.call("encoding", "system", "utf-8")
         self.title("Roco")
-        self.geometry("1120x850")
-        self.minsize(900, 680)
+        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        self.minsize(1280, 720)
         self.eng: Optional[BattleEngine] = None
         self.p1 = "p1"
         self.p2 = "p2"
@@ -58,11 +58,14 @@ class DesktopGameApp(
         self._host_p2_var = tk.BooleanVar(value=False)
         self._ai_job: Optional[str] = None
         self.selected_spirit_id: Optional[str] = None
+        self._target_pick: Optional[Dict[str, object]] = None
         self._rendered_log_count = 0
         self._init_combat_fx()
         self.asset_dir = _runtime_root() / "assets" / "spirits"
         self.marks_dir = _runtime_root() / "assets" / "marks"
+        self.ui_dir = _runtime_root() / "assets" / "ui"
         self._image_cache: Dict[str, tk.PhotoImage] = {}
+        self._pil_cache: Dict[str, object] = {}
         self._timeline_image_refs: List[tk.PhotoImage] = []
         self._pet_card_widgets: Dict[str, Dict[str, object]] = {}
         self._team_strip_widgets: Dict[str, Dict[str, object]] = {}
@@ -79,7 +82,6 @@ class DesktopGameApp(
         self._start_default_battle()
 
     def _center_main_window(self) -> None:
-        """Leave room for the docked detail and log windows on both sides."""
         width = self.winfo_width()
         height = self.winfo_height()
         x = max(0, (self.winfo_screenwidth() - width) // 2)
@@ -96,7 +98,30 @@ class DesktopGameApp(
         mid = ttk.Frame(self, padding=10)
         mid.pack(fill=tk.BOTH, expand=True)
 
-        left = ttk.Frame(mid, width=130)
+        # ttk.Frame ignores width/propagate; use tk.Frame to pin the side rail.
+        right = tk.Frame(mid, width=SIDE_PANEL_WIDTH, bg=Colors.BG)
+        right.pack(side=tk.RIGHT, fill=tk.Y, padx=(8, 0))
+        right.pack_propagate(False)
+        right.grid_propagate(False)
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(0, weight=1)
+        right.rowconfigure(1, weight=1)
+
+        detail = ttk.Frame(right)
+        detail.grid(row=0, column=0, sticky="nsew", pady=(0, 6))
+        ttk.Label(detail, text="精灵详情", style="Section.TLabel").pack(
+            anchor="w", pady=(0, 6)
+        )
+        self.status_text = self._build_scrollable_text(detail, configure_status_widget)
+
+        log_panel = ttk.Frame(right)
+        log_panel.grid(row=1, column=0, sticky="nsew")
+        ttk.Label(log_panel, text="战斗记录", style="Section.TLabel").pack(
+            anchor="w", pady=(0, 6)
+        )
+        self.log_text = self._build_scrollable_text(log_panel, configure_log_widget)
+
+        left = ttk.Frame(mid, width=200)
         left.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
         left.pack_propagate(False)
         ttk.Label(left, text="时间轴", style="Section.TLabel").pack(anchor="w", pady=(0, 6))
@@ -116,12 +141,23 @@ class DesktopGameApp(
         self.action_row = ttk.Frame(bottom)
         self.action_row.pack(fill=tk.X)
 
-        # Detail / log live in reusable non-modal popups (withdrawn until opened).
-        self._detail_window = SpiritDetailWindow(self)
-        self.status_text = self._detail_window.status_text
-        self._log_window = BattleLogWindow(self)
-        self.log_text = self._log_window.log_text
-        self.bind("<Configure>", self._dock_aux_windows, add="+")
+    def _build_scrollable_text(self, parent: ttk.Frame, configure) -> tk.Text:
+        """Text widget with a vertical scrollbar and mouse-wheel scrolling."""
+        row = ttk.Frame(parent)
+        row.pack(fill=tk.BOTH, expand=True)
+        text = tk.Text(row, wrap="word", state="disabled", width=1)
+        configure(text)
+        scroll = ttk.Scrollbar(row, orient=tk.VERTICAL, command=text.yview)
+        text.configure(yscrollcommand=scroll.set)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        def _on_wheel(event) -> str:
+            text.yview_scroll(int(-event.delta / 120), "units")
+            return "break"
+
+        text.bind("<MouseWheel>", _on_wheel)
+        return text
 
     def _build_header_buttons(self, top: ttk.Frame) -> None:
         ttk.Button(
@@ -129,10 +165,7 @@ class DesktopGameApp(
             text="开始对局",
             style="Primary.TButton",
             command=self._open_team_selector,
-        ).pack(side=tk.LEFT, padx=(0, 8))
-        ttk.Button(top, text="战斗日志", command=self._show_battle_log).pack(
-            side=tk.LEFT, padx=(0, 12)
-        )
+        ).pack(side=tk.LEFT, padx=(0, 12))
         ttk.Label(top, text="AI托管").pack(side=tk.LEFT, padx=(0, 4))
         ttk.Checkbutton(
             top,
@@ -159,23 +192,6 @@ class DesktopGameApp(
         self._host_p1_var.set(bool(self.ai_host_p1))
         self._host_p2_var.set(bool(self.ai_host_p2))
 
-    def _dock_aux_windows(self, _event=None) -> None:
-        if _event is not None and _event.widget is not self:
-            return
-        if self._detail_window.winfo_ismapped():
-            self._detail_window.dock()
-        if self._log_window.winfo_ismapped():
-            self._log_window.dock()
-
-    def _show_spirit_detail(self) -> None:
-        self._detail_window.show()
-        self._render_status_panel()
-
-    def _show_battle_log(self) -> None:
-        self._log_window.show()
-        if self.eng:
-            self._render_logs()
-
     def _clear_log_widget(self) -> None:
         self._rendered_log_count = 0
         self.log_text.configure(state="normal")
@@ -201,11 +217,11 @@ class DesktopGameApp(
         p1_ids: List[str],
         p2_ids: List[str],
     ) -> None:
-        if not (MIN_TEAM_SIZE <= len(p1_ids) <= MAX_TEAM_SIZE):
-            messagebox.showerror("错误", f"Player 1 阵容数量需在 {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE}。")
+        if len(p1_ids) < MIN_TEAM_SIZE:
+            messagebox.showerror("错误", f"Player 1 至少需要 {MIN_TEAM_SIZE} 只精灵。")
             return
-        if not (MIN_TEAM_SIZE <= len(p2_ids) <= MAX_TEAM_SIZE):
-            messagebox.showerror("错误", f"Player 2 阵容数量需在 {MIN_TEAM_SIZE}~{MAX_TEAM_SIZE}。")
+        if len(p2_ids) < MIN_TEAM_SIZE:
+            messagebox.showerror("错误", f"Player 2 至少需要 {MIN_TEAM_SIZE} 只精灵。")
             return
         p1_tpls = _templates_from_ids(p1_ids)
         p2_tpls = _templates_from_ids(p2_ids)
@@ -214,6 +230,7 @@ class DesktopGameApp(
             return
         self._cancel_ai_job()
         self._cancel_combat_fx()
+        self._clear_target_pick(restore_actions=False)
         # 开局默认双方手动；对局中用顶部「AI托管」切换。
         self.ai_host_p1 = False
         self.ai_host_p2 = False
@@ -396,6 +413,16 @@ class DesktopGameApp(
             return
         self._before_refresh()
         actor = self._normalize_active_actor()
+        # Drop stale target-pick if the turn already moved on.
+        pick = getattr(self, "_target_pick", None)
+        if pick is not None:
+            actor_id = pick.get("actor_id")
+            if (
+                eng.state.phase == BattlePhase.finished
+                or not actor
+                or actor.unique_id != actor_id
+            ):
+                self._clear_target_pick(restore_actions=False)
         self._render_panels()
 
         if eng.state.phase == BattlePhase.finished:
@@ -406,13 +433,21 @@ class DesktopGameApp(
                 winner = "人机 P1" if self.ai_host_p1 else "Player 1"
             else:
                 winner = "人机 P2" if self.ai_host_p2 else "Player 2"
-            self.action_hint.set(f"战斗结束：{winner} 获胜")
+            ttk.Label(
+                self.action_row,
+                text=f"战斗结束：{winner} 获胜",
+                style="Section.TLabel",
+            ).pack(side=tk.LEFT)
             self.header_var.set(self._header_text(None))
             return
 
         if not actor or not actor.is_alive:
             self._clear_action_row()
-            self.action_hint.set("等待下一位可行动宠物…")
+            ttk.Label(
+                self.action_row,
+                text="等待下一位可行动宠物…",
+                style="Muted.TLabel",
+            ).pack(side=tk.LEFT)
             self.header_var.set(self._header_text(None))
             return
 

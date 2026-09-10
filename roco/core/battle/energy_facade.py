@@ -30,9 +30,17 @@ class EnergyFacadeMixin:
         reason: Optional[str] = None,
         log_type: Any = None,
         silent: bool = False,
+        source: Optional[BattleSpirit] = None,
+        notify: bool = True,
     ) -> int:
         return self._energy.gain(
-            player_id, amount, reason=reason, log_type=log_type, silent=silent
+            player_id,
+            amount,
+            reason=reason,
+            log_type=log_type,
+            silent=silent,
+            source=source,
+            notify=notify,
         )
 
     # Back-compat internal alias.
