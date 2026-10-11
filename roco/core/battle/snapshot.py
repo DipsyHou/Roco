@@ -24,7 +24,12 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .extra_action import ExtraActionSlot
-from .types import BattleLogEntry, BattlePhase, PlayerBattleData
+from .types import (
+    BattleLogEntry,
+    BattlePhase,
+    PlayerBattleData,
+    PresentationStage,
+)
 
 
 @dataclass
@@ -42,10 +47,16 @@ class StateSnapshot:
     winner_id: Optional[str]
     rng_counters: Dict[str, int]
     log_length: int
+    presentation_length: int
+    presentation_stage: Optional[PresentationStage]
+    presentation_resume_stage: Optional[PresentationStage]
+    presentation_token: int
+    presentation_owner_id: Optional[str]
     # Engine-level suspended-turn bookkeeping (not part of BattleState).
     suspended_turn_actor_id: Optional[str]
     suspended_turn_action: Optional[Dict[str, Any]]
     suspended_turn_stunned: bool
+    serving_extra: bool
 
 
 def take_snapshot(engine: Any) -> StateSnapshot:
@@ -63,6 +74,11 @@ def take_snapshot(engine: Any) -> StateSnapshot:
         winner_id=state.winner_id,
         rng_counters=dict(state.rng_counters),
         log_length=len(state.battle_log),
+        presentation_length=len(state.presentation_events),
+        presentation_stage=state.presentation_stage,
+        presentation_resume_stage=state.presentation_resume_stage,
+        presentation_token=state.presentation_token,
+        presentation_owner_id=state.presentation_owner_id,
         suspended_turn_actor_id=engine._suspended_turn_actor_id,
         suspended_turn_action=(
             dict(engine._suspended_turn_action)
@@ -70,6 +86,7 @@ def take_snapshot(engine: Any) -> StateSnapshot:
             else None
         ),
         suspended_turn_stunned=engine._suspended_turn_stunned,
+        serving_extra=bool(getattr(engine, "_serving_extra", False)),
     )
 
 
@@ -101,10 +118,16 @@ def restore_snapshot(engine: Any, snap: StateSnapshot) -> List[BattleLogEntry]:
 
     discarded = state.battle_log[snap.log_length:]
     del state.battle_log[snap.log_length:]
+    del state.presentation_events[snap.presentation_length:]
+    state.presentation_stage = snap.presentation_stage
+    state.presentation_resume_stage = snap.presentation_resume_stage
+    state.presentation_token = snap.presentation_token
+    state.presentation_owner_id = snap.presentation_owner_id
 
     engine._suspended_turn_actor_id = snap.suspended_turn_actor_id
     engine._suspended_turn_action = snap.suspended_turn_action
     engine._suspended_turn_stunned = snap.suspended_turn_stunned
+    engine._serving_extra = snap.serving_extra
 
     from .stats import bind_spirit_stat_engine
 

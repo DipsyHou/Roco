@@ -45,18 +45,28 @@ class TimelineMixin:
                 return str(slot.get("actorId") or slot.get("actor_id") or "")
             return str(getattr(slot, "actor_id", ""))
 
-        current_is_extra = bool(
-            active_id
-            and extra_queue
-            and slot_actor_id(extra_queue[0]) == active_id
-        )
+        current_is_extra = eng.current_extra_slot() is not None
         pending_slots = extra_queue[1:] if current_is_extra else extra_queue
 
-        # During an extra action, the same spirit may still have a normal AV
-        # turn pending; deliberately show both entries.
-        normal_candidates = alive if current_is_extra else [
-            s for s in alive if s.unique_id != active_id
-        ]
+        # 回合开始额外行动后仍有「未出手的正常行动」→ 紧跟 AV=0。
+        # 行动后挂起（已出手）：展示各精灵下次正常出手预测。
+        suspended_id = getattr(eng, "_suspended_turn_actor_id", None)
+        suspended_action = getattr(eng, "_suspended_turn_action", None)
+        pending_normal_spirit_ids: list[str] = []
+        if current_is_extra and not suspended_id:
+            # 招架：同一精灵本回合正常出手还在
+            pending_normal_spirit_ids = [active_id] if active_id else []
+        elif current_is_extra and suspended_id and suspended_action is None:
+            # 额外链切到其他精灵：被挂起的精灵正常出手还在
+            pending_normal_spirit_ids = [suspended_id]
+
+        skip_ids = set(pending_normal_spirit_ids)
+        if active_id:
+            skip_ids.add(active_id)
+        if current_is_extra and suspended_id and suspended_action is not None:
+            normal_candidates = alive
+        else:
+            normal_candidates = [s for s in alive if s.unique_id not in skip_ids]
         waiting = sorted(normal_candidates, key=sort_key)
 
         rows: list[tuple[BattleSpirit, bool, bool]] = []
@@ -65,6 +75,10 @@ class TimelineMixin:
             spirit = eng.find_spirit_anywhere(slot_actor_id(slot))
             if spirit is not None and spirit.is_alive:
                 rows.append((spirit, True, False))
+        for sid in pending_normal_spirit_ids:
+            spirit = eng.find_spirit_anywhere(sid)
+            if spirit is not None and spirit.is_alive:
+                rows.append((spirit, False, True))
         rows.extend((s, False, False) for s in waiting)
 
         ally_id = self._ally_player_id()

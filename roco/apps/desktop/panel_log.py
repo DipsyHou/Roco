@@ -8,7 +8,7 @@ from .theme import log_tag_for_entry, log_tag_for_message
 
 
 class LogPanelMixin:
-    """Appends only new entries, so long battles stay responsive."""
+    """Reveal battle logs one presentation event at a time."""
 
     def _append_log_line(self, index: int, message: str, log_type=None) -> None:
         line = f"{index:02d}. {message}\n"
@@ -19,29 +19,25 @@ class LogPanelMixin:
         eng = self.eng
         assert eng
         logs = eng.state.battle_log
-        # New battle or reset: rebuild from scratch.
         if self._rendered_log_count > len(logs):
             self._rendered_log_count = 0
             self.log_text.configure(state="normal")
             self.log_text.delete("1.0", tk.END)
             self.log_text.configure(state="disabled")
+        self.log_text.see(tk.END)
 
-        if self._rendered_log_count == 0 and logs:
-            self.log_text.configure(state="normal")
-            self.log_text.delete("1.0", tk.END)
-            for i, entry in enumerate(logs, start=1):
-                self._append_log_line(i, entry.message, entry.type)
-            self.log_text.configure(state="disabled")
-            self._rendered_log_count = len(logs)
-            self.log_text.see(tk.END)
+    def _reveal_log(self, log_index: int) -> None:
+        eng = self.eng
+        if not eng:
             return
-
-        if self._rendered_log_count < len(logs):
-            new_logs = logs[self._rendered_log_count :]
-            self.log_text.configure(state="normal")
-            for i, entry in enumerate(new_logs, start=self._rendered_log_count + 1):
-                self._append_log_line(i, entry.message, entry.type)
-            self.log_text.configure(state="disabled")
-            self._rendered_log_count = len(logs)
-
+        logs = eng.state.battle_log
+        end = min(len(logs), max(self._rendered_log_count, log_index + 1))
+        if end <= self._rendered_log_count:
+            return
+        self.log_text.configure(state="normal")
+        for index in range(self._rendered_log_count, end):
+            entry = logs[index]
+            self._append_log_line(index + 1, entry.message, entry.type)
+        self.log_text.configure(state="disabled")
+        self._rendered_log_count = end
         self.log_text.see(tk.END)

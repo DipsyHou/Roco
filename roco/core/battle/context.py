@@ -68,6 +68,7 @@ class BattleContext(Protocol):
         damage: int,
         *,
         source: DamageSource = DamageSource.other,
+        dot_kind: Optional[str] = None,
     ) -> None: ...
 
     def advance_action(self, target: BattleSpirit, percent: float) -> None: ...
@@ -96,6 +97,15 @@ class BattleContext(Protocol):
         self,
         slots: List[ExtraActionSlot],
         *,
+        front: bool = False,
+    ) -> None: ...
+
+    def trigger_extra_action(
+        self,
+        actor: BattleSpirit,
+        *,
+        policy_id: str = "unrestricted",
+        source: str = "",
         front: bool = False,
     ) -> None: ...
 

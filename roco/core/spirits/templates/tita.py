@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ TITA = SpiritTemplate(
     id="tita",
     name="缇塔",
     description="缇塔",
-    base_stats=BaseStats(hp=750, atk=100, mag_atk=100, def_=140, mag_def=110, speed=100),
+    base_stats=BaseStats(hp=750, attack=100, defense=130, speed=100),
+    elements=(DamageType.electric,),
     passive_skill=PassiveSkillDef(
         id="tita_passive",
         name="缓冲 / 扩容",
@@ -28,7 +30,7 @@ TITA = SpiritTemplate(
     normal_attack=SkillDef(
         id="tita_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点电属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -46,7 +48,7 @@ TITA = SpiritTemplate(
             id="tita_skill2",
             name="过载",
             description=(
-                "能量 5。对一名敌方精灵造成（200%自身魔攻）点魔法伤害，"
+                "能量 5。对一名敌方精灵造成（200%自身攻击）点电属性伤害，"
                 "并使目标与自身的速度降低20%，持续2回合。"
             ),
             cooldown=0,

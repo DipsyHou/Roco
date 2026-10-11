@@ -2,11 +2,11 @@
 
 - 硬化肌肤（被动）：受到的固定伤害降低 50%（开局挂一条永久的固伤减免效果）。
 - 棘皮（技能）：给全体己方挂「棘皮」标记；持有者「受到伤害后」移除标记并获得
-  （30% 施加者物防）护盾，上限（60% 施加者物防），持续 3 回合，可累积刷新。
-- 再生（被动）：自身受到伤害后 +20% 双防、并使「棘皮」能耗 −2，持续 1 回合，
+  （30% 施加者防御）护盾，上限（60% 施加者防御），持续 3 回合，可累积刷新。
+- 再生（被动）：自身受到伤害后 +20% 防御、并使「棘皮」能耗 −2，持续 1 回合，
   再次获得延长 1 回合，最多 2 回合。
-- 岩刺（技能）：对自身造成（20% 物攻）物理伤害，再对目标造成
-  （120% 自身物防 + 100% 自身护盾量）物理伤害。
+- 岩刺（技能）：对自身造成（20% 攻击）地属性伤害，再对目标造成
+  （120% 自身防御 + 100% 自身护盾量）地属性伤害。
 
 「受到伤害后」类触发统一走 ``on_damage`` 观察者：石化刺蜥蜴存活时即可为全队的
 「棘皮」结算（护盾也算受到伤害，见 docs/mechanics.md §22.3）。
@@ -27,7 +27,7 @@ from ..battle.types import (
     StatType,
 )
 from ..battle.utils import get_effective_stat, make_effect
-from ._combat import deal_atk_ratio, deal_damage, target_enemy
+from ._combat import deal_attack_ratio, deal_damage, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "cixiyi"
@@ -89,7 +89,7 @@ class CixiyiLogic(SpiritLogic):
     def get_stat_percent_bonus(self, spirit: BattleSpirit, stat: StatType) -> float:
         if spirit.template_id != TEMPLATE_ID:
             return 0.0
-        if stat in (StatType.def_, StatType.mag_def) and _has(spirit, EffectType.state_zaisheng):
+        if stat == StatType.defense and _has(spirit, EffectType.state_zaisheng):
             return ZAISHENG_DEF_BONUS
         return 0.0
 
@@ -119,7 +119,7 @@ class CixiyiLogic(SpiritLogic):
         )
         if jipi is not None and target.is_alive:
             target.effects.remove(jipi)
-            def_val = get_effective_stat(spirit, StatType.def_)
+            def_val = get_effective_stat(spirit, StatType.defense)
             gained = grant_shield(
                 target,
                 spirit.unique_id,
@@ -199,25 +199,30 @@ class CixiyiLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             actor,
             YANCI_SELF_RATIO,
-            lambda a: msg.skill_damage(actor.name, "岩刺", actor.name, a),
+            lambda a: msg.skill_damage(
+                actor.name, "岩刺", actor.name, a, damage_type=DamageType.ground
+            ),
+            damage_type=DamageType.ground,
             source=DamageSource.other,
         )
         if not actor.is_alive or not target.is_alive:
             return
-        def_val = get_effective_stat(actor, StatType.def_)
+        def_val = get_effective_stat(actor, StatType.defense)
         raw = def_val * YANCI_DEF_RATIO + total_shield(actor) * YANCI_SHIELD_RATIO
         deal_damage(
             ctx,
             actor,
             target,
             raw,
-            DamageType.physical,
-            lambda a: msg.skill_damage(actor.name, "岩刺", target.name, a),
+            DamageType.ground,
+            lambda a: msg.skill_damage(
+                actor.name, "岩刺", target.name, a, damage_type=DamageType.ground
+            ),
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("cixiyi_yanci_crit", actor.unique_id, target.unique_id),
         )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -14,7 +15,8 @@ CIXIYI = SpiritTemplate(
     id="cixiyi",
     name="石化刺蜥蜴",
     description="石化刺蜥蜴",
-    base_stats=BaseStats(hp=550, atk=100, mag_atk=100, def_=150, mag_def=150, speed=120),
+    base_stats=BaseStats(hp=550, attack=100, defense=150, speed=120),
+    elements=(DamageType.ground,),
     passive_skill=PassiveSkillDef(
         id="cixiyi_passive",
         name="硬化肌肤 / 再生",
@@ -27,7 +29,7 @@ CIXIYI = SpiritTemplate(
     normal_attack=SkillDef(
         id="cixiyi_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）地属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -38,8 +40,8 @@ CIXIYI = SpiritTemplate(
             name="棘皮",
             description=(
                 "能量 3。目标为全体己方精灵。给予所有目标「棘皮」正面效果："
-                "受到伤害后，移除此效果并获得施加者给予的（30%施加者物防）护盾，持续3回合，"
-                "以这种方式再次获得护盾时可累积护盾量并刷新持续时间，上限为（60%施加者物防）。"
+                "受到伤害后，移除此效果并获得施加者给予的（30%施加者防御）护盾，持续3回合，"
+                "以这种方式再次获得护盾时可累积护盾量并刷新持续时间，上限为（60%施加者防御）。"
                 "若目标已拥有「棘皮」效果则不再给予。"
             ),
             cooldown=0,
@@ -50,8 +52,8 @@ CIXIYI = SpiritTemplate(
             id="cixiyi_skill2",
             name="岩刺",
             description=(
-                "能量 1。目标为一个敌方精灵。对自身造成（20%自身物攻）物理伤害，"
-                "然后对目标造成（120%自身物防 + 100%自身护盾量）物理伤害。"
+                "能量 1。目标为一个敌方精灵。对自身造成（20%自身攻击）地属性伤害，"
+                "然后对目标造成（120%自身防御 + 100%自身护盾量）地属性伤害。"
             ),
             cooldown=0,
             target_type=TargetType.single_enemy,

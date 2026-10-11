@@ -1,13 +1,9 @@
-"""Shared battle model — dataclasses for JSON-friendly state.
-
-Compatibility module: existing code may keep importing enums and dataclasses
-from ``roco.core.battle.types`` while implementation is split by responsibility.
-"""
+"""Shared battle enums and JSON-friendly state dataclasses."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from .enums import (
     ActionType,
@@ -15,6 +11,7 @@ from .enums import (
     BattlePhase,
     DamageType,
     EffectType,
+    PresentationStage,
     StatType,
     TargetType,
     requires_target_pick,
@@ -29,19 +26,15 @@ if TYPE_CHECKING:
 @dataclass
 class BaseStats:
     hp: int
-    atk: int
-    mag_atk: int
-    def_: int
-    mag_def: int
+    attack: int
+    defense: int
     speed: int
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "hp": self.hp,
-            "atk": self.atk,
-            "magAtk": self.mag_atk,
-            "def": self.def_,
-            "magDef": self.mag_def,
+            "attack": self.attack,
+            "defense": self.defense,
             "speed": self.speed,
         }
 
@@ -75,8 +68,11 @@ class SpiritTemplate:
     passive_skill: PassiveSkillDef
     normal_attack: SkillDef
     skills: List[SkillDef]
+    elements: Tuple[DamageType, ...]
 
     def to_dict(self) -> Dict[str, Any]:
+        from .resistance import resistance_for
+
         return {
             "id": self.id,
             "name": self.name,
@@ -102,9 +98,16 @@ class SpiritTemplate:
                     "cooldown": s.cooldown,
                     "targetType": s.target_type.value,
                     **({"energyCost": s.energy_cost} if s.energy_cost is not None else {}),
+                    **({"special": True} if s.special else {}),
                 }
                 for s in self.skills
             ],
+            "elements": [e.value for e in self.elements],
+            "resistances": {
+                damage_type.value: resistance_for(self.elements, damage_type)
+                for damage_type in DamageType
+                if damage_type.is_attribute
+            },
         }
 
 
@@ -149,6 +152,12 @@ class BattleSpirit:
     # Spirit-private state that must survive online snapshots
     # (e.g. 藤椒 pending_free / committed_dish).
     sync_attrs: Dict[str, Any] = field(default_factory=dict)
+    elements: Tuple[DamageType, ...] = ()
+
+    def resistance_to(self, damage_type: DamageType) -> float:
+        from .resistance import resistance_for
+
+        return resistance_for(self.elements, damage_type)
 
 
 @dataclass
@@ -157,6 +166,22 @@ class BattleLogEntry:
     turn: int
     message: str
     data: Optional[Dict[str, Any]] = None
+
+
+@dataclass(frozen=True)
+class BattlePresentationEvent:
+    """Structured UI event emitted alongside a battle log entry."""
+
+    sequence: int
+    log_index: int
+    kind: str
+    target_id: Optional[str] = None
+    amount: int = 0
+    effect_kind: Optional[str] = None
+    current_hp: Optional[int] = None
+    max_hp: Optional[int] = None
+    effects: Tuple[BattleEffect, ...] = ()
+    charge: Optional[float] = None
 
 
 @dataclass
@@ -181,6 +206,11 @@ class BattleState:
     extra_action_queue: List["ExtraActionSlot"] = field(default_factory=list)
     timeline_preview: List[str] = field(default_factory=list)
     battle_log: List[BattleLogEntry] = field(default_factory=list)
+    presentation_events: List[BattlePresentationEvent] = field(default_factory=list)
+    presentation_stage: Optional[PresentationStage] = None
+    presentation_resume_stage: Optional[PresentationStage] = None
+    presentation_token: int = 0
+    presentation_owner_id: Optional[str] = None
     winner_id: Optional[str] = None
     # Deterministic RNG: server-generated seed + per-domain draw counters.
     rng_seed: str = ""

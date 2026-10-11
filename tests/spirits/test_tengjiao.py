@@ -87,7 +87,7 @@ def test_oil_adds_huoli_and_atk_and_may_trigger_threshold():
     tengjiao = by_template(engine, P1, "tengjiao")
     advance_to(engine, tengjiao)
     _set_huoli(tengjiao, 9)
-    base = get_effective_stat(tengjiao, StatType.atk, exclude_conversion=True)
+    base = get_effective_stat(tengjiao, StatType.attack, exclude_conversion=True)
     assert cast_skill(engine, tengjiao, "tengjiao_skill1")
     # Resolve free chicken if queued
     while engine.state.extra_action_queue or (
@@ -101,7 +101,7 @@ def test_oil_adds_huoli_and_atk_and_may_trigger_threshold():
     assert _huoli_stacks(tengjiao) >= 14  # 9+2+5, possibly cleared if somehow 毛血旺
     oil = effects_of(tengjiao, EffectType.buff_stat_percent_boost)
     assert any(e.display_name == "浇油" for e in oil)
-    assert get_effective_stat(tengjiao, StatType.atk, exclude_conversion=True) == approx(
+    assert get_effective_stat(tengjiao, StatType.attack, exclude_conversion=True) == approx(
         base * 1.2
     )
 
@@ -112,13 +112,12 @@ def test_laziji_conversion():
     flora = by_template(engine, P1, "flora")
     advance_to(engine, tengjiao)
     _force_free_dish(engine, tengjiao, DISH_LAZIJI)
-    applier_atk = get_effective_stat(tengjiao, StatType.atk, exclude_conversion=True)
+    applier_atk = get_effective_stat(tengjiao, StatType.attack, exclude_conversion=True)
     assert _submit_serve(engine, tengjiao, flora.unique_id)
     assert effects_of(flora, EffectType.buff_laziji)
     expected = applier_atk * 0.10
-    assert get_effective_stat(flora, StatType.atk) == approx(flora.base_stats.atk + expected)
-    assert get_effective_stat(flora, StatType.mag_atk) == approx(
-        flora.base_stats.mag_atk + expected
+    assert get_effective_stat(flora, StatType.attack) == approx(
+        flora.base_stats.attack + expected
     )
 
 
@@ -128,12 +127,14 @@ def test_shuizhuyu_buffs_self_and_allies():
     flora = by_template(engine, P1, "flora")
     advance_to(engine, tengjiao)
     _force_free_dish(engine, tengjiao, DISH_SHUIZHUYU)
-    base_atk = get_effective_stat(tengjiao, StatType.atk, exclude_conversion=True)
+    base_atk = get_effective_stat(tengjiao, StatType.attack, exclude_conversion=True)
     assert _submit_serve(engine, tengjiao, tengjiao.unique_id)
     assert effects_of(tengjiao, EffectType.buff_shuizhuyu)
     bonus = base_atk * 0.10
-    assert get_effective_stat(tengjiao, StatType.atk) == approx(base_atk + bonus)
-    assert get_effective_stat(flora, StatType.atk) == approx(flora.base_stats.atk + bonus)
+    assert get_effective_stat(tengjiao, StatType.attack) == approx(base_atk + bonus)
+    assert get_effective_stat(flora, StatType.attack) == approx(
+        flora.base_stats.attack + bonus
+    )
 
 
 def test_maoxuewang_burns_floor_and_clears_huoli():

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ CUIDING = SpiritTemplate(
     id="cuiding",
     name="翠顶夫人",
     description="翠顶夫人",
-    base_stats=BaseStats(hp=700, atk=100, mag_atk=100, def_=130, mag_def=130, speed=140),
+    base_stats=BaseStats(hp=700, attack=100, defense=120, speed=140),
+    elements=(DamageType.water,),
     passive_skill=PassiveSkillDef(
         id="cuiding_passive",
         name="澄净",
@@ -25,7 +27,7 @@ CUIDING = SpiritTemplate(
     normal_attack=SkillDef(
         id="cuiding_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点水属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -42,7 +44,7 @@ CUIDING = SpiritTemplate(
         SkillDef(
             id="cuiding_skill2",
             name="涟漪",
-            description="能量 3。对敌方全体造成（8%自身最大生命）点魔法伤害，并随机驱散其各一个正面效果。",
+            description="能量 3。对敌方全体造成（8%自身最大生命）点水属性伤害，并随机驱散其各一个正面效果。",
             cooldown=0,
             target_type=TargetType.all_enemies,
             energy_cost=3,

@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Dict, List, Optional
 
 from ..battle.actions import ActionDict
 from ..battle.context import BattleContext
-from ..battle.events import DamageEvent
+from ..battle.events import DamageEvent, EffectAppliedEvent
 from ..battle.types import BattleSpirit, StatType, TargetType
 
 __all__ = ["BattleContext", "SpiritLogic"]
@@ -143,6 +143,15 @@ class SpiritLogic:
         """Any damage on the field."""
         pass
 
+    def on_effect_applied(
+        self,
+        ctx: BattleContext,
+        spirit: BattleSpirit,
+        event: EffectAppliedEvent,
+    ) -> None:
+        """A negative effect was successfully applied to a unit on the field."""
+        del ctx, spirit, event
+
     def on_ally_damage_dealt(
         self, ctx: BattleContext, observer: BattleSpirit, event: DamageEvent
     ) -> None:
@@ -161,7 +170,7 @@ class SpiritLogic:
 
         ``amount`` is post percent-mitigation (and post fixed caps), pre
         ``apply_passive_flat_mitigation``, and before deep-root share. Fires for
-        living teammates including the attacker; does not fire for poison ticks.
+        living teammates including the attacker, including sourced poison ticks.
         """
         del ctx, observer, attacker, defender, amount
 

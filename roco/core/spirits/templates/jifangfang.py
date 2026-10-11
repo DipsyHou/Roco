@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -14,7 +15,8 @@ JIFANGFANG = SpiritTemplate(
     id="jifangfang",
     name="机械方方",
     description="机械方方",
-    base_stats=BaseStats(hp=650, atk=130, mag_atk=100, def_=130, mag_def=100, speed=130),
+    base_stats=BaseStats(hp=650, attack=130, defense=110, speed=130),
+    elements=(DamageType.electric,),
     passive_skill=PassiveSkillDef(
         id="jifangfang_passive",
         name="多色模块",
@@ -29,7 +31,7 @@ JIFANGFANG = SpiritTemplate(
     normal_attack=SkillDef(
         id="jifangfang_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）电属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -39,8 +41,8 @@ JIFANGFANG = SpiritTemplate(
             id="jifangfang_skill1",
             name="防火墙",
             description=(
-                "能量 3。目标为全体己方精灵。赋予所有目标（60%自身物攻）护盾，持续3回合，"
-                "持续期间再次获得自身赋予的护盾会累积护盾量并刷新持续时间，上限为（120%施加者物攻）。"
+                "能量 3。目标为全体己方精灵。赋予所有目标（60%自身攻击）护盾，持续3回合，"
+                "持续期间再次获得自身赋予的护盾会累积护盾量并刷新持续时间，上限为（120%施加者攻击）。"
             ),
             cooldown=0,
             target_type=TargetType.all_allies,
@@ -50,8 +52,8 @@ JIFANGFANG = SpiritTemplate(
             id="jifangfang_skill2",
             name="便携防火墙",
             description=(
-                "能量 0。目标为一个己方精灵。赋予目标（30%自身物攻）护盾，持续3回合，"
-                "持续期间再次获得自身赋予的护盾会累积护盾量并刷新持续时间，上限为（120%施加者物攻）。"
+                "能量 0。目标为一个己方精灵。赋予目标（30%自身攻击）护盾，持续3回合，"
+                "持续期间再次获得自身赋予的护盾会累积护盾量并刷新持续时间，上限为（120%施加者攻击）。"
             ),
             cooldown=0,
             target_type=TargetType.single_ally,

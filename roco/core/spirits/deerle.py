@@ -9,7 +9,7 @@
    伤害提高 25%，并获得一次额外行动（追加到队列末尾）。
 6. 剑舞叠层封顶 6 层：达到上限后继续叠加静默吸收，不单独提示（参考巴哈姆特
    招架 ``ZHAOJIA_CAP`` 的处理）。
-7. 「敏锐」的「伤害提高 25%」走造成伤害加成管线，而非抬高物攻倍率；破绽数量在
+7. 「敏锐」的「伤害提高 25%」走造成伤害加成管线，而非抬高攻击倍率；破绽数量在
    普攻结算（含看破清除）之前判定。
 8. 普攻仅在已有「剑舞」时叠层；剑舞过期后普攻不会自动重建（需剑花或开局被动）。
 """
@@ -27,10 +27,9 @@ from ..battle.types import (
     EffectType,
     StatType,
 )
-from ..battle.extra_action import ExtraActionSlot
 from ..battle.utils import make_effect
 from ..battle.events import DamageSource
-from ._combat import deal_atk_ratio, target_enemy
+from ._combat import deal_attack_ratio, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 FLAW_DEF_REDUCTION = 0.05
@@ -92,7 +91,7 @@ class DeerleLogic(SpiritLogic):
         if not eff:
             return 0.0
         stacks = stack_count(eff)
-        if stat == StatType.atk:
+        if stat == StatType.attack:
             return stacks * JIANWU_ATK_PER_STACK
         if stat == StatType.speed:
             return stacks * JIANWU_SPEED_PER_STACK
@@ -114,7 +113,7 @@ class DeerleLogic(SpiritLogic):
             make_effect(
                 EffectType.debuff_flaw,
                 actor.unique_id,
-                stat_type=StatType.def_,
+                stat_type=StatType.defense,
                 value=FLAW_DEF_REDUCTION,
                 duration_turns=FLAW_DURATION,
                 display_name="破绽",
@@ -158,7 +157,7 @@ class DeerleLogic(SpiritLogic):
             EffectType.buff_damage_percent_boost,
             actor.unique_id,
             value=KEEN_DAMAGE_BOOST,
-            damage_type=DamageType.physical,
+            damage_type=DamageType.grass,
             effect_tag=KEEN_HIT_TAG,
             display_name="敏锐",
         )
@@ -193,12 +192,14 @@ class DeerleLogic(SpiritLogic):
         if keen_triggered:
             self._apply_keen_damage_boost(actor)
         try:
-            deal_atk_ratio(
+            deal_attack_ratio(
                 ctx,
                 actor,
                 target,
                 NORMAL_ATK_RATIO,
-                lambda a: msg.physical_hit(actor.name, target.name, a),
+                lambda a: msg.attribute_hit(
+                    actor.name, target.name, a, DamageType.grass
+                ),
             )
         finally:
             self._clear_keen_damage_boost(actor)
@@ -211,8 +212,10 @@ class DeerleLogic(SpiritLogic):
                 msg.passive(actor.name, "敏锐"),
                 msg.data_effect(actor.unique_id),
             )
-            ctx.queue_extra_actions(
-                [ExtraActionSlot(actor_id=actor.unique_id, source="deerle_keen")]
+            ctx.trigger_extra_action(
+                actor,
+                source="deerle_keen",
+                front=False,
             )
 
         if _get_flaws(target):
@@ -265,12 +268,14 @@ class DeerleLogic(SpiritLogic):
         if not target:
             return
         self._apply_flaw(ctx, actor, target)
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             PIERCE_ATK_RATIO,
-            lambda a: msg.skill_damage(actor.name, "穿刺", target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name, "穿刺", target.name, a, damage_type=DamageType.grass
+            ),
             source=DamageSource.skill,
         )
 

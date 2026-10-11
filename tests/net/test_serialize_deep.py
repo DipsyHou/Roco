@@ -7,7 +7,14 @@ from roco.core.battle.effects import make_effect
 from roco.core.battle.types import BattleLogType, BattlePhase, DamageType, EffectType, StatType
 from roco.core.battle.extra_action import ExtraActionSlot
 from roco.core.spirits.guifashi_cards import CardState
-from roco.net.serialize import effect_from_dict, state_from_dict, state_to_dict
+import pytest
+
+from roco.net.serialize import (
+    SchemaVersionError,
+    effect_from_dict,
+    state_from_dict,
+    state_to_dict,
+)
 
 
 def test_state_roundtrip_preserves_runtime_fields(engine_factory):
@@ -69,6 +76,16 @@ def test_state_roundtrip_preserves_sync_attrs(engine_factory):
         "shuizhuyu",
     ]
     assert restored_spirit.sync_attrs[PENDING_FREE_KEY] == ["laziji", "shuizhuyu"]
+
+
+@pytest.mark.parametrize("version", [None, 2, 4])
+def test_state_reader_rejects_non_current_schema(version):
+    raw = {"players": {}}
+    if version is not None:
+        raw["schemaVersion"] = version
+
+    with pytest.raises(SchemaVersionError):
+        state_from_dict(raw)
 
 
 def test_legacy_remaining_turns_maps_to_duration_for_duration_effects():

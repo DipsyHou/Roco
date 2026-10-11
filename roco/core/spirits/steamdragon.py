@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Dict
 
 from ..battle import messages as msg
 from ..battle.effect_meta import stack_count
-from ..battle.types import BattleLogType, BattleSpirit, EffectType
+from ..battle.types import BattleLogType, BattleSpirit, DamageType, EffectType
 from ..battle.utils import (
     add_warmup_stacks,
     apply_burn_stacks,
@@ -14,7 +14,7 @@ from ..battle.utils import (
     get_total_burn_stacks,
     get_warmup_stacks,
 )
-from ._combat import deal_atk_ratio, target_enemy
+from ._combat import deal_attack_ratio, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 
@@ -73,21 +73,23 @@ class SteamdragonLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.40,
-            lambda a: msg.physical_hit(actor.name, target.name, a),
+            lambda a: msg.attribute_hit(actor.name, target.name, a, DamageType.fire),
         )
         for adj in ctx.get_adjacent_enemies(target):
             if adj.is_alive:
-                deal_atk_ratio(
+                deal_attack_ratio(
                     ctx,
                     actor,
                     adj,
                     0.20,
-                    lambda a, t=adj: msg.physical_hit(actor.name, t.name, a),
+                    lambda a, t=adj: msg.attribute_hit(
+                        actor.name, t.name, a, DamageType.fire
+                    ),
                 )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -102,12 +104,12 @@ class SteamdragonLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.5,
-            lambda a: msg.physical_hit(actor.name, target.name, a),
+            lambda a: msg.attribute_hit(actor.name, target.name, a, DamageType.fire),
         )
         # Brand burn does not cross-trigger poison (unlike grant_burn).
         if target.is_alive and apply_burn_stacks(target, actor.unique_id, 5):

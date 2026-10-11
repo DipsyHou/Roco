@@ -251,7 +251,11 @@ class LiuguangjingLogic(SpiritLogic):
                 float(amount),
                 DamageType.fixed,
                 lambda a: msg.skill_damage(
-                    actor.name, "镜倾", target.name, a, kind=msg.KIND_FIXED
+                    actor.name,
+                    "镜倾",
+                    target.name,
+                    a,
+                    damage_type=DamageType.fixed,
                 ),
             )
             for adj in ctx.get_adjacent_enemies(target):
@@ -262,7 +266,11 @@ class LiuguangjingLogic(SpiritLogic):
                     float(amount),
                     DamageType.fixed,
                     lambda a, t=adj: msg.skill_damage(
-                        actor.name, "镜倾", t.name, a, kind=msg.KIND_FIXED
+                        actor.name,
+                        "镜倾",
+                        t.name,
+                        a,
+                        damage_type=DamageType.fixed,
                     ),
                 )
         clear_half_mirror_damage(actor)

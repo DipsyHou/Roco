@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Dict, List, Optional
 
 from ..battle import messages as msg
 from ..battle.events import DamageSource
-from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
+from ..battle.extra_action import ExtraActionUI, register_policy
 from ..battle.types import (
     BattleLogType,
     ActionType,
@@ -17,7 +17,7 @@ from ..battle.types import (
     TargetType,
 )
 from ..battle.utils import get_effective_stat, make_effect
-from ._combat import deal_atk_ratio, deal_damage, target_ally, target_enemy
+from ._combat import deal_attack_ratio, deal_damage, target_ally, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "guagua"
@@ -93,18 +93,17 @@ def _apply_state_once(
 def _refresh_biyouwoshi(master: BattleSpirit, source_id: str, duration_turns: int = 2) -> None:
     """Refresh the temporary buff package learned by the master."""
     master.effects = [effect for effect in master.effects if effect.effect_tag != BIYOUWOSHI_TAG]
-    for stat in (StatType.atk, StatType.mag_atk):
-        master.effects.append(
-            make_effect(
-                EffectType.buff_stat_percent_boost,
-                source_id,
-                duration_turns=duration_turns,
-                stat_type=stat,
-                value=PASSIVE_ATK_BONUS,
-                effect_tag=BIYOUWOSHI_TAG,
-                display_name="必有我师",
-            )
+    master.effects.append(
+        make_effect(
+            EffectType.buff_stat_percent_boost,
+            source_id,
+            duration_turns=duration_turns,
+            stat_type=StatType.attack,
+            value=PASSIVE_ATK_BONUS,
+            effect_tag=BIYOUWOSHI_TAG,
+            display_name="必有我师",
         )
+    )
     master.effects.append(
         make_effect(
             EffectType.buff_crit_rate,
@@ -153,12 +152,8 @@ def _pending_learned_target(ctx: BattleContext, actor: BattleSpirit) -> Optional
 
 
 def _master_attack(master: BattleSpirit) -> tuple[float, DamageType]:
-    """师傅双攻的较高值及其对应伤害属性：物攻更高→物理，魔攻更高→魔法（相等按物理）。"""
-    atk = get_effective_stat(master, StatType.atk)
-    mag = get_effective_stat(master, StatType.mag_atk)
-    if mag > atk:
-        return mag, DamageType.magical
-    return atk, DamageType.physical
+    """Return the master's attack and primary intrinsic element."""
+    return get_effective_stat(master, StatType.attack), master.elements[0]
 
 
 def _random_attack_target_or_enemy(
@@ -213,7 +208,7 @@ class GuaguaLogic(SpiritLogic):
             actor.sync_attrs[LEARNED_TARGET_KEY] = None
 
     def get_stat_percent_bonus(self, spirit: BattleSpirit, stat: StatType) -> float:
-        if spirit.template_id != TEMPLATE_ID or stat not in (StatType.atk, StatType.mag_atk):
+        if spirit.template_id != TEMPLATE_ID or stat != StatType.attack:
             return 0.0
         return PASSIVE_ATK_BONUS if _bound_master(spirit) is not None else 0.0
 
@@ -295,12 +290,14 @@ class GuaguaLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.5,
-            lambda a: msg.physical_hit(actor.name, target.name, a),
+            lambda a: msg.attribute_hit(
+                actor.name, target.name, a, DamageType.physical
+            ),
             source=DamageSource.attack,
             crit_rng=ctx.next_rng("guagua_normal_crit", actor.unique_id, target.unique_id),
         )
@@ -330,13 +327,12 @@ class GuaguaLogic(SpiritLogic):
             return
         observer.sync_attrs[LEARNED_USED_KEY] = 1
         observer.sync_attrs[LEARNED_TARGET_KEY] = target.unique_id
-        ctx.queue_extra_actions([
-            ExtraActionSlot(
-                actor_id=observer.unique_id,
-                policy_id=LEARNED_POLICY_ID,
-                source=LEARNED_SOURCE,
-            )
-        ])
+        ctx.trigger_extra_action(
+            observer,
+            policy_id=LEARNED_POLICY_ID,
+            source=LEARNED_SOURCE,
+            front=False,
+        )
         ctx.add_log(
             BattleLogType.passive_triggered,
             msg.passive(observer.name, "观察"),
@@ -372,7 +368,9 @@ class GuaguaLogic(SpiritLogic):
             target,
             raw,
             dtype,
-            lambda a: msg.skill_damage(master.name, "学神", target.name, a),
+            lambda a: msg.skill_damage(
+                master.name, "学神", target.name, a, damage_type=dtype
+            ),
             source=DamageSource.additional,
             crit_rng=ctx.next_rng("guagua_xueshen_crit", master.unique_id, target.unique_id),
         )
@@ -400,12 +398,18 @@ class GuaguaLogic(SpiritLogic):
         actor.sync_attrs[LEARNED_TARGET_KEY] = None
 
     def _cast_learned(self, ctx: BattleContext, actor: BattleSpirit, target: BattleSpirit) -> None:
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             LEARNED_RATIO,
-            lambda a: msg.skill_damage(actor.name, "学会了！", target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name,
+                "学会了！",
+                target.name,
+                a,
+                damage_type=DamageType.physical,
+            ),
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("guagua_learned_crit", actor.unique_id, target.unique_id),
         )
@@ -461,12 +465,18 @@ class GuaguaLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             BAIJIA_RATIO,
-            lambda a: msg.skill_damage(actor.name, "百家拳法", target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name,
+                "百家拳法",
+                target.name,
+                a,
+                damage_type=DamageType.physical,
+            ),
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("guagua_baijia_crit", actor.unique_id, target.unique_id),
         )
@@ -482,7 +492,9 @@ class GuaguaLogic(SpiritLogic):
             target,
             power * BAIJIA_EXTRA_RATIO,
             dtype,
-            lambda a: msg.skill_damage(actor.name, "借师傅", target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name, "借师傅", target.name, a, damage_type=dtype
+            ),
             source=DamageSource.additional,
             crit_rng=ctx.next_rng("guagua_baijia_extra_crit", actor.unique_id, target.unique_id),
         )

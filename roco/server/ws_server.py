@@ -18,6 +18,7 @@ from roco.net.protocol import (
     MSG_CREATE_ROOM,
     MSG_JOIN_ROOM,
     MSG_READY,
+    MSG_ADVANCE_PRESENTATION,
     MSG_ROOM_JOINED,
     MSG_SUBMIT_ACTION,
     MSG_SYNC_TURN,
@@ -155,6 +156,12 @@ async def handle_message(ws: Any, state: ConnectionState, raw: str) -> None:
     if mtype == MSG_SUBMIT_ACTION:
         action = msg.get("action") or {}
         result = await room.handle_submit_action(slot, action)
+        await _send_json(ws, result)
+        return
+
+    if mtype == MSG_ADVANCE_PRESENTATION:
+        token = int(msg.get("token") or 0)
+        result = await room.handle_advance_presentation(slot, token)
         await _send_json(ws, result)
         return
 

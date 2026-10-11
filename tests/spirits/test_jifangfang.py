@@ -50,7 +50,7 @@ def test_fanghuoqiang_shield_and_bianxie_merge(engine_factory):
     engine = _engine(engine_factory)
     ff = by_template(engine, P1, "jifangfang")
     ally = by_template(engine, P1, "flora")
-    atk = get_effective_stat(ff, StatType.atk)
+    atk = get_effective_stat(ff, StatType.attack)
 
     jifangfang_logic._skill_fanghuoqiang(engine, P1, ff, {})
     sh = shield_from_source(ally, ff.unique_id)

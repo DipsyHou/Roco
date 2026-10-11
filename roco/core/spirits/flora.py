@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict
 
 from ..battle import messages as msg
-from ..battle.types import BattleLogType, EffectType, StatType, BattleSpirit
+from ..battle.types import BattleLogType, DamageType, EffectType, StatType, BattleSpirit
 from ..battle.utils import (
     apply_heal,
     get_effective_stat,
@@ -13,8 +13,9 @@ from ..battle.utils import (
     is_debuff_immune,
     make_effect,
     purge_debuffs,
+    purge_selected_debuff,
 )
-from ._combat import deal_mag_ratio
+from ._combat import deal_attack_ratio
 from ..spirit_logic import BattleContext, DamageEvent, SpiritLogic
 
 
@@ -63,7 +64,7 @@ class FloraLogic(SpiritLogic):
         target: BattleSpirit,
     ) -> None:
         flora.passive_triggered = True
-        mag = get_effective_stat(flora, StatType.mag_atk)
+        mag = get_effective_stat(flora, StatType.attack)
         heal = apply_heal(target, mag * 1.0)
         ctx.add_log(
             BattleLogType.passive_triggered,
@@ -117,7 +118,7 @@ class FloraLogic(SpiritLogic):
         target = ctx.find_spirit_anywhere(tid)
         if not target or not target.is_alive:
             return
-        mag = get_effective_stat(actor, StatType.mag_atk)
+        mag = get_effective_stat(actor, StatType.attack)
         actual = apply_heal(target, mag * 0.80)
         ctx.add_log(
             BattleLogType.heal_applied,
@@ -127,13 +128,14 @@ class FloraLogic(SpiritLogic):
         if target.unique_id == actor.unique_id:
             debuffs = [e for e in target.effects if is_debuff_effect(e.type)]
             if debuffs:
-                removed = ctx.next_rng("flora_cleanse", target.unique_id).choice(debuffs)
-                target.effects = [e for e in target.effects if e.id != removed.id]
-                ctx.add_log(
-                    BattleLogType.effect_removed,
-                    msg.purged_one_debuff(target.name),
-                    msg.data_effect(target.unique_id),
-                )
+                selected = ctx.next_rng("flora_cleanse", target.unique_id).choice(debuffs)
+                removed = purge_selected_debuff(target, selected)
+                if removed is not None:
+                    ctx.add_log(
+                        BattleLogType.effect_removed,
+                        msg.purged_one_debuff(target.name),
+                        msg.data_effect(target.unique_id),
+                    )
 
     def _skill_pain_relief(
         self,
@@ -169,13 +171,13 @@ class FloraLogic(SpiritLogic):
         del action
         opponent_id = ctx.get_opponent_id(player_id)
         for target in ctx.get_active_spirits(opponent_id):
-            deal_mag_ratio(
+            deal_attack_ratio(
                 ctx,
                 actor,
                 target,
                 0.5,
                 lambda a, t=target: msg.skill_damage(
-                    actor.name, "麻醉", t.name, a, kind=msg.KIND_MAGICAL
+                    actor.name, "麻醉", t.name, a, damage_type=DamageType.grass
                 ),
             )
             if target.is_alive and not is_debuff_immune(target):

@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from roco.core.battle.utils import apply_damage, apply_heal, calculate_damage, make_effect
+from roco.core.battle.resistance import resistance_for
 from roco.core.battle.types import DamageType, EffectType, StatType
 
 
@@ -25,16 +26,14 @@ def test_apply_damage_and_heal_clamp_hp_but_report_overflow(standard_engine):
 @pytest.mark.parametrize(
     ("raw", "damage_type", "defense", "expected"),
     [
-        (200, DamageType.physical, 200, 100),
-        (200, DamageType.magical, 200, 100),
+        (200, DamageType.light, 200, 133),
         (100, DamageType.fixed, 0, 100),
     ],
 )
 def test_damage_types_use_expected_defense(raw, damage_type, defense, expected, standard_engine):
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
-    defender.base_stats.def_ = defense
-    defender.base_stats.mag_def = defense
+    defender.base_stats.defense = defense
 
     assert calculate_damage(raw, damage_type, attacker, defender) == expected
 
@@ -42,7 +41,8 @@ def test_damage_types_use_expected_defense(raw, damage_type, defense, expected, 
 def test_damage_pipeline_combines_percent_reduction_and_cap(standard_engine):
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
-    defender.base_stats.def_ = 100
+    defender.base_stats.defense = 100
+    defender.elements = ()
     attacker.effects.extend(
         [
             make_effect(EffectType.buff_damage_percent_boost, "a", duration_turns=1, damage_type=DamageType.physical, value=0.2),
@@ -109,7 +109,8 @@ def test_explicit_fixed_percent_modifiers_apply(standard_engine):
 def test_taken_damage_percent_reduction_persists_across_hits(standard_engine):
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
-    defender.base_stats.def_ = 100
+    defender.base_stats.defense = 100
+    defender.elements = ()
     defender.effects.append(
         make_effect(
             EffectType.buff_taken_damage_percent_reduction,
@@ -128,7 +129,8 @@ def test_taken_damage_percent_reduction_persists_across_hits(standard_engine):
 def test_crit_applies_to_base_before_damage_modifiers(standard_engine):
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
-    defender.base_stats.def_ = 200
+    defender.base_stats.defense = 200
+    defender.elements = ()
     attacker.effects.extend(
         [
             make_effect(EffectType.buff_crit_rate, "a", duration_turns=1, value=1.0),
@@ -139,50 +141,52 @@ def test_crit_applies_to_base_before_damage_modifiers(standard_engine):
     with patch("roco.core.battle.damage.random.random", return_value=0.0):
         crit = calculate_damage(200, DamageType.physical, attacker, defender)
 
-    # base 100 × (150% default + 100% buff) = 250
-    assert crit == 250
+    # 200 × 200/(100+200) × (150% default + 100% buff)
+    assert crit == 333
 
 
 def test_crit_default_effect_is_fifty_percent(standard_engine):
     """Forced crit with no buffs multiplies by default 150% ( +50% 暴击效果 )."""
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
-    defender.base_stats.def_ = 200
+    defender.base_stats.defense = 200
+    defender.elements = ()
     attacker.effects.append(
         make_effect(EffectType.buff_crit_rate, "a", duration_turns=1, value=1.0)
     )
 
     with patch("roco.core.battle.damage.random.random", return_value=0.0):
-        assert calculate_damage(200, DamageType.physical, attacker, defender) == 150
+        assert calculate_damage(200, DamageType.physical, attacker, defender) == 200
 
 
 def test_crit_rate_zero_skips_roll(standard_engine):
     """Most damage has 0% crit rate; pipeline still runs but never multiplies."""
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
-    defender.base_stats.def_ = 200
+    defender.base_stats.defense = 200
+    defender.elements = ()
     attacker.effects.append(
         make_effect(EffectType.buff_crit_damage, "a", duration_turns=1, value=100)
     )
 
     with patch("roco.core.battle.damage.random.random", return_value=0.0) as roll:
-        assert calculate_damage(200, DamageType.physical, attacker, defender) == 100
+        assert calculate_damage(200, DamageType.physical, attacker, defender) == 133
     roll.assert_not_called()
 
 
-def test_effective_stat_modifiers_still_work_after_field_split(standard_engine):
+def test_effective_stat_modifiers_work_for_unified_attack(standard_engine):
     from roco.core.battle.utils import get_effective_stat
 
     spirit = standard_engine.get_all_spirits("p1")[0]
-    spirit.base_stats.atk = 200
+    spirit.base_stats.attack = 200
     spirit.effects.extend(
         [
-            make_effect(EffectType.buff_stat_percent_boost, "src", duration_turns=1, stat_type=StatType.atk, value=0.2),
-            make_effect(EffectType.buff_stat_flat_boost, "src", duration_turns=1, stat_type=StatType.atk, value=30),
+            make_effect(EffectType.buff_stat_percent_boost, "src", duration_turns=1, stat_type=StatType.attack, value=0.2),
+            make_effect(EffectType.buff_stat_flat_boost, "src", duration_turns=1, stat_type=StatType.attack, value=30),
         ]
     )
 
-    assert get_effective_stat(spirit, StatType.atk) == 270
+    assert get_effective_stat(spirit, StatType.attack) == 270
 
 
 def test_fixed_damage_never_crits(standard_engine):
@@ -222,7 +226,7 @@ def test_critical_log_is_generated_by_shared_combat_helper(standard_engine):
 
     attacker = standard_engine.get_all_spirits("p1")[0]
     defender = standard_engine.get_all_spirits("p2")[0]
-    defender.base_stats.def_ = 100
+    defender.base_stats.defense = 100
     attacker.effects.append(
         make_effect(EffectType.buff_crit_rate, "a", duration_turns=1, value=1.0)
     )
@@ -267,3 +271,18 @@ def test_critical_log_is_generated_for_default_normal_attack(standard_engine):
 
     new_logs = standard_engine.state.battle_log[start:]
     assert sum(1 for log in new_logs if log.data and log.data.get("critical")) == 1
+
+
+def test_dual_type_resistance_is_additive(standard_engine):
+    attacker = standard_engine.get_all_spirits("p1")[0]
+    defender = standard_engine.get_all_spirits("p2")[0]
+    defender.base_stats.defense = 100
+    defender.elements = (DamageType.poison, DamageType.fire)
+
+    # Poison + fire has -50% ground resistance.
+    assert calculate_damage(100, DamageType.ground, attacker, defender) == 150
+
+
+def test_negative_resistance_has_no_lower_bound():
+    elements = (DamageType.fire,) * 5
+    assert resistance_for(elements, DamageType.water) == -1.25

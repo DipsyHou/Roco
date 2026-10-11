@@ -265,7 +265,7 @@ def test_dance_delay_pushes_back_first_normal_turn_not_second():
     bs = fanying_tpl.base_stats
     # 凡鹰显著更快，才能稳定测「共舞延后后敌方先于 steam 正常回合」。
     fanying_tpl.base_stats = BaseStats(
-        hp=bs.hp, atk=bs.atk, mag_atk=bs.mag_atk, def_=bs.def_, mag_def=bs.mag_def, speed=200
+        hp=bs.hp, attack=bs.attack, defense=bs.defense, speed=200
     )
     engine = BattleEngine(
         "sim",

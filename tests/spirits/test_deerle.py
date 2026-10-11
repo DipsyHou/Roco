@@ -91,8 +91,8 @@ def test_keen_no_trigger_below_three_flaws(engine_factory):
 
     hp_before = enemy.current_hp
     expected_plain = calculate_damage(
-        get_effective_stat(deerle, StatType.atk) * NORMAL_ATK_RATIO,
-        DamageType.physical,
+        get_effective_stat(deerle, StatType.attack) * NORMAL_ATK_RATIO,
+        DamageType.grass,
         deerle,
         enemy,
     )
@@ -118,13 +118,13 @@ def test_keen_boosts_damage_and_grants_extra_action(engine_factory):
         EffectType.buff_damage_percent_boost,
         deerle.unique_id,
         value=KEEN_DAMAGE_BOOST,
-        damage_type=DamageType.physical,
+        damage_type=DamageType.grass,
         effect_tag=KEEN_HIT_TAG,
     )
     deerle.effects.append(boost)
     expected_boosted = calculate_damage(
-        get_effective_stat(deerle, StatType.atk) * NORMAL_ATK_RATIO,
-        DamageType.physical,
+        get_effective_stat(deerle, StatType.attack) * NORMAL_ATK_RATIO,
+        DamageType.grass,
         deerle,
         enemy,
     )

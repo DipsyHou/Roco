@@ -44,6 +44,9 @@ class Colors:
     TIMELINE_ENEMY = "#3a2026"
     TIMELINE_ENEMY_ACTIVE = "#512731"
     TIMELINE_EXTRA = "#f59e0b"
+    BUFF_FX = "#4ade80"
+    DEBUFF_FX = "#fb7185"
+    STATE_FX = "#c084fc"
     TARGET_PULSE = ()  # unused; target pick pulses avatar brightness instead
 
 

@@ -27,6 +27,9 @@ class BattleLifecycleMixin:
                 self.state.phase = BattlePhase.finished
                 self.state.winner_id = winner
                 self.state.active_actor_id = None
+                self.state.presentation_stage = None
+                self.state.presentation_resume_stage = None
+                self.state.presentation_owner_id = None
                 self.add_log(
                     BattleLogType.battle_end,
                     msg.battle_end(winner),

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ STEAMDRAGON = SpiritTemplate(
     id="steamdragon",
     name="蒸汽神龙",
     description="蒸汽神龙",
-    base_stats=BaseStats(hp=700, atk=130, mag_atk=100, def_=140, mag_def=120, speed=100),
+    base_stats=BaseStats(hp=700, attack=130, defense=130, speed=100),
+    elements=(DamageType.fire, DamageType.dragon),
     passive_skill=PassiveSkillDef(
         id="steamdragon_passive",
         name="热启动",
@@ -25,7 +27,7 @@ STEAMDRAGON = SpiritTemplate(
     normal_attack=SkillDef(
         id="steamdragon_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（40%自身物攻）点物理伤害，对其相邻精灵造成（20%×自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（40%自身攻击）点火属性伤害，对其相邻精灵造成（20%自身攻击）点火属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -34,7 +36,7 @@ STEAMDRAGON = SpiritTemplate(
         SkillDef(
             id="steamdragon_skill1",
             name="烙印",
-            description="对一个敌方场上精灵造成（50%自身物攻）点物理伤害，然后给予其5层灼烧。",
+            description="对一个敌方精灵造成（50%自身攻击）点火属性伤害，然后给予其5层灼烧。",
             cooldown=0,
             target_type=TargetType.single_enemy,
             energy_cost=2,

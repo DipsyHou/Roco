@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+import copy
 from tkinter import ttk
 from typing import Dict, Optional, Tuple
 
@@ -431,7 +432,9 @@ class PetStripMixin:
             borderwidth=0,
         )
         hp_label.pack(pady=(3, 0))
-        if spirit.owner_id == self._ally_player_id():
+
+        ally = spirit.owner_id == self._ally_player_id()
+        if ally:
             hp_side.pack(side=tk.LEFT, padx=(0, 10))
             avatar_wrap.pack(side=tk.LEFT)
         else:
@@ -439,7 +442,7 @@ class PetStripMixin:
             hp_side.pack(side=tk.LEFT, padx=(10, 0))
 
         wheel = getattr(parent, "_on_mousewheel", None)
-        for w in (
+        bind_targets = [
             col,
             combat_row,
             hp_side,
@@ -450,13 +453,13 @@ class PetStripMixin:
             badge_widgets.get("badge"),
             badge_widgets.get("mark_label"),
             badge_widgets.get("caption_label"),
-        ):
+        ]
+        for w in bind_targets:
             if isinstance(w, (tk.Frame, tk.Label, tk.Canvas)):
                 self._bind_spirit_click(w, spirit.unique_id)
                 if callable(wheel):
                     w.bind("<MouseWheel>", wheel)
-
-        self._pet_card_widgets[spirit.unique_id] = {
+        card_widgets: Dict[str, object] = {
             "frame": col,
             "combat_row": combat_row,
             "hp_side": hp_side,
@@ -471,6 +474,7 @@ class PetStripMixin:
             "hp_height": bar_height,
             "has_image": has_image,
         }
+        self._pet_card_widgets[spirit.unique_id] = card_widgets
 
     def _update_pet_strip(self) -> None:
         eng = self.eng
@@ -504,6 +508,34 @@ class PetStripMixin:
                     height=hp_height,
                 )
                 hp_label.configure(text=str(s.current_hp))
+
+    def _show_presented_hp(
+        self,
+        spirit_id: str,
+        current_hp: int,
+        max_hp: Optional[int] = None,
+    ) -> None:
+        """Advance one card's HP display to a structured event snapshot."""
+        eng = self.eng
+        widgets = self._pet_card_widgets.get(spirit_id)
+        spirit = eng.find_spirit_anywhere(spirit_id) if eng else None
+        if not widgets or not spirit:
+            return
+        hp_canvas = widgets.get("hp_canvas")
+        hp_label = widgets.get("hp_label")
+        if not isinstance(hp_canvas, tk.Canvas) or not isinstance(hp_label, tk.Label):
+            return
+        shown = copy.copy(spirit)
+        shown.max_hp = int(max_hp if max_hp is not None else spirit.max_hp)
+        shown.current_hp = max(0, min(int(current_hp), shown.max_hp))
+        hp_height = int(widgets.get("hp_height", max(24, AVATAR_SIZE // 2)))
+        draw_vertical_spirit_hp_bar(
+            hp_canvas,
+            shown,
+            width=VERTICAL_HP_WIDTH,
+            height=hp_height,
+        )
+        hp_label.configure(text=str(shown.current_hp))
 
     def _select_spirit(self, spirit_id: str) -> None:
         pick = getattr(self, "_target_pick", None)

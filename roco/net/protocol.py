@@ -10,6 +10,7 @@ MSG_CREATE_ROOM = "create_room"
 MSG_JOIN_ROOM = "join_room"
 MSG_READY = "ready"
 MSG_SUBMIT_ACTION = "submit_action"
+MSG_ADVANCE_PRESENTATION = "advance_presentation"
 MSG_SYNC_TURN = "sync_turn"
 
 # Server -> client

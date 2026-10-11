@@ -37,6 +37,8 @@ class BattleEngine(
         player2_id: str,
         p1_templates: List[SpiritTemplate],
         p2_templates: List[SpiritTemplate],
+        *,
+        presentation_windows: bool = False,
     ) -> None:
         for label, team in [("Player 1", p1_templates), ("Player 2", p2_templates)]:
             n = len(team)
@@ -46,6 +48,7 @@ class BattleEngine(
                 )
 
         self._player_ids = [player1_id, player2_id]
+        self._presentation_windows = bool(presentation_windows)
         self.state = BattleState(
             battle_id=battle_id,
             phase=BattlePhase.waiting_for_action,
@@ -77,6 +80,8 @@ class BattleEngine(
         self._suspended_turn_actor_id: Optional[str] = None
         self._suspended_turn_action: Optional[Dict[str, Any]] = None
         self._suspended_turn_stunned: bool = False
+        # True only while submit is resolving an extra-action segment.
+        self._serving_extra: bool = False
 
         for pid in self._player_ids:
             for spirit in self.state.players[pid].spirits:

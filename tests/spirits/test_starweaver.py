@@ -216,9 +216,9 @@ def test_pulse_deals_mag_ratio_and_gains_energy(engine_factory):
     enemies = engine.get_active_spirits(P2)
     before = [e.current_hp for e in enemies]
     star.energy = 0
-    mag = get_effective_stat(star, StatType.mag_atk)
+    mag = get_effective_stat(star, StatType.attack)
     expected = [
-        calculate_damage(mag * 0.20, DamageType.magical, star, e) for e in enemies
+        calculate_damage(mag * 0.20, DamageType.dark, star, e) for e in enemies
     ]
 
     assert cast_skill(engine, star, "starweaver_skill1")
@@ -238,9 +238,9 @@ def test_burst_damage_scales_with_mag_atk_and_consumed_energy(engine_factory):
     star.energy = 6
     consumed = 6
     ratio = (40 + 5 * consumed) / 100.0
-    raw = get_effective_stat(star, StatType.mag_atk) * ratio
+    raw = get_effective_stat(star, StatType.attack) * ratio
     expected = [
-        calculate_damage(raw, DamageType.magical, star, enemy) for enemy in enemies
+        calculate_damage(raw, DamageType.dark, star, enemy) for enemy in enemies
     ]
 
     assert cast_skill(engine, star, "starweaver_skill3")

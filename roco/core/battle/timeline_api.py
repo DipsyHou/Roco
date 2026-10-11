@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import List
 
-from .types import BattlePhase, BattleSpirit
+from .types import BattlePhase, BattleSpirit, PresentationStage
 from ..spirits import get_spirit_logic
 
 
@@ -67,8 +67,16 @@ class TimelineMixin:
         self._timeline.advance_time_to_actor(actor)
         self.state.active_turn_stunned = self._pipeline.begin_turn(actor)
         self.state.turn_prepared_actor_id = actor_id
+        self._serving_extra = False
         if not actor.is_alive:
             self._advance_past_dead_active()
+            return
+        if getattr(self, "_presentation_windows", False):
+            self._enter_presentation_stage(PresentationStage.turn_start, actor.owner_id)
+            return
+        # 招架等：回合开始入队后立刻进入额外段；仅入队不抢正常等待。
+        if self.state.extra_action_queue:
+            self._advance_to_next_extra_slot()
 
     def _refresh_timeline_preview(self) -> None:
         self._timeline.refresh_preview()

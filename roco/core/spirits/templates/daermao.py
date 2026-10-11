@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ DAERMAO = SpiritTemplate(
     id="daermao",
     name="大耳帽兜",
     description="以纯白净化与冰冻处决控场的霜系精灵。",
-    base_stats=BaseStats(hp=600, atk=120, mag_atk=110, def_=140, mag_def=140, speed=120),
+    base_stats=BaseStats(hp=650, attack=120, defense=140, speed=120),
+    elements=(DamageType.ice,),
     passive_skill=PassiveSkillDef(
         id="daermao_passive",
         name="纯白",
@@ -28,7 +30,7 @@ DAERMAO = SpiritTemplate(
     normal_attack=SkillDef(
         id="daermao_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点冰属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,

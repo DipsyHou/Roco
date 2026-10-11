@@ -13,8 +13,8 @@ def test_rage_starts_channel_and_applies_first_stage_modifiers(engine_factory):
     channel = effects_of(chaos, EffectType.state_channeling_skill)[0]
     assert channel.channel_skill_id == "chaosling_skill1"
     assert channel.channel_phase == 1
-    assert any(e.stat_type == StatType.atk for e in effects_of(chaos, EffectType.buff_stat_percent_boost))
-    assert any(e.stat_type == StatType.mag_atk for e in effects_of(chaos, EffectType.debuff_stat_percent_reduction))
+    assert any(e.stat_type == StatType.attack for e in effects_of(chaos, EffectType.buff_stat_percent_boost))
+    assert any(e.stat_type == StatType.defense for e in effects_of(chaos, EffectType.debuff_stat_percent_reduction))
 
 
 def test_channel_advances_at_turn_start_even_if_stunned(engine_factory):

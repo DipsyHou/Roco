@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Dict, List
 
 from ..battle import messages as msg
 from ..battle.effects import apply_infusion, has_infusion, purge_random_buff
-from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
+from ..battle.extra_action import ExtraActionUI, register_policy
 from ..battle.types import BattleLogType, BattleSpirit, DamageType
 from ._combat import deal_damage, deal_heal
 from ..spirit_logic import BattleContext, DamageSource, SpiritLogic
@@ -123,9 +123,9 @@ class CuidingLogic(SpiritLogic):
                 actor,
                 enemy,
                 raw,
-                DamageType.magical,
+                DamageType.water,
                 lambda a, t=enemy: msg.skill_damage(
-                    actor.name, "涟漪", t.name, a, kind=msg.KIND_MAGICAL
+                    actor.name, "涟漪", t.name, a, damage_type=DamageType.water
                 ),
                 source=DamageSource.skill,
             )
@@ -151,15 +151,14 @@ class CuidingLogic(SpiritLogic):
         heal_amount = actor.max_hp * 0.10
         for ally in ctx.get_active_spirits(player_id):
             self._heal_ally(ctx, player_id, actor, ally, heal_amount)
-        ctx.queue_extra_actions([
-            ExtraActionSlot(
-                actor_id=ally.unique_id,
-                policy_id=CUIDING_DANCE_POLICY_ID,
-                source="dance",
-            )
-            for ally in teammates
-            if ally.is_alive
-        ])
+        for ally in teammates:
+            if ally.is_alive:
+                ctx.trigger_extra_action(
+                    ally,
+                    policy_id=CUIDING_DANCE_POLICY_ID,
+                    source="dance",
+                    front=False,
+                )
         if teammates:
             names = "、".join(ally.name for ally in teammates)
             ctx.add_log(

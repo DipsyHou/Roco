@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ QIUKA = SpiritTemplate(
     id="qiuka",
     name="裘卡",
     description="裘卡",
-    base_stats=BaseStats(hp=500, atk=150, mag_atk=100, def_=110, mag_def=120, speed=150),
+    base_stats=BaseStats(hp=500, attack=150, defense=110, speed=150),
+    elements=(DamageType.poison,),
     passive_skill=PassiveSkillDef(
         id="qiuka_passive",
         name="痛苦",
@@ -25,7 +27,7 @@ QIUKA = SpiritTemplate(
     normal_attack=SkillDef(
         id="qiuka_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）毒属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -34,7 +36,7 @@ QIUKA = SpiritTemplate(
         SkillDef(
             id="qiuka_skill1",
             name="毒刺",
-            description="能量 3。重复5次：对敌方随机目标造成（25%自身物攻）物理伤害，并赋予2层中毒。",
+            description="能量 3。重复5次：对随机一个敌方精灵造成（25%自身攻击）毒属性伤害，并赋予2层中毒。",
             cooldown=0,
             target_type=TargetType.all_enemies,
             energy_cost=3,
@@ -52,8 +54,8 @@ QIUKA = SpiritTemplate(
             id="qiuka_skill3",
             name="毒爪",
             description=(
-                "能量 3。对一名敌方精灵造成（80%自身物攻）物理伤害；"
-                "目标每层中毒使此次伤害倍率+16%自身物攻，最多计入10层；然后使其触发一次中毒效果。"
+                "能量 3。对一名敌方精灵造成（80%自身攻击）毒属性伤害；"
+                "目标每层中毒使此次伤害倍率+16%自身攻击，最多计入10层；然后使其触发一次中毒效果。"
             ),
             cooldown=0,
             target_type=TargetType.single_enemy,

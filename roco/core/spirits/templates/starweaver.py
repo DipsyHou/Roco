@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ STARWEAVER = SpiritTemplate(
     id="starweaver",
     name="黑猫巫师",
     description="黑猫巫师",
-    base_stats=BaseStats(hp=550, atk=100, mag_atk=110, def_=140, mag_def=140, speed=150),
+    base_stats=BaseStats(hp=550, attack=100, defense=140, speed=150),
+    elements=(DamageType.dark,),
     passive_skill=PassiveSkillDef(
         id="starweaver_passive",
         name="共振",
@@ -29,7 +31,7 @@ STARWEAVER = SpiritTemplate(
     normal_attack=SkillDef(
         id="starweaver_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点暗属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -38,7 +40,7 @@ STARWEAVER = SpiritTemplate(
         SkillDef(
             id="starweaver_skill1",
             name="汲取",
-            description="对敌方所有精灵造成（20%自身魔攻）点魔法伤害，然后获得（敌方精灵数量）点秘能。",
+            description="对全体敌方精灵造成（20%自身攻击）点暗属性伤害，然后获得（敌方精灵数量）点秘能。",
             cooldown=0,
             target_type=TargetType.all_enemies,
             energy_cost=0,
@@ -55,7 +57,7 @@ STARWEAVER = SpiritTemplate(
         SkillDef(
             id="starweaver_skill3",
             name="星爆",
-            description="消耗全部秘能，对敌方场上所有精灵造成（（40 + 5 * 消耗秘能数）%自身魔攻）魔法伤害，然后使自己眩晕2回合并获得4点秘能。",
+            description="消耗全部秘能，对全体敌方精灵造成（（40 + 5 * 消耗秘能数）%自身攻击）暗属性伤害，然后使自己眩晕2回合并获得4点秘能。",
             cooldown=0,
             target_type=TargetType.all_enemies,
             energy_cost=-1,

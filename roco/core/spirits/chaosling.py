@@ -5,20 +5,18 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict
 
 from ..battle import messages as msg
-from ..battle.types import BattleLogType, EffectType, StatType, BattleSpirit
+from ..battle.types import BattleLogType, DamageType, EffectType, StatType, BattleSpirit
 from ..battle.utils import (
     is_debuff_effect,
     is_debuff_immune,
     make_effect,
 )
-from ._combat import deal_atk_ratio
+from ._combat import deal_attack_ratio
 from ..spirit_logic import BattleContext, DamageSource, SpiritLogic
 
 STAT_NAMES = {
-    "atk": "物攻",
-    "magAtk": "魔攻",
-    "def": "物防",
-    "magDef": "魔防",
+    "attack": "攻击",
+    "defense": "防御",
     "speed": "速度",
 }
 
@@ -54,10 +52,8 @@ class ChaoslingLogic(SpiritLogic):
 
     def _trigger_chaos_passive(self, ctx: BattleContext, actor: BattleSpirit) -> None:
         stats = [
-            StatType.atk,
-            StatType.mag_atk,
-            StatType.def_,
-            StatType.mag_def,
+            StatType.attack,
+            StatType.defense,
             StatType.speed,
         ]
         rng = ctx.next_rng("chaosling_tide", actor.unique_id)
@@ -103,7 +99,7 @@ class ChaoslingLogic(SpiritLogic):
                 make_effect(
                     EffectType.buff_stat_percent_boost,
                     spirit.unique_id,
-                    stat_type=StatType.atk,
+                    stat_type=StatType.attack,
                     value=0.1,
                     display_name="愿力凝聚",
                 )
@@ -113,7 +109,7 @@ class ChaoslingLogic(SpiritLogic):
                     make_effect(
                         EffectType.debuff_stat_percent_reduction,
                         spirit.unique_id,
-                        stat_type=StatType.def_,
+                        stat_type=StatType.speed,
                         value=0.1,
                         display_name="愿力凝聚",
                     )
@@ -129,7 +125,7 @@ class ChaoslingLogic(SpiritLogic):
                 make_effect(
                     EffectType.buff_stat_percent_boost,
                     spirit.unique_id,
-                    stat_type=StatType.atk,
+                    stat_type=StatType.attack,
                     value=0.1,
                     display_name="愿力凝聚",
                 )
@@ -139,7 +135,7 @@ class ChaoslingLogic(SpiritLogic):
                     make_effect(
                         EffectType.debuff_stat_percent_reduction,
                         spirit.unique_id,
-                        stat_type=StatType.mag_def,
+                        stat_type=StatType.attack,
                         value=0.1,
                         display_name="愿力凝聚",
                     )
@@ -168,7 +164,7 @@ class ChaoslingLogic(SpiritLogic):
             make_effect(
                 EffectType.buff_stat_percent_boost,
                 actor.unique_id,
-                stat_type=StatType.atk,
+                stat_type=StatType.attack,
                 value=0.1,
                 display_name="愿力凝聚",
             )
@@ -178,7 +174,7 @@ class ChaoslingLogic(SpiritLogic):
                 make_effect(
                     EffectType.debuff_stat_percent_reduction,
                     actor.unique_id,
-                    stat_type=StatType.mag_atk,
+                    stat_type=StatType.defense,
                     value=0.1,
                     display_name="愿力凝聚",
                 )
@@ -209,13 +205,13 @@ class ChaoslingLogic(SpiritLogic):
         del action
         opponent_id = ctx.get_opponent_id(player_id)
         for target in ctx.get_active_spirits(opponent_id):
-            deal_atk_ratio(
+            deal_attack_ratio(
                 ctx,
                 actor,
                 target,
                 0.6,
                 lambda a, t=target: msg.skill_damage(
-                    actor.name, "精神风暴", t.name, a
+                    actor.name, "精神风暴", t.name, a, damage_type=DamageType.dragon
                 ),
                 source=DamageSource.skill,
             )
@@ -242,12 +238,18 @@ class ChaoslingLogic(SpiritLogic):
             return
         target = ctx.find_spirit_anywhere(tid)
         if target and target.is_alive and target.owner_id == opponent_id:
-            deal_atk_ratio(
+            deal_attack_ratio(
                 ctx,
                 actor,
                 target,
                 1.5,
-                lambda a: msg.skill_damage(actor.name, "命运逆转", target.name, a),
+                lambda a: msg.skill_damage(
+                    actor.name,
+                    "命运逆转",
+                    target.name,
+                    a,
+                    damage_type=DamageType.dragon,
+                ),
                 source=DamageSource.skill,
             )
 

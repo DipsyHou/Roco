@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict, Optional
 
 from ..battle import messages as msg
-from ..battle.types import BattleLogType, BattleSpirit
+from ..battle.types import BattleLogType, BattleSpirit, DamageType, EffectType
 from ..battle.utils import apply_poison_stacks, get_poison_stacks, process_poison_damage
-from ._combat import deal_atk_ratio, target_enemy
+from ._combat import deal_attack_ratio, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 PAIN_DAMAGE_MULT = 1.25
@@ -56,10 +56,14 @@ class QiukaLogic(SpiritLogic):
         if get_poison_stacks(target) > 0:
             ratio *= PAIN_DAMAGE_MULT
         if skill:
-            describe = lambda a: msg.skill_damage(actor.name, skill, target.name, a)
+            describe = lambda a: msg.skill_damage(
+                actor.name, skill, target.name, a, damage_type=DamageType.poison
+            )
         else:
-            describe = lambda a: msg.physical_hit(actor.name, target.name, a)
-        return deal_atk_ratio(ctx, actor, target, ratio, describe)
+            describe = lambda a: msg.attribute_hit(
+                actor.name, target.name, a, DamageType.poison
+            )
+        return deal_attack_ratio(ctx, actor, target, ratio, describe)
 
     def _add_poison(
         self,
@@ -73,6 +77,15 @@ class QiukaLogic(SpiritLogic):
             return
         if apply_poison_stacks(target, actor.unique_id, stacks):
             total = get_poison_stacks(target)
+            effect = next(
+                (
+                    item
+                    for item in reversed(target.effects)
+                    if item.type == EffectType.debuff_poison
+                    and item.source_id == actor.unique_id
+                ),
+                None,
+            )
             ctx.add_log(
                 BattleLogType.effect_applied,
                 msg.gained_stacks(target.name, stacks, "中毒", total=total),
@@ -80,6 +93,8 @@ class QiukaLogic(SpiritLogic):
                     "sourceId": actor.unique_id,
                     "targetId": target.unique_id,
                     "stacks": stacks,
+                    "effectId": effect.id if effect else None,
+                    "effectType": "debuff_poison",
                 },
             )
 

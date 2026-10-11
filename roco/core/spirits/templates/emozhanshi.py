@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -14,19 +15,20 @@ EMOZHANSHI = SpiritTemplate(
     id="emozhanshi",
     name="恶魔战士",
     description="恶魔战士",
-    base_stats=BaseStats(hp=750, atk=100, mag_atk=100, def_=120, mag_def=130, speed=110),
+    base_stats=BaseStats(hp=700, attack=110, defense=130, speed=120),
+    elements=(DamageType.ice,),
     passive_skill=PassiveSkillDef(
         id="emozhanshi_passive",
         name="肉盾",
         description=(
-            "基于自身物防与魔防之和的8%，提高全体己方精灵（含自身）的物防与魔防；"
+            "基于自身防御的20%，提高全体己方精灵（含自身）的防御；"
             "自身受到的伤害提高50%。"
         ),
     ),
     normal_attack=SkillDef(
         id="emozhanshi_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）冰属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -56,7 +58,7 @@ EMOZHANSHI = SpiritTemplate(
             name="临行留念",
             description=(
                 "固定不消耗能量。目标为全体敌方精灵。对所有目标造成"
-                "（50%自身魔攻+10%自身已损生命）魔法伤害；随后自身直接倒下。"
+                "（50%自身攻击+10%自身已损生命）冰属性伤害；随后自身直接倒下。"
             ),
             cooldown=0,
             target_type=TargetType.all_enemies,

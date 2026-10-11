@@ -64,7 +64,7 @@ def test_submit_action_finishes_battle_when_last_enemy_falls(engine_factory):
     for spirit in engine.get_all_spirits("p2")[1:]:
         spirit.is_alive = False
         spirit.current_hp = 0
-    attacker.base_stats.atk = 9999
+    attacker.base_stats.attack = 9999
     target.current_hp = 1
     attacker.charge = 0
     target.charge = ACTION_GAP

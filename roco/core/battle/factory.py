@@ -30,6 +30,7 @@ def create_battle_spirit(
         effects=[],
         skill_cooldowns={},
         is_alive=True,
+        elements=tuple(template.elements),
     )
     logic = get_spirit_logic(template.id)
     if logic:

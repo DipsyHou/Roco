@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -14,7 +15,8 @@ GULUM = SpiritTemplate(
     id="gulum",
     name="格鲁姆",
     description="格鲁姆",
-    base_stats=BaseStats(hp=800, atk=100, mag_atk=120, def_=110, mag_def=110, speed=100),
+    base_stats=BaseStats(hp=800, attack=120, defense=110, speed=100),
+    elements=(DamageType.grass, DamageType.ground),
     passive_skill=PassiveSkillDef(
         id="gulum_passive",
         name="养分输送",
@@ -27,7 +29,7 @@ GULUM = SpiritTemplate(
     normal_attack=SkillDef(
         id="gulum_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）草属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,

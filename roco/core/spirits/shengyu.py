@@ -126,7 +126,7 @@ class ShengyuLogic(SpiritLogic):
         if not target:
             return
         actor.energy = max(0, (actor.energy or 0) - BLESSING_ENERGY_COST)
-        mag = get_effective_stat(actor, StatType.mag_atk)
+        mag = get_effective_stat(actor, StatType.attack)
         heal = apply_heal(target, mag * BLESSING_HEAL_RATIO)
         if heal > 0:
             ctx.add_log(

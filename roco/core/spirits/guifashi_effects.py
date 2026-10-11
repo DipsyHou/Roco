@@ -56,7 +56,7 @@ class GuifashiShowEffectsMixin:
         card: str,
     ) -> None:
         opponent_id = ctx.get_opponent_id(player_id)
-        mag = get_effective_stat(actor, StatType.mag_atk)
+        mag = get_effective_stat(actor, StatType.attack)
         state = get_cards(actor)
         battle_id, spirit_id = card_ids(ctx, actor)
         card_name = label(card)
@@ -108,7 +108,7 @@ class GuifashiShowEffectsMixin:
                     target,
                     actor.unique_id,
                     effect_type=EffectType.debuff_stat_percent_reduction,
-                    stats=(StatType.atk, StatType.mag_atk, StatType.def_, StatType.mag_def),
+                    stats=(StatType.attack, StatType.defense),
                     value=0.09,
                     display_name=card_name,
                 )
@@ -135,7 +135,7 @@ class GuifashiShowEffectsMixin:
                     target,
                     actor.unique_id,
                     effect_type=EffectType.buff_stat_percent_boost,
-                    stats=(StatType.atk, StatType.mag_atk),
+                    stats=(StatType.attack,),
                     value=0.18,
                     display_name=card_name,
                 )
@@ -151,7 +151,7 @@ class GuifashiShowEffectsMixin:
                     target,
                     actor.unique_id,
                     effect_type=EffectType.buff_stat_percent_boost,
-                    stats=(StatType.def_, StatType.mag_def),
+                    stats=(StatType.defense,),
                     value=0.18,
                     display_name=card_name,
                 )
@@ -209,11 +209,11 @@ class GuifashiShowEffectsMixin:
         raw: float,
         card_name: str,
     ) -> int:
-        dmg = calculate_damage(raw, DamageType.magical, actor, target)
+        dmg = calculate_damage(raw, DamageType.dark, actor, target)
         actual = apply_damage(target, dmg, ctx=ctx)
         ctx.add_log(
             BattleLogType.damage_dealt,
-            msg.damage(card_name, target.name, actual, kind=msg.KIND_MAGICAL),
+            msg.damage(card_name, target.name, actual, damage_type=DamageType.dark),
             msg.data_damage(actor.unique_id, target.unique_id, actual),
         )
         ctx.notify_damage_taken(actor, target, actual, source=DamageSource.skill)

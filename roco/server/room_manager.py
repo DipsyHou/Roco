@@ -146,6 +146,7 @@ class Room:
                 player2_id=PLAYER_IDS[1],
                 p1_templates=p1_tpls,
                 p2_templates=p2_tpls,
+                presentation_windows=True,
             )
             self.status = "battling"
             self._sync_turn_and_dead_skips()
@@ -198,6 +199,37 @@ class Room:
         import asyncio
 
         result = await asyncio.to_thread(self.process_submit_action_sync, slot, action_raw)
+        if result.get("type") != "error" and self.engine:
+            await self.push_state()
+        return result
+
+    def process_advance_presentation_sync(
+        self, slot: str, token: int
+    ) -> Dict[str, Any]:
+        with self._lock:
+            if not self.engine:
+                return err("战斗尚未开始")
+            if self.engine.state.phase == BattlePhase.finished:
+                return err("战斗已结束")
+            player_id = SLOT_TO_PLAYER[slot]
+            if self.engine.state.presentation_owner_id != player_id:
+                return err("当前呈现阶段由另一方推进")
+            ok = self.engine.advance_presentation(token)
+            self._sync_turn_and_dead_skips()
+            return {
+                "type": MSG_ACTION_RESULT,
+                "ok": ok,
+                "message": "" if ok else "呈现阶段已推进或令牌已失效",
+            }
+
+    async def handle_advance_presentation(
+        self, slot: str, token: int
+    ) -> Dict[str, Any]:
+        import asyncio
+
+        result = await asyncio.to_thread(
+            self.process_advance_presentation_sync, slot, token
+        )
         if result.get("type") != "error" and self.engine:
             await self.push_state()
         return result

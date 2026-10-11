@@ -5,17 +5,18 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict, List, Optional
 
 from ..battle import messages as msg
-from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
+from ..battle.extra_action import ExtraActionUI, register_policy
 from ..battle.types import (
     ActionType,
     BattleLogType,
     BattleSpirit,
+    DamageType,
     EffectType,
     StatType,
     TargetType,
 )
 from ..battle.utils import apply_burn_stacks, make_effect
-from ._combat import deal_atk_ratio, target_ally, target_enemy
+from ._combat import deal_attack_ratio, target_ally, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "tengjiao"
@@ -94,12 +95,12 @@ class TengjiaoLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.5,
-            lambda a: msg.physical_hit(actor.name, target.name, a),
+            lambda a: msg.attribute_hit(actor.name, target.name, a, DamageType.fire),
         )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -198,17 +199,15 @@ class TengjiaoLogic(SpiritLogic):
         before = huoli_stacks(spirit)
         after = before + amount
         set_huoli(spirit, after)
-        slots: List[ExtraActionSlot] = []
         pending = pending_free(spirit)
         for thr, dish in HUOLI_THRESHOLDS:
             if before < thr <= after:
                 pending.append(dish)
-                slots.append(
-                    ExtraActionSlot(
-                        actor_id=spirit.unique_id,
-                        policy_id=FREE_POLICY_ID,
-                        source=f"tengjiao_free:{dish}",
-                    )
+                ctx.trigger_extra_action(
+                    spirit,
+                    policy_id=FREE_POLICY_ID,
+                    source=f"tengjiao_free:{dish}",
+                    front=False,
                 )
                 ctx.add_log(
                     BattleLogType.passive_triggered,
@@ -216,8 +215,6 @@ class TengjiaoLogic(SpiritLogic):
                     {"targetId": spirit.unique_id, "threshold": thr, "dish": dish},
                 )
         set_pending_free(spirit, pending)
-        if slots:
-            ctx.queue_extra_actions(slots)
 
     def _free_serve_slot(self, ctx: BattleContext, actor: BattleSpirit):
         """免费出锅槽：仅在「额外行动期」结算时有效。
@@ -255,7 +252,7 @@ class TengjiaoLogic(SpiritLogic):
                 for e in actor.effects
                 if e.type == EffectType.buff_stat_percent_boost
                 and e.display_name == "浇油"
-                and e.stat_type == StatType.atk
+                and e.stat_type == StatType.attack
             ),
             None,
         )
@@ -267,7 +264,7 @@ class TengjiaoLogic(SpiritLogic):
                 make_effect(
                     EffectType.buff_stat_percent_boost,
                     actor.unique_id,
-                    stat_type=StatType.atk,
+                    stat_type=StatType.attack,
                     value=OIL_ATK_BONUS,
                     duration_turns=OIL_DURATION,
                     display_name="浇油",

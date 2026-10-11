@@ -4,7 +4,7 @@ All ``battle_log`` entry text should use these templates (engine + spirits).
 Status-bar / effect display strings stay in ``effect_display.py``.
 
 Templates (no spirit-specific copy):
-- Damage: ``damage`` / ``skill_damage`` / ``physical_hit`` / ``magical_hit`` / ``fixed_hit``
+- Damage: ``damage`` / ``skill_damage`` / ``attribute_hit`` / ``fixed_hit``
 - Heal: ``heal`` / ``heal_self``
 - HP cost: ``hp_cost``
 - Defeat: ``defeated``
@@ -26,6 +26,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from .enums import DamageType
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -33,9 +35,25 @@ from typing import Any, Dict, Optional
 BATTLE_START = "战斗开始！"
 ACTION_EXCEPTION = "行动执行时发生了异常，已跳过。"
 
-KIND_PHYSICAL = "物理"
-KIND_MAGICAL = "魔法"
-KIND_FIXED = "固定"
+_DAMAGE_KIND_NAMES = {
+    DamageType.fire: "火属性",
+    DamageType.water: "水属性",
+    DamageType.grass: "草属性",
+    DamageType.ground: "地属性",
+    DamageType.wind: "风属性",
+    DamageType.physical: "物理属性",
+    DamageType.ice: "冰属性",
+    DamageType.electric: "电属性",
+    DamageType.poison: "毒属性",
+    DamageType.light: "光属性",
+    DamageType.dark: "暗属性",
+    DamageType.dragon: "龙属性",
+    DamageType.fixed: "固定",
+}
+
+
+def damage_kind(damage_type: DamageType) -> str:
+    return _DAMAGE_KIND_NAMES[damage_type]
 
 
 # ---------------------------------------------------------------------------
@@ -138,10 +156,11 @@ def damage(
     target: str,
     amount: int,
     *,
-    kind: str = KIND_PHYSICAL,
+    damage_type: DamageType,
     skill: Optional[str] = None,
     critical: bool = False,
 ) -> str:
+    kind = damage_kind(damage_type)
     if skill:
         text = f"{attacker} 的{skill}对 {target} 造成了 {amount} 点{kind}伤害！"
     else:
@@ -156,10 +175,11 @@ def mark_critical(message: str) -> str:
     return f"暴击！{message}"
 
 
-def physical_hit(
+def attribute_hit(
     attacker_name: str,
     target_name: str,
     amount: int,
+    damage_type: DamageType,
     *,
     critical: bool = False,
 ) -> str:
@@ -167,23 +187,7 @@ def physical_hit(
         attacker_name,
         target_name,
         amount,
-        kind=KIND_PHYSICAL,
-        critical=critical,
-    )
-
-
-def magical_hit(
-    attacker_name: str,
-    target_name: str,
-    amount: int,
-    *,
-    critical: bool = False,
-) -> str:
-    return damage(
-        attacker_name,
-        target_name,
-        amount,
-        kind=KIND_MAGICAL,
+        damage_type=damage_type,
         critical=critical,
     )
 
@@ -199,7 +203,7 @@ def fixed_hit(
         attacker_name,
         target_name,
         amount,
-        kind=KIND_FIXED,
+        damage_type=DamageType.fixed,
         critical=critical,
     )
 
@@ -210,11 +214,16 @@ def skill_damage(
     target: str,
     amount: int,
     *,
-    kind: str = KIND_PHYSICAL,
+    damage_type: DamageType,
     critical: bool = False,
 ) -> str:
     return damage(
-        attacker, target, amount, kind=kind, skill=skill, critical=critical
+        attacker,
+        target,
+        amount,
+        damage_type=damage_type,
+        skill=skill,
+        critical=critical,
     )
 
 
@@ -369,7 +378,7 @@ def transformed_card(name: str, old: str, new: str) -> str:
 # ---------------------------------------------------------------------------
 
 def burn_tick(target_name: str, source_name: str, damage: int) -> str:
-    return f"{target_name} 因 {source_name} 的灼烧受到 {damage} 点物理伤害！"
+    return f"{target_name} 因 {source_name} 的灼烧受到 {damage} 点火属性伤害！"
 
 
 def burn_weakened(target_name: str) -> str:
@@ -377,7 +386,7 @@ def burn_weakened(target_name: str) -> str:
 
 
 def poison_tick(target_name: str, damage: int) -> str:
-    return f"{target_name} 因中毒受到 {damage} 点固伤！"
+    return f"{target_name} 因中毒受到 {damage} 点毒属性伤害！"
 
 
 def poison_cleared(target_name: str) -> str:
@@ -385,7 +394,7 @@ def poison_cleared(target_name: str) -> str:
 
 
 def parasite_tick(target_name: str, source_name: str, damage: int) -> str:
-    return f"{target_name} 因 {source_name} 的寄生受到 {damage} 点魔法伤害！"
+    return f"{target_name} 因 {source_name} 的寄生受到 {damage} 点草属性伤害！"
 
 
 def parasite_lifesteal(source_name: str, heal: int) -> str:

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ HUXIAN = SpiritTemplate(
     id="huxian",
     name="尖嘴狐仙",
     description="尖嘴狐仙",
-    base_stats=BaseStats(hp=500, atk=120, mag_atk=100, def_=140, mag_def=150, speed=140),
+    base_stats=BaseStats(hp=500, attack=120, defense=150, speed=140),
+    elements=(DamageType.fire, DamageType.poison),
     passive_skill=PassiveSkillDef(
         id="huxian_passive",
         name="内爆",
@@ -29,7 +31,7 @@ HUXIAN = SpiritTemplate(
     normal_attack=SkillDef(
         id="huxian_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点火属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -38,7 +40,7 @@ HUXIAN = SpiritTemplate(
         SkillDef(
             id="huxian_skill1",
             name="烙印",
-            description="对一个敌方精灵造成（50%自身物攻）点物理伤害，然后赋予其5层灼烧。",
+            description="对一个敌方精灵造成（50%自身攻击）点火属性伤害，然后赋予其5层灼烧。",
             cooldown=0,
             target_type=TargetType.single_enemy,
             energy_cost=2,

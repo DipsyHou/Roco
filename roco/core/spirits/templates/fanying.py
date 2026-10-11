@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ FANYING = SpiritTemplate(
     id="fanying",
     name="凡鹰",
     description="凡鹰",
-    base_stats=BaseStats(hp=550, atk=130, mag_atk=100, def_=110, mag_def=130, speed=140),
+    base_stats=BaseStats(hp=550, attack=130, defense=120, speed=140),
+    elements=(DamageType.wind,),
     passive_skill=PassiveSkillDef(
         id="fanying_passive",
         name="破风",
@@ -25,7 +27,7 @@ FANYING = SpiritTemplate(
     normal_attack=SkillDef(
         id="fanying_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点风属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -34,7 +36,7 @@ FANYING = SpiritTemplate(
         SkillDef(
             id="fanying_skill1",
             name="气旋",
-            description="能量 1。对一名敌方精灵造成（80%自身物攻）点物理伤害并降低15%速度（1回合）；对相邻槽位敌方造成（40%自身物攻）点物理伤害。",
+            description="能量 1。对一名敌方精灵造成（80%自身攻击）点风属性伤害并降低15%速度，持续1回合；对相邻槽位敌方造成（40%自身攻击）点风属性伤害。",
             cooldown=0,
             target_type=TargetType.single_enemy,
             energy_cost=1,

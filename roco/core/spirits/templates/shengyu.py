@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ SHENGYU = SpiritTemplate(
     id="shengyu",
     name="圣域祭司",
     description="圣域祭司",
-    base_stats=BaseStats(hp=500, atk=110, mag_atk=140, def_=130, mag_def=150, speed=100),
+    base_stats=BaseStats(hp=500, attack=140, defense=150, speed=100),
+    elements=(DamageType.dark, DamageType.light),
     passive_skill=PassiveSkillDef(
         id="shengyu_passive",
         name="月盈",
@@ -29,7 +31,7 @@ SHENGYU = SpiritTemplate(
     normal_attack=SkillDef(
         id="shengyu_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点暗属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -40,7 +42,7 @@ SHENGYU = SpiritTemplate(
             name="圣洁",
             description=(
                 "秘能不少于2点时可以使用。目标为一个己方精灵。"
-                "消耗2点秘能，为目标回复（60%自身魔攻）点血量；"
+                "消耗2点秘能，为目标回复（60%自身攻击）点血量；"
                 "若目标拥有秘能，则额外使其回复1点秘能。"
             ),
             cooldown=0,

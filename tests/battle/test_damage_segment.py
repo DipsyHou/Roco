@@ -42,8 +42,8 @@ def test_lifesteal_uses_pre_shield_segment():
     )
     actor = by_template(engine, P1, "xiaozong")
     defender = by_template(engine, P2, "qiuka")
-    actor.base_stats.mag_atk = 200
-    defender.base_stats.mag_def = 100
+    actor.base_stats.attack = 200
+    defender.base_stats.defense = 100
     actor.current_hp = 500
     actor.max_hp = 1000
     defender.effects.append(
@@ -55,7 +55,7 @@ def test_lifesteal_uses_pre_shield_segment():
         )
     )
 
-    segment = calculate_damage(100, DamageType.magical, actor, defender)
+    segment = calculate_damage(100, DamageType.light, actor, defender)
     before_hp = actor.current_hp
     execute_damage_segment(
         engine,

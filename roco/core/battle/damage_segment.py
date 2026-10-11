@@ -91,6 +91,7 @@ def execute_damage_segment(
     segment_amount: int,
     *,
     source: DamageSource = DamageSource.other,
+    dot_kind: Optional[str] = None,
     describe: Optional[DamageMessage] = None,
     critical: bool = False,
     log_crit: Optional[Callable[[], None]] = None,
@@ -146,7 +147,13 @@ def execute_damage_segment(
 
     for app, reported in applied:
         if app.emit_damage_event and reported > 0:
-            ctx.notify_damage_taken(attacker, app.target, reported, source=source)
+            ctx.notify_damage_taken(
+                attacker,
+                app.target,
+                reported,
+                source=source,
+                dot_kind=dot_kind,
+            )
         if not app.target.is_alive:
             from . import messages as battle_msg
 

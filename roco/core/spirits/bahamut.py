@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict, List, Optional
 
 from ..battle import messages as msg
-from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
+from ..battle.extra_action import ExtraActionUI, register_policy
 from ..battle.events import DamageEvent
 from ..battle.types import (
     ActionType,
@@ -126,12 +126,10 @@ class BahamutLogic(SpiritLogic):
             msg.passive(actor.name, "招架"),
             {"targetId": actor.unique_id, "zhaojiaStacks": zhaojia},
         )
-        ctx.queue_extra_actions(
-            [ExtraActionSlot(
-                actor_id=actor.unique_id,
-                policy_id=ZHAOJIA_POLICY_ID,
-                source="bahamut_zhaojia",
-            )],
+        ctx.trigger_extra_action(
+            actor,
+            policy_id=ZHAOJIA_POLICY_ID,
+            source="bahamut_zhaojia",
             front=True,
         )
 
@@ -223,7 +221,7 @@ class BahamutLogic(SpiritLogic):
             return True
         self._try_apply_route_mark(ctx, actor, target)
         self._deal_physical(
-            ctx, actor, target, get_effective_stat(actor, StatType.atk) * 0.5,
+            ctx, actor, target, get_effective_stat(actor, StatType.attack) * 0.5,
             "普通攻击",
         )
         actor.last_attack_target_id = target.unique_id
@@ -243,7 +241,7 @@ class BahamutLogic(SpiritLogic):
         if not target:
             return
         self._try_apply_route_mark(ctx, actor, target)
-        atk = get_effective_stat(actor, StatType.atk)
+        atk = get_effective_stat(actor, StatType.attack)
         for i in range(3):
             if not target.is_alive:
                 break
@@ -254,7 +252,11 @@ class BahamutLogic(SpiritLogic):
                 atk * 0.50,
                 DamageType.physical,
                 lambda a, n=i + 1: msg.skill_damage(
-                    actor.name, f"疾风拳第{n}段", target.name, a
+                    actor.name,
+                    f"疾风拳第{n}段",
+                    target.name,
+                    a,
+                    damage_type=DamageType.physical,
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
@@ -286,7 +288,7 @@ class BahamutLogic(SpiritLogic):
             make_effect(
                 EffectType.buff_stat_percent_boost,
                 actor.unique_id,
-                stat_type=StatType.atk,
+                stat_type=StatType.attack,
                 value=0.20,
                 display_name="龙之舞",
             )
@@ -321,7 +323,7 @@ class BahamutLogic(SpiritLogic):
         if not target:
             return
         self._try_apply_route_mark(ctx, actor, target)
-        atk = get_effective_stat(actor, StatType.atk)
+        atk = get_effective_stat(actor, StatType.attack)
         for i in range(stacks):
             if not target.is_alive:
                 break
@@ -332,7 +334,11 @@ class BahamutLogic(SpiritLogic):
                 atk * 0.30,
                 DamageType.physical,
                 lambda a, n=i + 1: msg.skill_damage(
-                    actor.name, f"截拳第{n}段", target.name, a
+                    actor.name,
+                    f"截拳第{n}段",
+                    target.name,
+                    a,
+                    damage_type=DamageType.physical,
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
@@ -354,7 +360,7 @@ class BahamutLogic(SpiritLogic):
         if not target:
             return
         self._try_apply_route_mark(ctx, actor, target)
-        atk = get_effective_stat(actor, StatType.atk)
+        atk = get_effective_stat(actor, StatType.attack)
         opponent_id = ctx.get_opponent_id(player_id)
 
         deal_damage(
@@ -363,7 +369,9 @@ class BahamutLogic(SpiritLogic):
             target,
             atk * 0.30,
             DamageType.physical,
-            lambda a: msg.skill_damage(actor.name, "反扑", target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name, "反扑", target.name, a, damage_type=DamageType.physical
+            ),
             source=DamageSource.skill,
             crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
         )
@@ -383,7 +391,11 @@ class BahamutLogic(SpiritLogic):
                 atk * 0.30,
                 DamageType.physical,
                 lambda a, n=i + 1, t=bounce_target: msg.skill_damage(
-                    actor.name, f"反扑弹射第{n}段", t.name, a
+                    actor.name,
+                    f"反扑弹射第{n}段",
+                    t.name,
+                    a,
+                    damage_type=DamageType.physical,
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
@@ -432,7 +444,9 @@ class BahamutLogic(SpiritLogic):
             target,
             raw,
             DamageType.physical,
-            lambda a: msg.skill_damage(actor.name, verb, target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name, verb, target.name, a, damage_type=DamageType.physical
+            ),
             source=DamageSource.attack,
             crit_rng=ctx.next_rng("bahamut_crit", actor.unique_id),
         )

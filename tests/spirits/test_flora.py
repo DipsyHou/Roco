@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from tests.conftest import P1, P2, by_template, cast_skill, effects_of
-from roco.core.battle.effects import make_effect
+from roco.core.battle.effects import apply_fanji, apply_tianhuo_stacks, make_effect
 from roco.core.battle.events import DamageSource
 from roco.core.battle.utils import apply_damage
 from roco.core.battle.types import EffectType, StatType
@@ -25,6 +25,48 @@ def test_heal_self_purges_one_debuff(engine_factory):
 
     assert flora.current_hp > flora.max_hp - 100
     assert not effects_of(flora, EffectType.debuff_stat_percent_reduction)
+
+
+def test_heal_self_selects_tianhuo_then_fails_to_purge_it_under_fanji(
+    engine_factory, monkeypatch
+):
+    engine = engine_factory(
+        ("nanluzhuque", "flora", "clawdragon", "chaosling", "starweaver"),
+        ("qiuka", "fanying", "tita", "guifashi", "flora"),
+    )
+    zhuque = by_template(engine, P1, "nanluzhuque")
+    flora = by_template(engine, P2, "flora")
+    flora.current_hp -= 100
+    assert apply_fanji(flora, zhuque.unique_id)
+    assert apply_tianhuo_stacks(flora, zhuque.unique_id, 15)
+    tianhuo = effects_of(flora, EffectType.debuff_tianhuo)[0]
+
+    class SelectTianhuo:
+        def choice(self, effects):
+            assert tianhuo in effects
+            return tianhuo
+
+    original_next_rng = engine.next_rng
+    monkeypatch.setattr(
+        engine,
+        "next_rng",
+        lambda domain, *parts: (
+            SelectTianhuo()
+            if domain == "flora_cleanse"
+            else original_next_rng(domain, *parts)
+        ),
+    )
+    removed_before = sum(
+        entry.type.value == "effectRemoved" for entry in engine.state.battle_log
+    )
+
+    assert cast_skill(engine, flora, "flora_skill1", flora)
+
+    assert effects_of(flora, EffectType.debuff_fanji)
+    assert effects_of(flora, EffectType.debuff_tianhuo)
+    assert sum(
+        entry.type.value == "effectRemoved" for entry in engine.state.battle_log
+    ) == removed_before
 
 
 def test_pain_relief_grants_duration_mitigation(engine_factory):

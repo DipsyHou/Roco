@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ XIAOZONG = SpiritTemplate(
     id="xiaozong",
     name="小琮",
     description="以灵气护体、濒死通灵的灵珏之灵。",
-    base_stats=BaseStats(hp=600, atk=110, mag_atk=140, def_=120, mag_def=130, speed=110),
+    base_stats=BaseStats(hp=500, attack=140, defense=120, speed=110),
+    elements=(DamageType.wind, DamageType.light),
     passive_skill=PassiveSkillDef(
         id="xiaozong_passive",
         name="灵珏御光",
@@ -31,8 +33,8 @@ XIAOZONG = SpiritTemplate(
         id="xiaozong_normal",
         name="普通攻击",
         description=(
-            "对一个敌方精灵造成（50%自身物攻）点物理伤害。"
-            "通灵状态：消耗30层灵气，改为造成（100%自身魔攻）点魔法伤害。"
+            "对一个敌方精灵造成（50%自身攻击）点风属性伤害。"
+            "通灵状态：消耗30层灵气，改为造成（100%自身攻击）点风属性伤害。"
         ),
         cooldown=0,
         target_type=TargetType.single_enemy,
@@ -43,8 +45,8 @@ XIAOZONG = SpiritTemplate(
             id="xiaozong_skill1",
             name="日月齐光",
             description=(
-                "能量 3。对一个敌方场上精灵造成（80%自身魔攻）点魔法伤害，对其相邻精灵造成（40%自身魔攻）点魔法伤害，并赋予自身30层灵气。"
-                "通灵状态：消耗30层灵气，主目标改为（120%自身魔攻），相邻改为（60%自身魔攻），不再赋予灵气。"
+                "能量 3。对一个敌方场上精灵造成（80%自身攻击）点光属性伤害，对其相邻精灵造成（40%自身攻击）点光属性伤害，并赋予自身30层灵气。"
+                "通灵状态：消耗30层灵气，主目标改为（120%自身攻击），相邻改为（60%自身攻击），不再赋予灵气。"
             ),
             cooldown=0,
             target_type=TargetType.single_enemy,
@@ -55,7 +57,7 @@ XIAOZONG = SpiritTemplate(
             id="xiaozong_skill2",
             name="华采若英",
             description=(
-                "能量 3。对一个敌方场上精灵造成（80%自身魔攻+20%自身灵气层数）点魔法伤害，并赋予自身30层灵气。"
+                "能量 3。对一个敌方场上精灵造成（80%自身攻击+20%自身灵气层数）点光属性伤害，并赋予自身30层灵气。"
                 "通灵状态：消耗30层灵气，造成同样伤害并回复（30%此伤害值）点血量，不再赋予灵气。"
             ),
             cooldown=0,

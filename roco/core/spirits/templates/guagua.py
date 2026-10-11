@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -14,7 +15,8 @@ GUAGUA = SpiritTemplate(
     id="guagua",
     name="呱呱",
     description="呱呱",
-    base_stats=BaseStats(hp=600, atk=120, mag_atk=120, def_=120, mag_def=120, speed=120),
+    base_stats=BaseStats(hp=600, attack=120, defense=120, speed=120),
+    elements=(DamageType.physical,),
     passive_skill=PassiveSkillDef(
         id="guagua_passive",
         name="必有我师",
@@ -27,7 +29,7 @@ GUAGUA = SpiritTemplate(
     normal_attack=SkillDef(
         id="guagua_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）物理属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -37,7 +39,7 @@ GUAGUA = SpiritTemplate(
             id="guagua_learned",
             name="学会了！",
             description=(
-                "特殊技能。对一个敌方精灵造成（48%自身物攻）物理伤害；"
+                "特殊技能。对一个敌方精灵造成（48%自身攻击）物理属性伤害；"
                 "使“师傅”获得自身“必有我师”的双攻、暴击率和暴击效果提升效果，持续2回合。"
             ),
             cooldown=0,
@@ -61,7 +63,7 @@ GUAGUA = SpiritTemplate(
             id="guagua_skill2",
             name="百家拳法",
             description=(
-                "能量 2。对一个敌方精灵造成（100%自身物攻）物理伤害；"
+                "能量 2。对一个敌方精灵造成（100%自身攻击）物理属性伤害；"
                 "若场上存在师傅，使师傅对目标造成一段（48%师傅双攻的较高值）对应属性附加伤害。"
             ),
             cooldown=0,

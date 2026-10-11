@@ -38,7 +38,8 @@ def test_lingqi_cap_locked_at_battle_start(engine_factory):
 
 def _calc_physical(engine, xz, amount: int) -> int:
     attacker = engine.get_active_spirits(P2)[0]
-    xz.base_stats.def_ = 100
+    xz.base_stats.defense = 100
+    xz.elements = ()
     return calculate_damage(amount, DamageType.physical, attacker, xz)
 
 
@@ -189,13 +190,13 @@ def test_tongling_normal_attack_below_thirty_uses_tongling_version(engine_factor
     assert get_lingqi_stacks(xz) == 0
     dealt = hp_before - enemy.current_hp
     expected_mag = calculate_damage(
-        get_effective_stat(xz, StatType.mag_atk) * 1.0,
-        DamageType.magical,
+        get_effective_stat(xz, StatType.attack) * 1.0,
+        DamageType.wind,
         xz,
         enemy,
     )
     expected_phys = calculate_damage(
-        get_effective_stat(xz, StatType.atk) * 0.5,
+        get_effective_stat(xz, StatType.attack) * 0.5,
         DamageType.physical,
         xz,
         enemy,
@@ -215,8 +216,8 @@ def test_tongling_normal_attack_zero_lingqi_still_tongling(engine_factory):
     assert get_lingqi_stacks(xz) == 0
     dealt = hp_before - enemy.current_hp
     expected_mag = calculate_damage(
-        get_effective_stat(xz, StatType.mag_atk) * 1.0,
-        DamageType.magical,
+        get_effective_stat(xz, StatType.attack) * 1.0,
+        DamageType.wind,
         xz,
         enemy,
     )

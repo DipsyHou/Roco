@@ -1,12 +1,12 @@
 """恶魔战士 — 肉盾 / 血墙 / 狂宴 / 临行留念。
 
-- 肉盾（被动）：开局给自身挂“肉盾”状态。基于自身（物防+魔防）之和的 8%，为全队（含自身）
-  的物防与魔防各提供固定加成——这是一类「转化」，其底数排除转化类加成，故不会二次转化 /
+- 肉盾（被动）：开局给自身挂“肉盾”状态。基于自身防御的 20%，为全队（含自身）
+  提供固定防御加成——这是一类「转化」，其底数排除转化类加成，故不会二次转化 /
   递归（见 stats.py::_conversion_flat_bonus 与 docs/mechanics.md 第 8 节）；同时使自身
   受到的伤害提高 50%（经 get_damage_reduction 注入伤害管线）。
-- 血墙：直接消耗 10% 最大生命（不视为受击、至少保留 1 点），获得可重置的双防提升。
+- 血墙：直接消耗 10% 最大生命（不视为受击、至少保留 1 点），获得可重置的防御提升。
 - 狂宴：回复已损生命的 50%。
-- 临行留念：对全体敌人造成魔法伤害（按施放瞬间当前生命计），随后自身直接倒下（触发 on_death）。
+- 临行留念：对全体敌人造成冰属性伤害（按施放瞬间当前生命计），随后自身直接倒下（触发 on_death）。
 """
 
 from __future__ import annotations
@@ -28,13 +28,13 @@ from ._combat import deal_damage, deal_heal
 from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "emozhanshi"
-ROUDUN_RATIO = 0.08
+ROUDUN_RATIO = 0.20
 ROUDUN_TAKEN_BOOST = 0.50
 XUEQIANG_TAG = "emozhanshi_xueqiang"
 XUEQIANG_COST_RATIO = 0.10
 XUEQIANG_DEF_BONUS = 0.50
 XUEQIANG_DURATION = 4
-KUANGYAN_HEAL_RATIO = 0.33
+KUANGYAN_HEAL_RATIO = 0.50
 LINXING_MAG_RATIO = 0.50
 LINXING_HP_RATIO = 0.10
 
@@ -74,6 +74,13 @@ class EmozhanshiLogic(SpiritLogic):
             return 0.0
         return -ROUDUN_TAKEN_BOOST if _has_effect(spirit, EffectType.state_roudun) else 0.0
 
+    def get_incoming_damage_reduction(
+        self, spirit: BattleSpirit, damage_type: DamageType
+    ) -> float:
+        if damage_type != DamageType.fixed:
+            return 0.0
+        return self.get_damage_reduction(spirit)
+
     # --- skills ---
 
     def _skill_xueqiang(
@@ -87,7 +94,7 @@ class EmozhanshiLogic(SpiritLogic):
         cost = int(actor.max_hp * XUEQIANG_COST_RATIO)
         actor.current_hp = max(1, actor.current_hp - cost)
         actor.effects = [e for e in actor.effects if e.effect_tag != XUEQIANG_TAG]
-        for stat in (StatType.def_, StatType.mag_def):
+        for stat in (StatType.defense,):
             actor.effects.append(
                 make_effect(
                     EffectType.buff_stat_percent_boost,
@@ -132,7 +139,7 @@ class EmozhanshiLogic(SpiritLogic):
         del action
         missing_hp = max(0, actor.max_hp - actor.current_hp)
         raw = (
-            get_effective_stat(actor, StatType.mag_atk) * LINXING_MAG_RATIO
+            get_effective_stat(actor, StatType.attack) * LINXING_MAG_RATIO
             + missing_hp * LINXING_HP_RATIO
         )
         opponent_id = ctx.get_opponent_id(player_id)
@@ -145,9 +152,9 @@ class EmozhanshiLogic(SpiritLogic):
                 actor,
                 target,
                 raw,
-                DamageType.magical,
+                DamageType.ice,
                 lambda a, t=target: msg.skill_damage(
-                    actor.name, "临行留念", t.name, a, kind=msg.KIND_MAGICAL
+                    actor.name, "临行留念", t.name, a, damage_type=DamageType.ice
                 ),
                 source=DamageSource.skill,
                 crit_rng=ctx.next_rng("emozhanshi_linxing_crit", actor.unique_id, target.unique_id),

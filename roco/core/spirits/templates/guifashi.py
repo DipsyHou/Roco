@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ GUIFASHI = SpiritTemplate(
     id="guifashi",
     name="诡法师",
     description="以牌库与额外行动征战的策士。",
-    base_stats=BaseStats(hp=600, atk=100, mag_atk=130, def_=130, mag_def=130, speed=110),
+    base_stats=BaseStats(hp=600, attack=130, defense=130, speed=120),
+    elements=(DamageType.dark,),
     passive_skill=PassiveSkillDef(
         id="guifashi_passive",
         name="塔罗",
@@ -25,7 +27,7 @@ GUIFASHI = SpiritTemplate(
     normal_attack=SkillDef(
         id="guifashi_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点暗属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,

@@ -25,7 +25,10 @@ from ..battle.utils import (
     apply_parasite_stacks,
     apply_poison_stacks,
     calculate_damage,
+    get_burn_effects,
     get_effective_stat,
+    get_parasite_effects,
+    get_poison_effect,
     get_poison_stacks,
     get_total_parasite_stacks,
     trigger_burn_damage,
@@ -128,48 +131,25 @@ def deal_damage(
     )
 
 
-def deal_atk_ratio(
+def deal_attack_ratio(
     ctx,
     actor: BattleSpirit,
     target: BattleSpirit,
     ratio: float,
     describe: DamageMessage,
     *,
+    damage_type: Optional[DamageType] = None,
     source: DamageSource = DamageSource.attack,
     crit_rng=None,
 ) -> int:
-    """Physical damage equal to ``atk * ratio``."""
-    atk = get_effective_stat(actor, StatType.atk)
+    """Attribute damage equal to ``attack * ratio``."""
+    atk = get_effective_stat(actor, StatType.attack)
     return deal_damage(
         ctx,
         actor,
         target,
         atk * ratio,
-        DamageType.physical,
-        describe,
-        source=source,
-        crit_rng=crit_rng,
-    )
-
-
-def deal_mag_ratio(
-    ctx,
-    actor: BattleSpirit,
-    target: BattleSpirit,
-    ratio: float,
-    describe: DamageMessage,
-    *,
-    source: DamageSource = DamageSource.skill,
-    crit_rng=None,
-) -> int:
-    """Magical damage equal to ``mag_atk * ratio``."""
-    mag = get_effective_stat(actor, StatType.mag_atk)
-    return deal_damage(
-        ctx,
-        actor,
-        target,
-        mag * ratio,
-        DamageType.magical,
+        damage_type or actor.elements[0],
         describe,
         source=source,
         crit_rng=crit_rng,
@@ -212,10 +192,24 @@ def grant_burn(
     from ..battle import messages as battle_msg
 
     text = log_message or battle_msg.gained_stacks(target.name, stacks, "灼烧")
+    effect = next(
+        (
+            item
+            for item in reversed(get_burn_effects(target))
+            if item.source_id == actor.unique_id
+        ),
+        None,
+    )
     ctx.add_log(
         BattleLogType.effect_applied,
         text,
-        {"targetId": target.unique_id, "sourceId": actor.unique_id, "stacks": stacks},
+        battle_msg.data_effect(
+            target.unique_id,
+            actor.unique_id,
+            effectId=effect.id if effect else None,
+            effectType="debuff_burn",
+            stacks=stacks,
+        ),
     )
     if target.is_alive and get_poison_stacks(target) > 0:
         trigger_poison_damage(ctx, target)
@@ -241,10 +235,24 @@ def grant_parasite(
     text = log_message or battle_msg.gained_stacks(
         target.name, stacks, "寄生", total=total
     )
+    effect = next(
+        (
+            item
+            for item in reversed(get_parasite_effects(target))
+            if item.source_id == actor.unique_id
+        ),
+        None,
+    )
     ctx.add_log(
         BattleLogType.effect_applied,
         text,
-        {"targetId": target.unique_id, "sourceId": actor.unique_id, "stacks": stacks},
+        battle_msg.data_effect(
+            target.unique_id,
+            actor.unique_id,
+            effectId=effect.id if effect else None,
+            effectType="debuff_parasite",
+            stacks=stacks,
+        ),
     )
     return True
 
@@ -267,10 +275,17 @@ def grant_poison(
     text = log_message or battle_msg.gained_stacks(
         target.name, stacks, "中毒", total=get_poison_stacks(target)
     )
+    effect = get_poison_effect(target, actor.unique_id)
     ctx.add_log(
         BattleLogType.effect_applied,
         text,
-        {"targetId": target.unique_id, "sourceId": actor.unique_id, "stacks": stacks},
+        battle_msg.data_effect(
+            target.unique_id,
+            effect.source_id if effect else actor.unique_id,
+            effectId=effect.id if effect else None,
+            effectType="debuff_poison",
+            stacks=stacks,
+        ),
     )
     if target.is_alive:
         trigger_burn_damage(ctx, target)

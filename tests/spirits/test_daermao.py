@@ -140,7 +140,7 @@ def test_chunbai_purges_buffs_on_skill(engine_factory):
                 EffectType.buff_stat_percent_boost,
                 enemy.unique_id,
                 duration_turns=3,
-                stat_type=StatType.atk,
+                stat_type=StatType.attack,
                 value=0.1,
             )
         )
@@ -163,7 +163,7 @@ def test_menghua_reduces_outgoing_damage(engine_factory):
     assert len(debuffs) == 1
     assert debuffs[0].value == 0.33
 
-    raw = get_effective_stat(enemy, StatType.atk)
+    raw = get_effective_stat(enemy, StatType.attack)
     without = calculate_damage(raw, DamageType.physical, ally, dm)
     with_menghua = calculate_damage(raw, DamageType.physical, enemy, dm)
     assert with_menghua < without

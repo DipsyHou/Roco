@@ -142,14 +142,14 @@ class XiaozongLogic(SpiritLogic):
         if self._enter_tongling_mode(actor):
             self._hit(
                 ctx, actor, target,
-                get_effective_stat(actor, StatType.mag_atk) * 1.0,
-                DamageType.magical, "普通攻击", source=DamageSource.attack,
+                get_effective_stat(actor, StatType.attack) * 1.0,
+                DamageType.wind, "普通攻击", source=DamageSource.attack,
             )
         else:
             self._hit(
                 ctx, actor, target,
-                get_effective_stat(actor, StatType.atk) * 0.5,
-                DamageType.physical, "普通攻击", source=DamageSource.attack,
+                get_effective_stat(actor, StatType.attack) * 0.5,
+                DamageType.wind, "普通攻击", source=DamageSource.attack,
             )
         return True
 
@@ -165,18 +165,15 @@ class XiaozongLogic(SpiritLogic):
         *,
         lifesteal_ratio: float = 0.0,
     ) -> int:
-        kind = (
-            msg.KIND_PHYSICAL
-            if damage_type == DamageType.physical
-            else msg.KIND_MAGICAL
-        )
         return deal_damage(
             ctx,
             actor,
             target,
             raw,
             damage_type,
-            lambda a: msg.skill_damage(actor.name, verb, target.name, a, kind=kind),
+            lambda a: msg.skill_damage(
+                actor.name, verb, target.name, a, damage_type=damage_type
+            ),
             source=source,
             lifesteal_ratio=lifesteal_ratio,
             lifesteal_healer=actor,
@@ -192,14 +189,14 @@ class XiaozongLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        mag = get_effective_stat(actor, StatType.mag_atk)
+        mag = get_effective_stat(actor, StatType.attack)
         tongling = self._enter_tongling_mode(actor)
         main_ratio = 1.20 if tongling else 0.80
         adj_ratio = 0.60 if tongling else 0.40
-        self._hit(ctx, actor, target, mag * main_ratio, DamageType.magical, "日月齐光")
+        self._hit(ctx, actor, target, mag * main_ratio, DamageType.light, "日月齐光")
         for adj in ctx.get_adjacent_enemies(target):
             if adj.is_alive:
-                self._hit(ctx, actor, adj, mag * adj_ratio, DamageType.magical, "日月齐光")
+                self._hit(ctx, actor, adj, mag * adj_ratio, DamageType.light, "日月齐光")
         if not tongling:
             self._grant_lingqi(ctx, actor, LINGQI_PER_SKILL)
 
@@ -213,7 +210,7 @@ class XiaozongLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        mag = get_effective_stat(actor, StatType.mag_atk)
+        mag = get_effective_stat(actor, StatType.attack)
         stacks_at_cast = get_lingqi_stacks(actor)
         tongling = self._enter_tongling_mode(actor)
         raw = mag * 0.80 + stacks_at_cast * 0.20
@@ -222,7 +219,7 @@ class XiaozongLogic(SpiritLogic):
             actor,
             target,
             raw,
-            DamageType.magical,
+            DamageType.light,
             "华采若英",
             lifesteal_ratio=0.30 if tongling else 0.0,
         )

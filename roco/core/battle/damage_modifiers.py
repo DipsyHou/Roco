@@ -1,4 +1,4 @@
-"""Damage modifier extraction helpers."""
+"""Damage modifier extraction for attribute and fixed damage."""
 
 from __future__ import annotations
 
@@ -11,211 +11,92 @@ SUSTAINED_DAMAGE_TAG = "sustained_damage"
 
 
 class DamageModifierMode(str, Enum):
-    """Which percent modifiers apply during ``calculate_damage``."""
-
     normal = "normal"
     sustained_burn = "sustained_burn"
     sustained_poison = "sustained_poison"
     sustained_parasite = "sustained_parasite"
+    sustained_tianhuo = "sustained_tianhuo"
 
 
-def _is_sustained_tagged(effect) -> bool:
-    return effect.effect_tag == SUSTAINED_DAMAGE_TAG
+def _matches(effect_type: Optional[DamageType], damage_type: DamageType) -> bool:
+    if effect_type is None:
+        return damage_type.is_attribute
+    return effect_type == damage_type
 
 
-def _match_damage_type(
-    eff_dt: Optional[DamageType],
-    target_dt: DamageType,
-) -> bool:
-    """Normal-mode matching: ``None`` applies to physical and magical only."""
-    if eff_dt is None:
-        return target_dt in (DamageType.physical, DamageType.magical)
-    return eff_dt == target_dt
-
-
-def _outgoing_percent_applies(
-    effect,
-    damage_type: DamageType,
-    mode: DamageModifierMode,
-) -> bool:
-    """Burn/parasite: same as normal damage, plus sustained-tagged amps (毛血旺侧输出暂无).
-
-    Poison has no attacker, so outgoing modifiers never apply.
-    """
-    tagged = _is_sustained_tagged(effect)
-    if mode == DamageModifierMode.sustained_poison:
-        return False
-    if mode in (
-        DamageModifierMode.sustained_burn,
-        DamageModifierMode.sustained_parasite,
-    ):
-        # 普通增减伤 ∪ 持续专用标记
-        return tagged or (
-            not tagged and _match_damage_type(effect.damage_type, damage_type)
-        )
-    return not tagged and _match_damage_type(effect.damage_type, damage_type)
-
-
-def _incoming_percent_applies(
-    effect,
-    damage_type: DamageType,
-    mode: DamageModifierMode,
-) -> bool:
-    """Burn/parasite: normal taken amps/reduces ∪ sustained-tagged (毛血旺).
-
-    Poison: only explicit fixed-damage taken modifiers (固伤易伤/固伤减伤效果).
-    """
-    tagged = _is_sustained_tagged(effect)
-    if mode == DamageModifierMode.sustained_poison:
-        return not tagged and effect.damage_type == DamageType.fixed
-    if mode in (
-        DamageModifierMode.sustained_burn,
-        DamageModifierMode.sustained_parasite,
-    ):
-        return tagged or (
-            not tagged and _match_damage_type(effect.damage_type, damage_type)
-        )
-    return not tagged and _match_damage_type(effect.damage_type, damage_type)
+def _modifier_applies(effect, damage_type: DamageType, mode: DamageModifierMode) -> bool:
+    tagged = effect.effect_tag == SUSTAINED_DAMAGE_TAG
+    if tagged:
+        return mode != DamageModifierMode.normal and damage_type.is_attribute
+    return _matches(effect.damage_type, damage_type)
 
 
 def get_damage_modifiers(
     spirit: BattleSpirit,
     damage_type: DamageType,
     mode: DamageModifierMode = DamageModifierMode.normal,
-) -> Tuple[float, float, float, float, float, float]:
-    """Attacker percent inc/dec by damage type."""
-    pi = mi = fi = pd = md = fd = 0.0
-
+) -> Tuple[float, float]:
+    """Return outgoing percent increase and reduction."""
+    increase = reduction = 0.0
     for effect in spirit.effects:
-        if effect.value is None:
-            continue
-        if not _outgoing_percent_applies(effect, damage_type, mode):
-            continue
-        value = effect.value
-        if mode == DamageModifierMode.sustained_burn:
-            if damage_type != DamageType.physical:
-                continue
-            if effect.type == EffectType.buff_damage_percent_boost:
-                pi += value
-            elif effect.type == EffectType.debuff_damage_percent_reduction:
-                pd += value
-            continue
-        if mode == DamageModifierMode.sustained_parasite:
-            if damage_type != DamageType.magical:
-                continue
-            if effect.type == EffectType.buff_damage_percent_boost:
-                mi += value
-            elif effect.type == EffectType.debuff_damage_percent_reduction:
-                md += value
+        if effect.value is None or not _modifier_applies(effect, damage_type, mode):
             continue
         if effect.type == EffectType.buff_damage_percent_boost:
-            if _match_damage_type(effect.damage_type, damage_type):
-                if damage_type == DamageType.physical:
-                    pi += value
-                elif damage_type == DamageType.magical:
-                    mi += value
-                elif damage_type == DamageType.fixed:
-                    fi += value
+            increase += effect.value
         elif effect.type == EffectType.debuff_damage_percent_reduction:
-            if _match_damage_type(effect.damage_type, damage_type):
-                if damage_type == DamageType.physical:
-                    pd += value
-                elif damage_type == DamageType.magical:
-                    md += value
-                elif damage_type == DamageType.fixed:
-                    fd += value
-
-    return pi, mi, fi, pd, md, fd
-
-
-def get_flat_damage_modifiers(
-    spirit: BattleSpirit,
-) -> Tuple[float, float, float, float, float, float]:
-    """Deprecated: flat outgoing modifiers are no longer used."""
-    return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+            reduction += effect.value
+    return increase, reduction
 
 
 def get_incoming_damage_modifiers(
     spirit: BattleSpirit,
     damage_type: DamageType,
     mode: DamageModifierMode = DamageModifierMode.normal,
-) -> Tuple[float, float, float]:
-    """Defender percent reductions by damage type; negative values increase damage."""
-    pr = mr = fr = 0.0
-
+) -> float:
+    """Return incoming percent reduction; negative values are vulnerability."""
+    reduction = 0.0
     for effect in spirit.effects:
-        if effect.value is None:
+        if effect.type == EffectType.debuff_fanji and damage_type.is_attribute:
+            reduction -= 0.10
+            if mode != DamageModifierMode.normal:
+                reduction -= 0.20
             continue
-        if not _incoming_percent_applies(effect, damage_type, mode):
-            continue
-        value = effect.value
-        if mode == DamageModifierMode.sustained_burn:
-            if damage_type != DamageType.physical:
-                continue
-            if effect.type == EffectType.buff_taken_damage_percent_reduction:
-                pr += value
-            elif effect.type == EffectType.debuff_taken_damage_percent_boost:
-                pr -= value
-            continue
-        if mode == DamageModifierMode.sustained_parasite:
-            if damage_type != DamageType.magical:
-                continue
-            if effect.type == EffectType.buff_taken_damage_percent_reduction:
-                mr += value
-            elif effect.type == EffectType.debuff_taken_damage_percent_boost:
-                mr -= value
+        if effect.value is None or not _modifier_applies(effect, damage_type, mode):
             continue
         if effect.type == EffectType.buff_taken_damage_percent_reduction:
-            if _match_damage_type(effect.damage_type, damage_type):
-                if damage_type == DamageType.physical:
-                    pr += value
-                elif damage_type == DamageType.magical:
-                    mr += value
-                elif damage_type == DamageType.fixed:
-                    fr += value
+            reduction += effect.value
         elif effect.type == EffectType.debuff_taken_damage_percent_boost:
-            if _match_damage_type(effect.damage_type, damage_type):
-                if damage_type == DamageType.physical:
-                    pr -= value
-                elif damage_type == DamageType.magical:
-                    mr -= value
-                elif damage_type == DamageType.fixed:
-                    fr -= value
-
-    return pr, mr, fr
+            reduction -= effect.value
+    return reduction
 
 
-def get_incoming_flat_damage_modifiers(
-    spirit: BattleSpirit,
-) -> Tuple[float, float, float]:
-    """Deprecated: flat incoming modifiers are no longer used."""
-    return 0.0, 0.0, 0.0
-
-
-def get_damage_caps(spirit: BattleSpirit) -> Dict[DamageType, float]:
-    """Return the strictest damage cap by damage type."""
-    caps: Dict[DamageType, float] = {}
+def get_damage_caps(spirit: BattleSpirit) -> Dict[Optional[DamageType], float]:
+    """Return the strictest cap for each explicit or generic damage scope."""
+    caps: Dict[Optional[DamageType], float] = {}
     for effect in spirit.effects:
         if effect.type != EffectType.buff_damage_cap or effect.value is None:
             continue
-        value = effect.value
-        if effect.damage_type is None:
-            for cap_type in (DamageType.physical, DamageType.magical):
-                caps[cap_type] = min(value, caps.get(cap_type, float("inf")))
-        else:
-            caps[effect.damage_type] = min(
-                value,
-                caps.get(effect.damage_type, float("inf")),
-            )
+        key = effect.damage_type
+        caps[key] = min(effect.value, caps.get(key, float("inf")))
     return caps
 
 
+def get_damage_cap(spirit: BattleSpirit, damage_type: DamageType) -> Optional[float]:
+    caps = get_damage_caps(spirit)
+    candidates = []
+    if damage_type in caps:
+        candidates.append(caps[damage_type])
+    if damage_type.is_attribute and None in caps:
+        candidates.append(caps[None])
+    return min(candidates) if candidates else None
+
+
 def get_def_pierce(attacker: BattleSpirit, damage_type: DamageType) -> float:
-    """Sum of the attacker's ``buff_def_pierce`` effects matching ``damage_type``."""
-    total = 0.0
-    for effect in attacker.effects:
-        if effect.type != EffectType.buff_def_pierce or effect.value is None:
-            continue
-        if _match_damage_type(effect.damage_type, damage_type):
-            total += effect.value
-    return total
+    if not damage_type.is_attribute:
+        return 0.0
+    return sum(
+        effect.value or 0.0
+        for effect in attacker.effects
+        if effect.type == EffectType.buff_def_pierce
+        and _matches(effect.damage_type, damage_type)
+    )

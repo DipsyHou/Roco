@@ -13,7 +13,7 @@ from roco.core.battle.utils import (
     make_effect,
 )
 from roco.core.battle.types import DamageType, EffectType
-from roco.core.spirits._combat import deal_atk_ratio
+from roco.core.spirits._combat import deal_attack_ratio
 from tests.conftest import by_template, cast_skill, make_engine, P1, P2
 
 
@@ -39,8 +39,9 @@ def test_parasite_applies_general_percent_boost():
     engine = make_engine()
     attacker = by_template(engine, P1, "flora")
     defender = by_template(engine, P2, "qiuka")
-    defender.base_stats.mag_def = 100
-    attacker.base_stats.mag_atk = 200
+    defender.base_stats.defense = 100
+    defender.elements = ()
+    attacker.base_stats.attack = 200
     attacker.effects.append(
         make_effect(
             EffectType.buff_damage_percent_boost,
@@ -51,8 +52,8 @@ def test_parasite_applies_general_percent_boost():
     )
     apply_parasite_stacks(defender, attacker.unique_id, 5)
 
-    plain = calculate_damage(40, DamageType.magical, attacker, defender, sustained="parasite")
-    boosted = calculate_damage(40, DamageType.magical, attacker, defender)
+    plain = calculate_damage(40, DamageType.grass, attacker, defender, sustained="parasite")
+    boosted = calculate_damage(40, DamageType.grass, attacker, defender)
     assert plain == 60
     assert boosted == 60
 
@@ -61,8 +62,9 @@ def test_parasite_applies_sustained_taken_amp():
     engine = make_engine()
     attacker = by_template(engine, P1, "flora")
     defender = by_template(engine, P2, "qiuka")
-    defender.base_stats.mag_def = 100
-    attacker.base_stats.mag_atk = 200
+    defender.base_stats.defense = 100
+    defender.elements = ()
+    attacker.base_stats.attack = 200
     defender.effects.append(
         make_effect(
             EffectType.debuff_taken_damage_percent_boost,
@@ -74,7 +76,7 @@ def test_parasite_applies_sustained_taken_amp():
         )
     )
 
-    base = calculate_damage(40, DamageType.magical, attacker, defender, sustained="parasite")
+    base = calculate_damage(40, DamageType.grass, attacker, defender, sustained="parasite")
     assert base == 46
 
 
@@ -85,7 +87,7 @@ def test_trigger_parasite_does_not_reduce_stacks():
     )
     gulum = by_template(engine, P1, "gulum")
     target = by_template(engine, P2, "qiuka")
-    gulum.base_stats.mag_atk = 100
+    gulum.base_stats.attack = 100
     apply_parasite_stacks(target, gulum.unique_id, 4)
 
     trigger_parasite_damage(engine, target)
@@ -99,7 +101,7 @@ def test_parasite_action_end_reduces_stacks():
     )
     gulum = by_template(engine, P1, "gulum")
     target = by_template(engine, P2, "qiuka")
-    gulum.base_stats.mag_atk = 100
+    gulum.base_stats.attack = 100
     apply_parasite_stacks(target, gulum.unique_id, 2)
 
     process_parasite_on_action_end(engine, target)
@@ -136,10 +138,11 @@ def test_gulum_nutrient_heals_ally_when_healthy():
     ally_hp_before = 500
     ally.current_hp = ally_hp_before
     ally.max_hp = 1000
-    enemy.base_stats.atk = 200
-    ally.base_stats.def_ = 100
+    enemy.base_stats.attack = 200
+    ally.base_stats.defense = 100
+    ally.elements = ()
 
-    deal_atk_ratio(
+    deal_attack_ratio(
         engine,
         enemy,
         ally,
@@ -161,11 +164,12 @@ def test_gulum_nutrient_heals_self_when_healthy_and_takes_damage():
     enemy = by_template(engine, P2, "qiuka")
     gulum.current_hp = 800
     gulum.max_hp = 1000
-    enemy.base_stats.atk = 200
-    gulum.base_stats.def_ = 100
+    enemy.base_stats.attack = 200
+    gulum.base_stats.defense = 100
+    gulum.elements = ()
     hp_before = gulum.current_hp
 
-    deal_atk_ratio(
+    deal_attack_ratio(
         engine,
         enemy,
         gulum,
@@ -190,10 +194,11 @@ def test_gulum_nutrient_skips_dead_ally():
     gulum.max_hp = 1000
     ally.current_hp = 1
     ally.max_hp = 1000
-    enemy.base_stats.atk = 500
-    ally.base_stats.def_ = 100
+    enemy.base_stats.attack = 500
+    ally.base_stats.defense = 100
+    ally.elements = ()
 
-    deal_atk_ratio(
+    deal_attack_ratio(
         engine,
         enemy,
         ally,

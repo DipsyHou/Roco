@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ BAHAMUT = SpiritTemplate(
     id="bahamut",
     name="巴哈姆特",
     description="巴哈姆特",
-    base_stats=BaseStats(hp=550, atk=140, mag_atk=100, def_=140, mag_def=140, speed=120),
+    base_stats=BaseStats(hp=550, attack=140, defense=130, speed=120),
+    elements=(DamageType.physical,),
     passive_skill=PassiveSkillDef(
         id="bahamut_passive",
         name="气蕴沧溟",
@@ -28,7 +30,7 @@ BAHAMUT = SpiritTemplate(
     normal_attack=SkillDef(
         id="bahamut_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点物理属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -37,7 +39,7 @@ BAHAMUT = SpiritTemplate(
         SkillDef(
             id="bahamut_skill1",
             name="疾风拳",
-            description="能量 1。对一个敌方精灵造成3段物理伤害，每段倍率为（50%自身物攻）。",
+            description="能量 1。对一个敌方精灵造成3段物理属性伤害，每段倍率为（50%自身攻击）。",
             cooldown=0,
             target_type=TargetType.single_enemy,
             energy_cost=1,
@@ -54,7 +56,7 @@ BAHAMUT = SpiritTemplate(
         SkillDef(
             id="bahamut_skill3",
             name="龙之舞",
-            description="能量 3。永久提高自身20%物攻与20%速度。",
+            description="能量 3。提高自身20%攻击与20%速度。",
             cooldown=0,
             target_type=TargetType.self,
             energy_cost=3,
@@ -62,7 +64,7 @@ BAHAMUT = SpiritTemplate(
         SkillDef(
             id="bahamut_zhaojia_jiequan",
             name="截拳",
-            description="消耗全部招架，对目标造成（招架层数）段物理伤害，每段（30%自身物攻）。",
+            description="消耗全部招架，对目标造成（招架层数）段物理属性伤害，每段（30%自身攻击）。",
             cooldown=0,
             target_type=TargetType.single_enemy,
             energy_cost=0,
@@ -73,8 +75,8 @@ BAHAMUT = SpiritTemplate(
             id="bahamut_zhaojia_fanpu",
             name="反扑",
             description=(
-                "消耗全部招架，对目标造成（30%自身物攻）点物理伤害，"
-                "然后重复（招架层数）次：对随机敌方造成（30%自身物攻）点物理伤害。"
+                "消耗全部招架，对目标造成（30%自身攻击）点物理属性伤害，"
+                "然后重复（招架层数）次：对随机敌方造成（30%自身攻击）点物理属性伤害。"
             ),
             cooldown=0,
             target_type=TargetType.single_enemy,

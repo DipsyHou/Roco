@@ -1,4 +1,4 @@
-"""BattleState <-> JSON (additive; does not modify battle_types)."""
+"""BattleState <-> JSON for the current wire schema."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from roco.core.battle.types import (
     BaseStats,
     BattleEffect,
     BattleLogEntry,
+    BattlePresentationEvent,
     BattleLogType,
     BattlePhase,
     BattleSpirit,
@@ -17,14 +18,13 @@ from roco.core.battle.types import (
     DamageType,
     EffectType,
     PlayerBattleData,
+    PresentationStage,
     StatType,
 )
 
 
-# Bump when the wire shape changes incompatibly. The reader still accepts
-# version-less payloads and the legacy snake_case keys for one transition; those
-# fallbacks may be removed once all clients emit schemaVersion >= 1.
-SCHEMA_VERSION = 1
+# Bump when the wire shape changes incompatibly.
+SCHEMA_VERSION = 3
 
 
 class SchemaVersionError(ValueError):
@@ -34,21 +34,20 @@ class SchemaVersionError(ValueError):
 def check_schema_version(d: Dict[str, Any]) -> None:
     """Reject payloads this reader cannot parse correctly.
 
-    A newer peer may add or reshape fields we would otherwise read as defaults,
-    silently producing a wrong battle state instead of a clear failure. Payloads
-    without the key are pre-versioning (treated as 0) and still accepted via the
-    legacy fallbacks in the ``*_from_dict`` readers.
+    This schema contains the unified attack/defense and elemental model. Older
+    payloads cannot be reconstructed without inventing battle state, so they are
+    rejected instead of being silently filled with zeroes.
     """
-    raw = d.get("schemaVersion", d.get("schema_version"))
+    raw = d.get("schemaVersion")
     if raw is None:
-        return
+        raise SchemaVersionError("对战数据缺少 schemaVersion。")
     try:
         version = int(raw)
     except (TypeError, ValueError):
         raise SchemaVersionError(f"无法识别的 schemaVersion: {raw!r}") from None
-    if version > SCHEMA_VERSION:
+    if version != SCHEMA_VERSION:
         raise SchemaVersionError(
-            f"对战数据版本为 {version}，本端仅支持到 {SCHEMA_VERSION}；请更新客户端。"
+            f"对战数据版本为 {version}，本端仅支持 {SCHEMA_VERSION}；请更新客户端。"
         )
 
 
@@ -159,6 +158,13 @@ def spirit_to_dict(s: BattleSpirit) -> Dict[str, Any]:
         d["battleStartMaxHp"] = s.battle_start_max_hp
     if s.sync_attrs:
         d["syncAttrs"] = dict(s.sync_attrs)
+    if s.elements:
+        d["elements"] = [e.value for e in s.elements]
+        d["resistances"] = {
+            damage_type.value: s.resistance_to(damage_type)
+            for damage_type in DamageType
+            if damage_type.is_attribute
+        }
     return d
 
 
@@ -166,10 +172,8 @@ def spirit_from_dict(d: Dict[str, Any]) -> BattleSpirit:
     bs_d = d.get("baseStats") or d.get("base_stats") or {}
     bs = BaseStats(
         hp=int(bs_d.get("hp", 0)),
-        atk=int(bs_d.get("atk", 0)),
-        mag_atk=int(bs_d.get("magAtk", bs_d.get("mag_atk", 0))),
-        def_=int(bs_d.get("def", bs_d.get("def_", 0))),
-        mag_def=int(bs_d.get("magDef", bs_d.get("mag_def", 0))),
+        attack=int(bs_d.get("attack", 0)),
+        defense=int(bs_d.get("defense", 0)),
         speed=int(bs_d.get("speed", 0)),
     )
     effects_raw = d.get("effects") or []
@@ -194,6 +198,11 @@ def spirit_from_dict(d: Dict[str, Any]) -> BattleSpirit:
         card_state=card_state,
         battle_start_max_hp=_either(d, "battleStartMaxHp", "battle_start_max_hp"),
         sync_attrs=dict(_either(d, "syncAttrs", "sync_attrs") or {}),
+        elements=tuple(
+            DamageType(raw)
+            for raw in (d.get("elements") or [])
+            if raw != DamageType.fixed.value
+        ),
     )
 
 
@@ -212,6 +221,48 @@ def log_from_dict(d: Dict[str, Any]) -> BattleLogEntry:
         turn=int(d.get("turn", 0)),
         message=d.get("message", ""),
         data=d.get("data"),
+    )
+
+
+def presentation_event_to_dict(event: BattlePresentationEvent) -> Dict[str, Any]:
+    return {
+        "sequence": event.sequence,
+        "logIndex": event.log_index,
+        "kind": event.kind,
+        "targetId": event.target_id,
+        "amount": event.amount,
+        "effectKind": event.effect_kind,
+        "currentHp": event.current_hp,
+        "maxHp": event.max_hp,
+        "effects": [effect_to_dict(effect) for effect in event.effects],
+        "charge": event.charge,
+    }
+
+
+def presentation_event_from_dict(d: Dict[str, Any]) -> BattlePresentationEvent:
+    return BattlePresentationEvent(
+        sequence=int(d.get("sequence", 0)),
+        log_index=int(d.get("logIndex", d.get("log_index", 0))),
+        kind=str(d.get("kind", "log")),
+        target_id=d.get("targetId") or d.get("target_id"),
+        amount=int(d.get("amount", 0)),
+        effect_kind=d.get("effectKind") or d.get("effect_kind"),
+        current_hp=(
+            int(d["currentHp"])
+            if d.get("currentHp") is not None
+            else (int(d["current_hp"]) if d.get("current_hp") is not None else None)
+        ),
+        max_hp=(
+            int(d["maxHp"])
+            if d.get("maxHp") is not None
+            else (int(d["max_hp"]) if d.get("max_hp") is not None else None)
+        ),
+        effects=tuple(effect_from_dict(effect) for effect in (d.get("effects") or [])),
+        charge=(
+            float(d["charge"])
+            if d.get("charge") is not None
+            else None
+        ),
     )
 
 
@@ -251,6 +302,20 @@ def state_to_dict(state: BattleState) -> Dict[str, Any]:
         "extraActionQueue": [s.to_dict() for s in state.extra_action_queue],
         "timelinePreview": list(state.timeline_preview),
         "battleLog": [log_to_dict(l) for l in state.battle_log],
+        "presentationEvents": [
+            presentation_event_to_dict(event)
+            for event in state.presentation_events
+        ],
+        "presentationStage": (
+            _enum_val(state.presentation_stage) if state.presentation_stage else None
+        ),
+        "presentationResumeStage": (
+            _enum_val(state.presentation_resume_stage)
+            if state.presentation_resume_stage
+            else None
+        ),
+        "presentationToken": state.presentation_token,
+        "presentationOwnerId": state.presentation_owner_id,
         "winnerId": state.winner_id,
         "rngSeed": state.rng_seed,
         "rngCounters": dict(state.rng_counters),
@@ -270,6 +335,9 @@ def state_from_dict(d: Dict[str, Any]) -> BattleState:
         for pid, pd in players_raw.items()
     }
     logs_raw = d.get("battleLog") or d.get("battle_log") or []
+    events_raw = d.get("presentationEvents") or d.get("presentation_events") or []
+    stage_raw = d.get("presentationStage") or d.get("presentation_stage")
+    resume_raw = d.get("presentationResumeStage") or d.get("presentation_resume_stage")
     return BattleState(
         battle_id=d.get("battleId") or d.get("battle_id", ""),
         phase=BattlePhase(d.get("phase", BattlePhase.waiting_for_action.value)),
@@ -285,6 +353,15 @@ def state_from_dict(d: Dict[str, Any]) -> BattleState:
             d.get("timelinePreview") or d.get("timeline_preview") or []
         ),
         battle_log=[log_from_dict(l) for l in logs_raw],
+        presentation_events=[presentation_event_from_dict(e) for e in events_raw],
+        presentation_stage=PresentationStage(stage_raw) if stage_raw else None,
+        presentation_resume_stage=(PresentationStage(resume_raw) if resume_raw else None),
+        presentation_token=int(
+            d.get("presentationToken", d.get("presentation_token", 0))
+        ),
+        presentation_owner_id=(
+            d.get("presentationOwnerId") or d.get("presentation_owner_id")
+        ),
         winner_id=d.get("winnerId") or d.get("winner_id"),
         rng_seed=d.get("rngSeed") or d.get("rng_seed") or "",
         rng_counters={

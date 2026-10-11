@@ -248,11 +248,11 @@ class ActionExecutor:
 
     def _apply_hit(self, actor: BattleSpirit, target: BattleSpirit) -> None:
         eng = self._eng
-        atk = get_effective_stat(actor, StatType.atk)
+        atk = get_effective_stat(actor, StatType.attack)
         crit_flag: List[bool] = []
         phys = calculate_damage(
             atk * NORMAL_ATTACK_ATK_RATIO,
-            DamageType.physical,
+            actor.elements[0],
             actor,
             target,
             crit_flag=crit_flag,
@@ -264,7 +264,9 @@ class ActionExecutor:
             target,
             phys,
             source=DamageSource.attack,
-            describe=lambda actual: msg.physical_hit(actor.name, target.name, actual),
+            describe=lambda actual: msg.attribute_hit(
+                actor.name, target.name, actual, actor.elements[0]
+            ),
             critical=bool(crit_flag),
         )
 

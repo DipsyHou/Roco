@@ -4,8 +4,8 @@
 - 秘能上限 20，开局 2 点；成为己方精灵技能的唯一目标时 +2（含自身技能）；普攻命中 +1。
 - 被动是**边沿触发**：只有秘能从 <13 越过到 >=13 的那一刻才提前 100%，
   并若已有「恐怖」则延长 1 回合；持续停留在线以上不会重复触发。
-- 恐怖（buff_def_pierce，魔法）不修改目标的真实防御值，只在结算魔法伤害时让
-  魔防被视为按穿透百分点降低，实现见 ``roco/core/battle/damage.py``。
+- 恐怖（buff_def_pierce）不修改目标的真实防御值，只在结算暗属性伤害时让
+  防御被视为按穿透百分点降低，实现见 ``roco/core/battle/damage.py``。
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Any, ClassVar, Dict, Optional
 from ..battle import messages as msg
 from ..battle.types import ActionType, BattleLogType, BattleSpirit, DamageType, EffectType
 from ..battle.utils import make_effect
-from ._combat import deal_atk_ratio, deal_mag_ratio, grant_personal_energy, target_enemy
+from ._combat import deal_attack_ratio, grant_personal_energy, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 ENERGY_CAP = 20
@@ -121,12 +121,12 @@ class ParsasLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.5,
-            lambda a: msg.physical_hit(actor.name, target.name, a),
+            lambda a: msg.attribute_hit(actor.name, target.name, a, DamageType.dark),
         )
         self._grant_energy(ctx, actor, 1)
         actor.last_attack_target_id = target.unique_id
@@ -176,14 +176,14 @@ class ParsasLogic(SpiritLogic):
         )
         if existing:
             existing.duration_turns = TERROR_DURATION
-            existing.damage_type = DamageType.magical
+            existing.damage_type = None
             existing.value = TERROR_DEF_PIERCE
         else:
             actor.effects.append(
                 make_effect(
                     EffectType.buff_def_pierce,
                     actor.unique_id,
-                    damage_type=DamageType.magical,
+                    damage_type=None,
                     value=TERROR_DEF_PIERCE,
                     duration_turns=TERROR_DURATION,
                     display_name="恐怖",
@@ -195,13 +195,13 @@ class ParsasLogic(SpiritLogic):
             msg.data_effect(actor.unique_id, actor.unique_id),
         )
 
-        deal_mag_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             TROLL_ATK_RATIO,
             lambda a: msg.skill_damage(
-                actor.name, "巨魔之眼", target.name, a, kind=msg.KIND_MAGICAL
+                actor.name, "巨魔之眼", target.name, a, damage_type=DamageType.dark
             ),
         )
 
@@ -217,25 +217,25 @@ class ParsasLogic(SpiritLogic):
             return
         actor.energy = max(0, (actor.energy or 0) - MOON_ENERGY_COST)
 
-        deal_mag_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             MOON_MAIN_ATK_RATIO,
             lambda a: msg.skill_damage(
-                actor.name, "新月乱舞", target.name, a, kind=msg.KIND_MAGICAL
+                actor.name, "新月乱舞", target.name, a, damage_type=DamageType.dark
             ),
         )
 
         opponent_id = ctx.get_opponent_id(player_id)
         for enemy in ctx.get_active_spirits(opponent_id):
-            deal_mag_ratio(
+            deal_attack_ratio(
                 ctx,
                 actor,
                 enemy,
                 MOON_AOE_ATK_RATIO,
                 lambda a, t=enemy: msg.skill_damage(
-                    actor.name, "新月乱舞", t.name, a, kind=msg.KIND_MAGICAL
+                    actor.name, "新月乱舞", t.name, a, damage_type=DamageType.dark
                 ),
             )
 

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ TENGJIAO = SpiritTemplate(
     id="tengjiao",
     name="藤椒小巴",
     description="藤椒小巴",
-    base_stats=BaseStats(hp=700, atk=140, mag_atk=100, def_=110, mag_def=110, speed=120),
+    base_stats=BaseStats(hp=700, attack=140, defense=100, speed=110),
+    elements=(DamageType.fire,),
     passive_skill=PassiveSkillDef(
         id="tengjiao_passive",
         name="热火朝天",
@@ -30,7 +32,7 @@ TENGJIAO = SpiritTemplate(
     normal_attack=SkillDef(
         id="tengjiao_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点火属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -39,7 +41,7 @@ TENGJIAO = SpiritTemplate(
         SkillDef(
             id="tengjiao_skill1",
             name="浇油",
-            description="获得5层“火力”；提升自身20%物攻，持续3回合。",
+            description="获得5层“火力”；提升自身20%攻击，持续3回合。",
             cooldown=0,
             target_type=TargetType.self,
             energy_cost=2,
@@ -59,8 +61,8 @@ TENGJIAO = SpiritTemplate(
             id="tengjiao_skill3",
             name="出锅！",
             description=(
-                "随机端出一道川菜：辣子鸡（点名己方，基于施加者物攻10%提升双攻，3回合）/"
-                "水煮鱼（自身，基于携带者物攻10%提升全体己方含自身双攻，3回合）/"
+                "随机端出一道川菜：辣子鸡（点名己方，基于施加者攻击10%提升攻击，3回合）/"
+                "水煮鱼（自身，基于携带者攻击10%提升全体己方含自身攻击，3回合）/"
                 "毛血旺（全体敌方，消耗全部火力，每3层给予1层灼烧，并提高15%受到的持续伤害，3回合）。"
                 "初始权重1:1:1；无水煮鱼时水煮鱼权重翻倍；火力≥20时毛血旺权重翻倍。"
                 "辣子鸡需指定己方目标；水煮鱼与毛血旺无需点选。"

@@ -522,8 +522,19 @@ class OnlineDesktopGameApp(DesktopGameApp):
             return
         if mtype == MSG_STATE_UPDATE and isinstance(self.eng, RemoteBattleEngine):
             if msg.get("state"):
+                incoming_token = int(
+                    msg["state"].get("presentationToken", 0) or 0
+                )
+                current_token = int(
+                    getattr(self.eng.state, "presentation_token", 0) or 0
+                )
+                same_presentation = (
+                    self._fx_busy
+                    and incoming_token > 0
+                    and incoming_token == current_token
+                )
                 # Capture presentation anchors before the mirror jumps forward.
-                if self._fx_busy:
+                if self._fx_busy and not same_presentation:
                     # Mid-FX push: drop the old queue and only play the new delta.
                     self._cancel_combat_fx()
                     self._fx_pending_log_start = self._rendered_log_count
@@ -542,6 +553,11 @@ class OnlineDesktopGameApp(DesktopGameApp):
                     self._handle_schema_mismatch(str(exc))
                     return
                 self._dead_sync_requested = False
+                if same_presentation:
+                    # Keep the current presentation clock while the server
+                    # acknowledges a state update for the same stage.
+                    self._render_timeline()
+                    return
             if self._refresh_pending:
                 return
             self._refresh_pending = True
@@ -570,13 +586,21 @@ class OnlineDesktopGameApp(DesktopGameApp):
         highlight_id = self._fx_pending_highlight_id
         self._fx_pending_log_start = None
         self._fx_pending_highlight_id = None
-        from roco.apps.desktop.skill_flows import resume_pending_tengjiao_serve
-
-        self._play_action_fx(
-            log_start,
-            highlight_actor_id=highlight_id,
-            on_complete=lambda: resume_pending_tengjiao_serve(self),
+        events = getattr(self.eng.state, "presentation_events", []) if self.eng else []
+        has_pending_events = self._rendered_event_count < len(events)
+        is_presentation = bool(
+            self.eng and self.eng.state.phase == BattlePhase.presentation
         )
+        if has_pending_events or is_presentation:
+            from roco.apps.desktop.skill_flows import resume_pending_tengjiao_serve
+
+            self._play_action_fx(
+                log_start,
+                highlight_actor_id=highlight_id,
+                on_complete=lambda: resume_pending_tengjiao_serve(self),
+            )
+            return
+        self._refresh()
 
 
 def main() -> None:

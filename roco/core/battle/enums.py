@@ -6,9 +6,25 @@ from enum import Enum
 
 
 class DamageType(str, Enum):
+    # Attribute damage types. ``physical`` is retained as an attribute rather
+    # than a separate physical/magical mitigation class.
+    fire = "fire"
+    water = "water"
+    grass = "grass"
+    ground = "ground"
+    wind = "wind"
     physical = "physical"
-    magical = "magical"
+    ice = "ice"
+    electric = "electric"
+    poison = "poison"
+    light = "light"
+    dark = "dark"
+    dragon = "dragon"
     fixed = "fixed"
+
+    @property
+    def is_attribute(self) -> bool:
+        return self is not DamageType.fixed
 
 
 class TargetType(str, Enum):
@@ -69,6 +85,8 @@ class EffectType(str, Enum):
     state_warmup = "state_warmup"
     debuff_burn = "debuff_burn"
     debuff_poison = "debuff_poison"
+    debuff_tianhuo = "debuff_tianhuo"
+    debuff_fanji = "debuff_fanji"
     state_tailwind = "state_tailwind"
     state_wing_guard = "state_wing_guard"
     state_shunt = "state_shunt"
@@ -114,10 +132,8 @@ class EffectType(str, Enum):
 
 class StatType(str, Enum):
     hp = "hp"
-    atk = "atk"
-    mag_atk = "magAtk"
-    def_ = "def"
-    mag_def = "magDef"
+    attack = "attack"
+    defense = "defense"
     speed = "speed"
 
 
@@ -130,8 +146,19 @@ class ActionType(str, Enum):
 
 class BattlePhase(str, Enum):
     waiting_for_action = "waiting_for_action"
+    presentation = "presentation"
     processing = "processing"
     finished = "finished"
+
+
+class PresentationStage(str, Enum):
+    turn_start = "turn_start"
+    pre_extra = "pre_extra"
+    normal_action = "normal_action"
+    action_resolution = "action_resolution"
+    post_extra = "post_extra"
+    extra_resolution = "extra_resolution"
+    turn_end = "turn_end"
 
 
 class BattleLogType(str, Enum):

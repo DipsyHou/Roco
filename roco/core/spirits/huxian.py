@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any, ClassVar, Dict
 
 from ..battle import messages as msg
-from ..battle.types import BattleSpirit
+from ..battle.types import BattleSpirit, DamageType
 from ..battle.utils import get_total_burn_stacks
-from ._combat import deal_atk_ratio, grant_burn, grant_poison, target_enemy
+from ._combat import deal_attack_ratio, grant_burn, grant_poison, target_enemy
 from ..spirit_logic import BattleContext, DamageSource, SpiritLogic
 
 
@@ -29,12 +29,12 @@ class HuxianLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.5,
-            lambda a: msg.physical_hit(actor.name, target.name, a),
+            lambda a: msg.attribute_hit(actor.name, target.name, a, DamageType.fire),
         )
         actor.last_attack_target_id = target.unique_id
         return True
@@ -49,12 +49,14 @@ class HuxianLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.5,
-            lambda a: msg.skill_damage(actor.name, "烙印", target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name, "烙印", target.name, a, damage_type=DamageType.fire
+            ),
             source=DamageSource.skill,
         )
         if target.is_alive:

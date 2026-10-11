@@ -13,7 +13,13 @@ from typing import Optional
 from .actions import ActionDict
 from .extra_action import policy_allows
 from .snapshot import restore_snapshot, take_snapshot
-from .types import ActionType, BattleLogType, BattlePhase, BattleSpirit
+from .types import (
+    ActionType,
+    BattleLogType,
+    BattlePhase,
+    BattleSpirit,
+    PresentationStage,
+)
 from . import messages as msg
 from ..spirits import get_spirit_logic, get_spirit_template
 
@@ -37,6 +43,7 @@ class ActionSubmissionMixin:
 
         slot = self.current_extra_slot()
         if slot:
+            extra_stage = self.state.presentation_stage
             if not self._validate_action(player_id, action, actor):
                 return False
             snapshot = take_snapshot(self)
@@ -49,13 +56,44 @@ class ActionSubmissionMixin:
             if self._check_battle_end():
                 return True
             self._pop_resolved_slot(slot)
+            if getattr(self, "_presentation_windows", False):
+                if extra_stage not in (
+                    PresentationStage.pre_extra,
+                    PresentationStage.post_extra,
+                ):
+                    extra_stage = (
+                        PresentationStage.post_extra
+                        if self._suspended_turn_action is not None
+                        else PresentationStage.pre_extra
+                    )
+                self.state.presentation_resume_stage = extra_stage
+                self._enter_presentation_stage(
+                    PresentationStage.extra_resolution, player_id
+                )
+                return True
+            # 前插段内切到其他精灵的额外行动时，挂起本回合尚未出手的正常行动。
+            pending_owner = (
+                self.state.turn_prepared_actor_id
+                if self._suspended_turn_actor_id is None
+                else None
+            )
             if self._advance_to_next_extra_slot():
+                if (
+                    pending_owner
+                    and self._suspended_turn_actor_id is None
+                    and self.state.active_actor_id != pending_owner
+                ):
+                    self._suspended_turn_actor_id = pending_owner
+                    self._suspended_turn_action = None
+                    self._suspended_turn_stunned = False
                 self._refresh_timeline_preview()
                 self.state.phase = BattlePhase.waiting_for_action
                 return True
             return self._finish_suspended_turn_if_any()
 
         self.ensure_active_turn_begun()
+        if self.state.phase != BattlePhase.waiting_for_action:
+            return False
         if not self._validate_action(player_id, action, actor):
             return False
 
@@ -71,6 +109,14 @@ class ActionSubmissionMixin:
             return True
 
         stunned = self.state.active_turn_stunned
+        if getattr(self, "_presentation_windows", False):
+            self._suspended_turn_actor_id = actor.unique_id
+            self._suspended_turn_action = dict(action)
+            self._suspended_turn_stunned = stunned
+            self._enter_presentation_stage(
+                PresentationStage.action_resolution, player_id
+            )
+            return True
         if self._advance_to_next_extra_slot():
             self._suspended_turn_actor_id = actor.unique_id
             self._suspended_turn_action = dict(action)
@@ -137,7 +183,8 @@ class ActionSubmissionMixin:
         self._set_active_actor()
         self._refresh_timeline_preview()
         self._begin_turn_if_needed()
-        self.state.phase = BattlePhase.waiting_for_action
+        if self.state.phase != BattlePhase.presentation:
+            self.state.phase = BattlePhase.waiting_for_action
         return True
 
     def _finish_suspended_turn_if_any(self) -> bool:
@@ -148,8 +195,35 @@ class ActionSubmissionMixin:
         self._suspended_turn_actor_id = None
         self._suspended_turn_action = None
         self._suspended_turn_stunned = False
+        self._leave_extra_segment()
         if not actor_id or action is None:
+            # 前插段结束：恢复被挂起的「等待正常行动」状态。
+            if actor_id:
+                waiter = self.find_spirit_anywhere(actor_id)
+                if waiter and waiter.is_alive:
+                    self.state.active_actor_id = actor_id
+                    self.state.turn_prepared_actor_id = actor_id
+                    self.state.active_turn_stunned = bool(stunned)
+                    if getattr(self, "_presentation_windows", False):
+                        self.state.presentation_resume_stage = None
+                        self._enter_presentation_stage(
+                            PresentationStage.normal_action, waiter.owner_id
+                        )
+                        return True
+                    self._refresh_timeline_preview()
+                    self.state.phase = BattlePhase.waiting_for_action
+                    return True
             if self.state.turn_prepared_actor_id:
+                if getattr(self, "_presentation_windows", False):
+                    waiter = self.find_spirit_anywhere(
+                        self.state.turn_prepared_actor_id
+                    )
+                    if waiter and waiter.is_alive:
+                        self.state.presentation_resume_stage = None
+                        self._enter_presentation_stage(
+                            PresentationStage.normal_action, waiter.owner_id
+                        )
+                        return True
                 self.state.phase = BattlePhase.waiting_for_action
                 return True
             self._set_active_actor()
@@ -164,7 +238,102 @@ class ActionSubmissionMixin:
             self._begin_turn_if_needed()
             self.state.phase = BattlePhase.waiting_for_action
             return True
+        if getattr(self, "_presentation_windows", False):
+            self._suspended_turn_actor_id = actor_id
+            self._suspended_turn_action = action
+            self._suspended_turn_stunned = stunned
+            self._enter_presentation_stage(
+                PresentationStage.turn_end, actor.owner_id
+            )
+            return True
         return self._finish_normal_turn(actor.owner_id, actor, action, stunned)
+
+    def _enter_presentation_stage(
+        self,
+        stage: PresentationStage,
+        owner_id: Optional[str],
+    ) -> None:
+        self.state.presentation_stage = stage
+        self.state.presentation_token += 1
+        self.state.presentation_owner_id = owner_id
+        self.state.phase = BattlePhase.presentation
+        self._refresh_timeline_preview()
+
+    def _activate_queued_extra(self, stage: PresentationStage) -> bool:
+        if not self._advance_to_next_extra_slot():
+            return False
+        self.state.presentation_stage = stage
+        self.state.presentation_resume_stage = None
+        self.state.presentation_owner_id = None
+        self.state.phase = BattlePhase.waiting_for_action
+        self._refresh_timeline_preview()
+        return True
+
+    def advance_presentation(self, token: Optional[int] = None) -> bool:
+        """Advance one UI-paced battle stage after its minimum display time."""
+        if self.state.phase != BattlePhase.presentation:
+            return False
+        if token is not None and int(token) != self.state.presentation_token:
+            return False
+
+        stage = self.state.presentation_stage
+        if stage == PresentationStage.turn_start:
+            pending_actor_id = self.state.turn_prepared_actor_id
+            if self.state.extra_action_queue and pending_actor_id:
+                self._suspended_turn_actor_id = pending_actor_id
+                self._suspended_turn_action = None
+                self._suspended_turn_stunned = self.state.active_turn_stunned
+                return self._activate_queued_extra(PresentationStage.pre_extra)
+            owner_id = self.state.presentation_owner_id
+            self._enter_presentation_stage(PresentationStage.normal_action, owner_id)
+            return True
+
+        if stage == PresentationStage.normal_action:
+            pending_actor_id = self.state.turn_prepared_actor_id
+            if self.state.extra_action_queue and pending_actor_id:
+                self._suspended_turn_actor_id = pending_actor_id
+                self._suspended_turn_action = None
+                self._suspended_turn_stunned = self.state.active_turn_stunned
+                return self._activate_queued_extra(PresentationStage.pre_extra)
+            self.state.presentation_owner_id = None
+            self.state.phase = BattlePhase.waiting_for_action
+            return True
+
+        if stage == PresentationStage.action_resolution:
+            if self.state.extra_action_queue:
+                return self._activate_queued_extra(PresentationStage.post_extra)
+            owner_id = self.state.presentation_owner_id
+            self._enter_presentation_stage(PresentationStage.turn_end, owner_id)
+            return True
+
+        if stage == PresentationStage.extra_resolution:
+            resume = self.state.presentation_resume_stage or (
+                PresentationStage.post_extra
+                if self._suspended_turn_action is not None
+                else PresentationStage.pre_extra
+            )
+            if self.state.extra_action_queue:
+                return self._activate_queued_extra(resume)
+            return self._finish_suspended_turn_if_any()
+
+        if stage == PresentationStage.turn_end:
+            if self.state.extra_action_queue:
+                return self._activate_queued_extra(PresentationStage.post_extra)
+            actor_id = self._suspended_turn_actor_id
+            action = self._suspended_turn_action
+            stunned = self._suspended_turn_stunned
+            self._suspended_turn_actor_id = None
+            self._suspended_turn_action = None
+            self._suspended_turn_stunned = False
+            self._leave_extra_segment()
+            if not actor_id or action is None:
+                return False
+            actor = self.find_spirit_anywhere(actor_id)
+            if not actor:
+                return False
+            return self._finish_normal_turn(actor.owner_id, actor, action, stunned)
+
+        return False
 
     def _validate_action(
         self,

@@ -76,7 +76,7 @@ def pick_burn_target(engine: BattleEngine, player_id: str) -> BattleSpirit | Non
 
 def offense_score(spirit: BattleSpirit) -> int:
     """Simple carry heuristic used by support AIs."""
-    return (spirit.base_stats.atk + spirit.base_stats.mag_atk) * 10 + spirit.base_stats.speed
+    return spirit.base_stats.attack * 10 + spirit.base_stats.speed
 
 
 def sorted_allies_by_offense(engine: BattleEngine, player_id: str) -> List[BattleSpirit]:

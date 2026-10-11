@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Dict, List, Optional
 
-from ..battle.extra_action import ExtraActionSlot, ExtraActionUI, register_policy
+from ..battle.extra_action import ExtraActionUI, register_policy
 from ..battle.types import ActionType, BattleLogType, BattleSpirit
 from ..battle.utils import is_action_blocked
 from ..spirit_logic import BattleContext, SpiritLogic
@@ -215,14 +215,10 @@ class GuifashiLogic(
         getattr(self, name)(ctx, player_id, actor, action)
         # 牌技连锁：紧跟着插一次额外行动（仅牌技 + 跳过）
         if sk in CARD_SKILLS:
-            ctx.queue_extra_actions(
-                [
-                    ExtraActionSlot(
-                        actor_id=actor.unique_id,
-                        policy_id=GUIFASHI_CHAIN_POLICY_ID,
-                        source="guifashi_chain",
-                    )
-                ],
+            ctx.trigger_extra_action(
+                actor,
+                policy_id=GUIFASHI_CHAIN_POLICY_ID,
+                source="guifashi_chain",
                 front=True,
             )
 

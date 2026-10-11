@@ -7,12 +7,26 @@ than a turn-orchestration layer.
 
 from __future__ import annotations
 
+import copy
 from typing import Any, Dict, List, Optional
 
 from .actions import ActionDict
-from .events import DamageEvent, DamageSource, dispatch_damage
+from .events import (
+    DamageEvent,
+    DamageSource,
+    EffectAppliedEvent,
+    dispatch_damage,
+    dispatch_effect_applied,
+)
 from .formation import living_slot_neighbors
-from .types import BattleLogEntry, BattleLogType, BattleSpirit
+from .effect_meta import effect_category
+from .types import (
+    BattleLogEntry,
+    BattleLogType,
+    BattlePresentationEvent,
+    BattleSpirit,
+    EffectType,
+)
 from . import messages as msg
 
 
@@ -74,6 +88,7 @@ class BattleContextMixin:
         message: str,
         data: Optional[Dict[str, Any]] = None,
     ) -> None:
+        log_index = len(self.state.battle_log)
         self.state.battle_log.append(
             BattleLogEntry(
                 type=log_type,
@@ -82,6 +97,105 @@ class BattleContextMixin:
                 data=data,
             )
         )
+        payload = data or {}
+        target_id = payload.get("targetId")
+        amount = 0
+        kind = "log"
+        effect_kind = None
+        if log_type == BattleLogType.damage_dealt:
+            kind = "damage"
+            amount = int(payload.get("damage") or 0)
+        elif log_type == BattleLogType.heal_applied or "heal" in payload:
+            kind = "heal"
+            amount = int(payload.get("heal") or 0)
+        elif log_type == BattleLogType.effect_applied:
+            kind = "effect_applied"
+            effect_kind = self._presentation_effect_kind(target_id, payload)
+        elif log_type == BattleLogType.effect_removed:
+            kind = "effect_removed"
+        elif log_type == BattleLogType.passive_triggered:
+            kind = "passive"
+        elif log_type == BattleLogType.spirit_defeated:
+            kind = "defeat"
+        target = self.find_spirit_anywhere(str(target_id or ""))
+        self.state.presentation_events.append(
+            BattlePresentationEvent(
+                sequence=len(self.state.presentation_events),
+                log_index=log_index,
+                kind=kind,
+                target_id=str(target_id) if target_id else None,
+                amount=amount,
+                effect_kind=effect_kind,
+                current_hp=(int(target.current_hp) if target else None),
+                max_hp=(int(target.max_hp) if target else None),
+                effects=(tuple(copy.deepcopy(target.effects)) if target else ()),
+                charge=(float(target.charge) if target else None),
+            )
+        )
+        if log_type == BattleLogType.effect_applied and target:
+            effect = self._logged_effect(target, payload)
+            if effect is not None:
+                raw_prior_types = payload.get("priorEffectTypes")
+                if isinstance(raw_prior_types, (list, tuple, set, frozenset)):
+                    prior_effect_types = frozenset(
+                        effect_type
+                        for raw_type in raw_prior_types
+                        if (effect_type := self._parse_effect_type(raw_type)) is not None
+                    )
+                else:
+                    prior_effect_types = frozenset(
+                        current.type for current in target.effects
+                    )
+                dispatch_effect_applied(
+                    self,
+                    EffectAppliedEvent(
+                        source=self.find_spirit_anywhere(effect.source_id),
+                        target=target,
+                        effect_type=effect.type,
+                        effect_id=effect.id,
+                        prior_effect_types=prior_effect_types,
+                    ),
+                )
+
+    @staticmethod
+    def _parse_effect_type(raw_type: Any) -> Optional[EffectType]:
+        try:
+            return EffectType(raw_type)
+        except (TypeError, ValueError):
+            return None
+
+    def _logged_effect(self, target: BattleSpirit, payload: Dict[str, Any]):
+        effect_id = payload.get("effectId")
+        if effect_id:
+            return next((e for e in target.effects if e.id == effect_id), None)
+        source_id = payload.get("sourceId")
+        raw_type = payload.get("effectType")
+        for effect in reversed(target.effects):
+            if source_id is not None and effect.source_id != source_id:
+                continue
+            if raw_type is not None and effect.type.value != raw_type:
+                continue
+            return effect
+        return None
+
+    def _presentation_effect_kind(
+        self, target_id: Optional[str], payload: Dict[str, Any]
+    ) -> str:
+        raw_type = payload.get("effectType")
+        if raw_type:
+            try:
+                return effect_category(EffectType(raw_type))
+            except (TypeError, ValueError):
+                pass
+        target = self.find_spirit_anywhere(str(target_id or ""))
+        if target and target.effects:
+            effect_id = payload.get("effectId")
+            effect = next(
+                (item for item in reversed(target.effects) if item.id == effect_id),
+                target.effects[-1],
+            )
+            return effect_category(effect.type)
+        return "state"
 
     def execute_normal_attack(
         self,
@@ -98,6 +212,7 @@ class BattleContextMixin:
         damage: int,
         *,
         source: DamageSource = DamageSource.other,
+        dot_kind: Optional[str] = None,
     ) -> None:
         dispatch_damage(
             self,
@@ -106,6 +221,7 @@ class BattleContextMixin:
                 target=target,
                 damage=damage,
                 source=source,
+                dot_kind=dot_kind,
             ),
         )
 

@@ -34,7 +34,7 @@ def test_permanent_effect_and_stack_effects_do_not_tick(standard_engine):
             make_effect(
                 EffectType.buff_stat_percent_boost,
                 "src",
-                stat_type=StatType.atk,
+                stat_type=StatType.attack,
                 value=0.1,
             ),
             make_effect(EffectType.state_warmup, "src", stacks=3),
@@ -65,7 +65,7 @@ def test_state_count_and_stack_count_use_separate_fields(standard_engine):
     ("effect_type", "expected"),
     [
         (EffectType.state_warmup, "[state]升温 * 3"),
-        (EffectType.debuff_poison, "[debuff]中毒 * 3"),
+        (EffectType.debuff_poison, "[debuff]中毒 - 来自source * 3"),
     ],
 )
 def test_stack_display_uses_stacks_not_duration(effect_type, expected):

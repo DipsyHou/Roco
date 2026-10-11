@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -14,12 +15,13 @@ LIUGUANGJING = SpiritTemplate(
     id="liuguangjing",
     name="流光镜",
     description="映照我方伤害与能量、以映像倾泻的辅助输出。",
-    base_stats=BaseStats(hp=650, atk=110, mag_atk=100, def_=120, mag_def=120, speed=110),
+    base_stats=BaseStats(hp=600, attack=100, defense=140, speed=120),
+    elements=(DamageType.light,),
     passive_skill=PassiveSkillDef(
         id="liuguangjing_passive",
         name="鉴中乾坤 / 流转",
         description=(
-            "鉴中乾坤：我方精灵造成伤害时（灵珏前记账；含灼烧/寄生，不含中毒），"
+            "鉴中乾坤：我方精灵造成伤害时（灵珏前记账；含灼烧/寄生/中毒），"
             "获得等量「映像伤害」；我方精灵消耗或回复队伍能量时（含溢出），获得等量「映像能量」。"
             "流转：聚能使自身下回合提前24%；我方精灵消耗队伍能量后，若队伍能量未达上限且映像能量不少于6，"
             "消耗6点映像能量并回复1点。"
@@ -28,7 +30,7 @@ LIUGUANGJING = SpiritTemplate(
     normal_attack=SkillDef(
         id="liuguangjing_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害。",
+        description="对一个敌方精灵造成（50%自身攻击）点光属性伤害。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,

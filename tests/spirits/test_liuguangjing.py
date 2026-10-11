@@ -21,8 +21,9 @@ def test_mirror_records_before_lingjue(engine_factory):
     flora = by_template(engine, P1, "flora")
     xz = by_template(engine, P2, "xiaozong")
     add_lingqi(xz, 50)
-    xz.base_stats.def_ = 100
-    flora.base_stats.atk = 100
+    xz.base_stats.defense = 100
+    xz.elements = ()
+    flora.base_stats.attack = 100
 
     before_lingqi = get_lingqi_stacks(xz)
     dmg = calculate_damage(100, DamageType.physical, flora, xz)
@@ -44,7 +45,7 @@ def test_self_damage_grants_mirror(engine_factory):
     assert get_mirror_damage(mirror) > 0
 
 
-def test_poison_does_not_grant_mirror(engine_factory):
+def test_poison_grants_mirror(engine_factory):
     from roco.core.battle.dot import trigger_poison_damage
     from roco.core.battle.effects import apply_poison_stacks
 
@@ -56,8 +57,16 @@ def test_poison_does_not_grant_mirror(engine_factory):
     flora = by_template(engine, P1, "flora")
     enemy = by_template(engine, P2, "qiuka")
     apply_poison_stacks(enemy, flora.unique_id, 5)
+    expected = calculate_damage(
+        enemy.max_hp * 0.01 * 5,
+        DamageType.poison,
+        flora,
+        enemy,
+        sustained="poison",
+    )
+    before = get_mirror_damage(mirror)
     trigger_poison_damage(engine, enemy)
-    assert get_mirror_damage(mirror) == 0
+    assert get_mirror_damage(mirror) - before == expected
 
 
 def test_ally_energy_spend_and_gain_grant_mirror_energy(engine_factory):

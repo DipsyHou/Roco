@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ...battle.types import (
     BaseStats,
+    DamageType,
     PassiveSkillDef,
     SkillDef,
     SpiritTemplate,
@@ -16,7 +17,8 @@ PARSAS = SpiritTemplate(
     id="parsas",
     name="帕尔萨斯",
     description="帕尔萨斯",
-    base_stats=BaseStats(hp=650, atk=100, mag_atk=130, def_=120, mag_def=120, speed=120),
+    base_stats=BaseStats(hp=650, attack=120, defense=120, speed=110),
+    elements=(DamageType.dark,),
     passive_skill=PassiveSkillDef(
         id="parsas_passive",
         name="收藏灵魂",
@@ -30,7 +32,7 @@ PARSAS = SpiritTemplate(
     normal_attack=SkillDef(
         id="parsas_normal",
         name="普通攻击",
-        description="对一个敌方精灵造成（50%自身物攻）点物理伤害，并回复1点秘能。",
+        description="对一个敌方精灵造成（50%自身攻击）点暗属性伤害，并回复1点秘能。",
         cooldown=0,
         target_type=TargetType.single_enemy,
         launches_attack=True,
@@ -50,8 +52,8 @@ PARSAS = SpiritTemplate(
             description=(
                 "秘能不少于7点时可以使用。消耗7点秘能，赋予自身「恐怖」效果，"
                 "持续3回合，期间再次赋予此效果会重置持续时间；"
-                "然后对一个敌方精灵造成（120%自身魔攻）点魔法伤害。"
-                "（恐怖：正面效果。携带者造成伤害时，无视10%的魔防。）"
+                "然后对一个敌方精灵造成（120%自身攻击）点暗属性伤害。"
+                "（恐怖：正面效果。携带者造成伤害时，无视10%的防御。）"
             ),
             cooldown=0,
             target_type=TargetType.single_enemy,
@@ -63,8 +65,8 @@ PARSAS = SpiritTemplate(
             name="新月乱舞",
             description=(
                 "秘能不少于13点时可以使用。消耗13点秘能，"
-                "对一个敌方精灵造成（120%自身魔攻）点魔法伤害，"
-                "随后对全体敌方精灵造成（80%自身魔攻）点魔法伤害。"
+                "对一个敌方精灵造成（120%自身攻击）点暗属性伤害，"
+                "随后对全体敌方精灵造成（80%自身攻击）点暗属性伤害。"
             ),
             cooldown=0,
             target_type=TargetType.single_enemy,

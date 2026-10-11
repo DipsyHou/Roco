@@ -2,8 +2,28 @@
 
 from __future__ import annotations
 
-from roco.apps.desktop.combat_fx import float_steps_from_logs
-from roco.core.battle.types import BattleLogEntry, BattleLogType
+from roco.apps.desktop.combat_fx import (
+    FX_STAGE_MIN_MS,
+    float_steps_from_logs,
+    presentation_stage_text,
+)
+from roco.core.battle.types import BattleLogEntry, BattleLogType, PresentationStage
+
+
+def test_all_presentation_stage_minimums_are_100ms() -> None:
+    assert FX_STAGE_MIN_MS == {
+        PresentationStage.turn_start: 100,
+        PresentationStage.normal_action: 100,
+        PresentationStage.action_resolution: 100,
+        PresentationStage.extra_resolution: 100,
+        PresentationStage.turn_end: 100,
+    }
+
+
+def test_turn_boundary_presentation_text() -> None:
+    assert presentation_stage_text(PresentationStage.turn_start) == "回合开始"
+    assert presentation_stage_text(PresentationStage.turn_end) == "回合结束"
+    assert presentation_stage_text(PresentationStage.normal_action) == "结算中…"
 
 
 def test_float_steps_damage_and_heal_ordered() -> None:

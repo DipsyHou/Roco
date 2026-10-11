@@ -11,6 +11,14 @@ from .stats import is_buff_effect, is_debuff_effect
 from .types import BattleEffect, BattleSpirit, DamageType, EffectType, StatType
 
 SKILL_ENERGY_COST_ALL = "*"
+SUSTAINED_EFFECT_TYPES = frozenset(
+    {
+        EffectType.debuff_burn,
+        EffectType.debuff_poison,
+        EffectType.debuff_parasite,
+        EffectType.debuff_tianhuo,
+    }
+)
 
 
 def make_effect(
@@ -193,9 +201,116 @@ def apply_skill_energy_cost_increase(
 
 
 def purge_debuffs(spirit: BattleSpirit) -> List[BattleEffect]:
-    removed = [effect for effect in spirit.effects if is_debuff_effect(effect.type)]
-    spirit.effects = [effect for effect in spirit.effects if not is_debuff_effect(effect.type)]
+    protects_sustained = any(
+        effect.type == EffectType.debuff_fanji for effect in spirit.effects
+    )
+    removed = [
+        effect
+        for effect in spirit.effects
+        if is_debuff_effect(effect.type)
+        and not (protects_sustained and effect.type in SUSTAINED_EFFECT_TYPES)
+    ]
+    removed_ids = {effect.id for effect in removed}
+    spirit.effects = [
+        effect for effect in spirit.effects if effect.id not in removed_ids
+    ]
     return removed
+
+
+def purge_selected_debuff(
+    spirit: BattleSpirit,
+    effect: BattleEffect,
+) -> Optional[BattleEffect]:
+    """Try to purge a debuff after a caller has already selected it."""
+    if not any(current.id == effect.id for current in spirit.effects):
+        return None
+    if not is_debuff_effect(effect.type):
+        return None
+    protects_sustained = any(
+        current.type == EffectType.debuff_fanji for current in spirit.effects
+    )
+    if protects_sustained and effect.type in SUSTAINED_EFFECT_TYPES:
+        return None
+    spirit.effects = [
+        current for current in spirit.effects if current.id != effect.id
+    ]
+    return effect
+
+
+def get_tianhuo_effect(
+    spirit: BattleSpirit, source_id: str
+) -> Optional[BattleEffect]:
+    return next(
+        (
+            effect
+            for effect in spirit.effects
+            if effect.type == EffectType.debuff_tianhuo
+            and effect.source_id == source_id
+        ),
+        None,
+    )
+
+
+def get_tianhuo_effects(spirit: BattleSpirit) -> List[BattleEffect]:
+    return [
+        effect
+        for effect in spirit.effects
+        if effect.type == EffectType.debuff_tianhuo
+    ]
+
+
+def apply_tianhuo_stacks(
+    target: BattleSpirit,
+    source_id: str,
+    stacks: int,
+) -> bool:
+    if stacks <= 0 or is_debuff_immune(target):
+        return False
+    existing = get_tianhuo_effect(target, source_id)
+    if existing:
+        existing.stacks = stack_count(existing) + stacks
+    else:
+        target.effects.append(
+            make_effect(EffectType.debuff_tianhuo, source_id, stacks=stacks)
+        )
+    return True
+
+
+def get_fanji_effect(
+    spirit: BattleSpirit, source_id: Optional[str] = None
+) -> Optional[BattleEffect]:
+    return next(
+        (
+            effect
+            for effect in spirit.effects
+            if effect.type == EffectType.debuff_fanji
+            and (source_id is None or effect.source_id == source_id)
+        ),
+        None,
+    )
+
+
+def apply_fanji(
+    target: BattleSpirit,
+    source_id: str,
+    *,
+    duration_turns: int = 3,
+) -> bool:
+    if is_debuff_immune(target):
+        return False
+    existing = get_fanji_effect(target, source_id)
+    if existing:
+        existing.duration_turns = duration_turns
+    else:
+        target.effects.append(
+            make_effect(
+                EffectType.debuff_fanji,
+                source_id,
+                duration_turns=duration_turns,
+                display_name="燔祭",
+            )
+        )
+    return True
 
 
 
@@ -275,17 +390,27 @@ def apply_burn_stacks(
 
 
 
-def get_poison_effect(spirit: BattleSpirit) -> Optional[BattleEffect]:
+def get_poison_effect(
+    spirit: BattleSpirit, source_id: Optional[str] = None
+) -> Optional[BattleEffect]:
     return next(
-        (effect for effect in spirit.effects if effect.type == EffectType.debuff_poison),
+        (
+            effect
+            for effect in spirit.effects
+            if effect.type == EffectType.debuff_poison
+            and (source_id is None or effect.source_id == source_id)
+        ),
         None,
     )
 
 
+def get_poison_effects(spirit: BattleSpirit) -> List[BattleEffect]:
+    return [effect for effect in spirit.effects if effect.type == EffectType.debuff_poison]
+
+
 
 def get_poison_stacks(spirit: BattleSpirit) -> int:
-    effect = get_poison_effect(spirit)
-    return stack_count(effect) if effect else 0
+    return sum(stack_count(effect) for effect in get_poison_effects(spirit))
 
 
 
@@ -296,7 +421,7 @@ def apply_poison_stacks(
 ) -> bool:
     if stacks <= 0 or is_debuff_immune(target):
         return False
-    existing = get_poison_effect(target)
+    existing = get_poison_effect(target, source_id)
     if existing:
         existing.stacks = stack_count(existing) + stacks
     else:
@@ -388,6 +513,7 @@ def tick_effects(
             EffectType.debuff_burn,
             EffectType.debuff_poison,
             EffectType.debuff_parasite,
+            EffectType.debuff_tianhuo,
             EffectType.debuff_freeze,
             EffectType.state_warmup,
             EffectType.state_channeling_skill,

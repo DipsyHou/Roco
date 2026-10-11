@@ -43,17 +43,7 @@ class ClawdragonLogic(SpiritLogic):
             make_effect(
                 EffectType.buff_stat_percent_boost,
                 target.unique_id,
-                stat_type=StatType.def_,
-                value=GUARDIAN_DEF_BONUS,
-                duration_turns=GUARDIAN_DURATION,
-                display_name="守护者",
-            )
-        )
-        target.effects.append(
-            make_effect(
-                EffectType.buff_stat_percent_boost,
-                target.unique_id,
-                stat_type=StatType.mag_def,
+                stat_type=StatType.defense,
                 value=GUARDIAN_DEF_BONUS,
                 duration_turns=GUARDIAN_DURATION,
                 display_name="守护者",
@@ -75,15 +65,17 @@ class ClawdragonLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        atk = get_effective_stat(actor, StatType.atk)
+        atk = get_effective_stat(actor, StatType.attack)
         raw = atk * LEGENDARY_ATK_RATIO + target.current_hp * LEGENDARY_HP_RATIO
         deal_damage(
             ctx,
             actor,
             target,
             raw,
-            DamageType.physical,
-            lambda a: msg.skill_damage(actor.name, "传说力量", target.name, a),
+            DamageType.dragon,
+            lambda a: msg.skill_damage(
+                actor.name, "传说力量", target.name, a, damage_type=DamageType.dragon
+            ),
             source=DamageSource.skill,
         )
 
@@ -99,7 +91,7 @@ class ClawdragonLogic(SpiritLogic):
             make_effect(
                 EffectType.buff_stat_percent_boost,
                 actor.unique_id,
-                stat_type=StatType.atk,
+                stat_type=StatType.attack,
                 value=0.20,
                 display_name="龙之舞",
             )
@@ -129,14 +121,16 @@ class ClawdragonLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        atk = get_effective_stat(actor, StatType.atk)
+        atk = get_effective_stat(actor, StatType.attack)
         deal_damage(
             ctx,
             actor,
             target,
             atk * THROW_ATK_RATIO,
             DamageType.physical,
-            lambda a: msg.skill_damage(actor.name, "过肩摔", target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name, "过肩摔", target.name, a, damage_type=DamageType.physical
+            ),
             source=DamageSource.skill,
         )
         if target.is_alive:

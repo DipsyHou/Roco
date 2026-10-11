@@ -6,9 +6,9 @@ from typing import Any, ClassVar, Dict
 
 from ..battle import messages as msg
 from ..battle.effect_meta import stack_count
-from ..battle.types import BattleLogType, BattleSpirit, EffectType, StatType
+from ..battle.types import BattleLogType, BattleSpirit, DamageType, EffectType, StatType
 from ..battle.utils import get_state_stack_count, is_debuff_immune, make_effect
-from ._combat import deal_atk_ratio, deal_mag_ratio, target_enemy
+from ._combat import deal_attack_ratio, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 EXPANSION_CAP_BONUS = 2
@@ -35,12 +35,14 @@ class TitaLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.5,
-            lambda a: msg.physical_hit(actor.name, target.name, a),
+            lambda a: msg.attribute_hit(
+                actor.name, target.name, a, DamageType.electric
+            ),
         )
         return True
 
@@ -193,13 +195,13 @@ class TitaLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return
-        deal_mag_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             OVERLOAD_MAG_RATIO,
             lambda a: msg.skill_damage(
-                actor.name, "过载", target.name, a, kind=msg.KIND_MAGICAL
+                actor.name, "过载", target.name, a, damage_type=DamageType.electric
             ),
         )
         self._apply_speed_down(ctx, actor, target)

@@ -15,8 +15,7 @@ def test_guagua_battle_start_marks_first_ally_and_gets_passive_bonuses(engine_fa
     guagua = by_template(engine, P1, "guagua")
 
     assert any(effect.type == EffectType.state_shifu for effect in flora.effects)
-    assert get_effective_stat(guagua, StatType.atk) == 120 * 1.10
-    assert get_effective_stat(guagua, StatType.mag_atk) == 120 * 1.10
+    assert get_effective_stat(guagua, StatType.attack) == 120 * 1.10
 
 
 def test_teacher_attack_auto_triggers_learned_once_per_guagua_turn(engine_factory):
@@ -41,7 +40,7 @@ def test_teacher_attack_auto_triggers_learned_once_per_guagua_turn(engine_factor
     assert engine.current_extra_slot() is None
     assert guagua.sync_attrs["guagua_learned_target_id"] is None
     assert target.current_hp < after_teacher_attack_hp
-    assert len(_tagged(flora, "guagua_biyouwoshi")) == 4
+    assert len(_tagged(flora, "guagua_biyouwoshi")) == 3
     assert any("学会了" in log.message for log in engine.state.battle_log)
 
 
@@ -89,8 +88,7 @@ def test_guagua_conditional_passive_bonus_is_not_displayed(engine_factory):
 
     lines = format_spirit_effects(guagua.effects, {}, spirit=guagua)
 
-    assert not any("物攻提升10%" in line for line in lines)
-    assert not any("魔攻提升10%" in line for line in lines)
+    assert not any("攻击提升10%" in line for line in lines)
     assert not any("暴击率提升20%" in line for line in lines)
     assert not any("暴击效果提升40%" in line for line in lines)
 
@@ -108,8 +106,7 @@ def test_learned_teacher_bonuses_display_as_plain_real_buffs(engine_factory):
 
     lines = format_spirit_effects(flora.effects, {}, spirit=flora)
 
-    assert "[buff]物攻提升10%(1回合)" in lines
-    assert "[buff]魔攻提升10%(1回合)" in lines
+    assert "[buff]攻击提升10%(1回合)" in lines
     assert "[buff]暴击率提升20%(1回合)" in lines
     assert "[buff]暴击效果提升40%(1回合)" in lines
     assert not any("必有我师：" in line for line in lines)

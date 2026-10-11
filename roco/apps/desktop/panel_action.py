@@ -72,6 +72,16 @@ class ActionBarMixin:
         assert eng
         if eng.state.phase == BattlePhase.finished:
             return
+        if eng.state.phase == BattlePhase.presentation:
+            text = (
+                self._presentation_stage_text()
+                if hasattr(self, "_presentation_stage_text")
+                else "结算中…"
+            )
+            ttk.Label(self.action_row, text=text, style="Muted.TLabel").pack(
+                side=tk.LEFT
+            )
+            return
         actor = eng.find_spirit_anywhere(eng.state.active_actor_id or "")
         if not actor or not actor.is_alive:
             return
@@ -93,6 +103,10 @@ class ActionBarMixin:
             return
         slot = eng.current_extra_slot() if hasattr(eng, "current_extra_slot") else None
         ui = self._apply_extra_action_hint(actor, slot)
+        if ui.hint:
+            ttk.Label(self.action_row, text=ui.hint, style="Muted.TLabel").pack(
+                side=tk.LEFT, padx=(0, 6)
+            )
         armed = self._armed_action_key()
         if ui.allow_normal_attack:
             ttk.Button(

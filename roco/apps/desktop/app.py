@@ -194,6 +194,8 @@ class DesktopGameApp(
 
     def _clear_log_widget(self) -> None:
         self._rendered_log_count = 0
+        self._rendered_event_count = 0
+        self._completed_presentation_token = None
         self.log_text.configure(state="normal")
         self.log_text.delete("1.0", tk.END)
         self.log_text.configure(state="disabled")
@@ -235,7 +237,14 @@ class DesktopGameApp(
         self.ai_host_p1 = False
         self.ai_host_p2 = False
         self._sync_host_vars_from_state()
-        self.eng = BattleEngine(str(uuid.uuid4()), self.p1, self.p2, p1_tpls, p2_tpls)
+        self.eng = BattleEngine(
+            str(uuid.uuid4()),
+            self.p1,
+            self.p2,
+            p1_tpls,
+            p2_tpls,
+            presentation_windows=True,
+        )
         if self.eng.state.players[self.p1].spirits:
             self.selected_spirit_id = self.eng.state.players[self.p1].spirits[0].unique_id
         self.title("Roco")
@@ -285,6 +294,37 @@ class DesktopGameApp(
         if self._player_is_ai(actor.owner_id):
             return f"人机操作中（{actor.name}）…"
         return None
+
+    def _presentation_stage_text(self) -> str:
+        if not self.eng:
+            return "结算中…"
+        labels = {
+            "turn_start": "回合开始",
+            "normal_action": "正常行动",
+            "action_resolution": "行动结算",
+            "extra_resolution": "额外行动结算",
+            "turn_end": "回合结束",
+        }
+        stage = getattr(self.eng.state.presentation_stage, "value", None)
+        return labels.get(stage, "结算中…")
+
+    def _start_pending_presentation(self, actor: Optional[BattleSpirit]) -> None:
+        eng = self.eng
+        if not eng or eng.state.phase != BattlePhase.presentation:
+            return
+        token = eng.state.presentation_token
+        self._clear_action_row()
+        ttk.Label(
+            self.action_row,
+            text=self._presentation_stage_text(),
+            style="Muted.TLabel",
+        ).pack(side=tk.LEFT)
+        if self._fx_busy or self._completed_presentation_token == token:
+            return
+        self._play_action_fx(
+            self._rendered_log_count,
+            highlight_actor_id=(actor.unique_id if actor else None),
+        )
 
     def _header_text(self, actor: Optional[BattleSpirit]) -> str:
         eng = self.eng
@@ -407,6 +447,13 @@ class DesktopGameApp(
         self._render_status_panel()
         self._render_logs()
 
+    def _has_pending_presentation_events(self) -> bool:
+        eng = self.eng
+        if not eng:
+            return False
+        events = getattr(eng.state, "presentation_events", None) or []
+        return self._rendered_event_count < len(events)
+
     def _refresh(self) -> None:
         eng = self.eng
         if not eng:
@@ -423,7 +470,23 @@ class DesktopGameApp(
                 or actor.unique_id != actor_id
             ):
                 self._clear_target_pick(restore_actions=False)
-        self._render_panels()
+        # Keep the previous battlefield frame until each structured event is
+        # presented. Otherwise an authoritative snapshot would show final HP
+        # and effects before their floats and log lines have played.
+        defer_panel_refresh = (
+            eng.state.phase == BattlePhase.presentation
+            and self._has_pending_presentation_events()
+            and self._pet_strip_ready()
+        )
+        if defer_panel_refresh:
+            self._render_logs()
+        else:
+            self._render_panels()
+
+        if eng.state.phase == BattlePhase.presentation:
+            self.header_var.set(self._presentation_stage_text())
+            self._start_pending_presentation(actor)
+            return
 
         if eng.state.phase == BattlePhase.finished:
             self._cancel_ai_job()

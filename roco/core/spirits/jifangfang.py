@@ -184,7 +184,7 @@ class JifangfangLogic(SpiritLogic):
         cap_ratio: float,
         duration: int,
     ) -> int:
-        atk = get_effective_stat(actor, StatType.atk)
+        atk = get_effective_stat(actor, StatType.attack)
         return grant_shield(
             target,
             actor.unique_id,

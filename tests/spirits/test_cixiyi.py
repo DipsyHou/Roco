@@ -27,20 +27,19 @@ def test_harden_skin_is_state_and_reduces_only_fixed(engine_factory):
     assert not any(
         e.type == EffectType.buff_taken_damage_percent_reduction for e in cx.effects
     )
-    # 仅对固定伤害减 50%，物理 / 魔法不受影响
+    # Only fixed damage is reduced by 50%; attribute damage is unaffected.
     assert cixiyi_logic.get_incoming_damage_reduction(cx, DamageType.fixed) == 0.5
     assert cixiyi_logic.get_incoming_damage_reduction(cx, DamageType.physical) == 0.0
-    assert cixiyi_logic.get_incoming_damage_reduction(cx, DamageType.magical) == 0.0
+    assert cixiyi_logic.get_incoming_damage_reduction(cx, DamageType.fire) == 0.0
 
 
 def test_regen_stat_bonus(engine_factory):
     engine = _engine(engine_factory)
     cx = by_template(engine, P1, "cixiyi")
 
-    assert cixiyi_logic.get_stat_percent_bonus(cx, StatType.def_) == 0.0
+    assert cixiyi_logic.get_stat_percent_bonus(cx, StatType.defense) == 0.0
     cx.effects.append(make_effect(EffectType.state_zaisheng, cx.unique_id, duration_turns=1))
-    assert cixiyi_logic.get_stat_percent_bonus(cx, StatType.def_) == 0.20
-    assert cixiyi_logic.get_stat_percent_bonus(cx, StatType.mag_def) == 0.20
+    assert cixiyi_logic.get_stat_percent_bonus(cx, StatType.defense) == 0.20
 
 
 def test_jipi_apply_all_allies_and_convert_on_damage(engine_factory):
@@ -62,7 +61,7 @@ def test_jipi_apply_all_allies_and_convert_on_damage(engine_factory):
     assert not any(e.type == EffectType.state_jipi for e in ally.effects)
     sh = shield_from_source(ally, cx.unique_id)
     assert sh is not None
-    assert int(sh.value) == int(get_effective_stat(cx, StatType.def_) * 0.30)
+    assert int(sh.value) == int(get_effective_stat(cx, StatType.defense) * 0.30)
 
 
 def test_regen_refreshes_and_reduces_jipi_cost(engine_factory):
@@ -93,7 +92,7 @@ def test_yanci_self_damage_and_hits_enemy(engine_factory):
     cixiyi_logic._skill_yanci(engine, P1, cx, {"targetId": enemy.unique_id})
 
     assert enemy.current_hp < enemy_hp0
-    assert cx.current_hp < cx_hp0  # 20% 物攻自伤（无盾时落到生命）
+    assert cx.current_hp < cx_hp0  # 20% attack self-damage reaches HP without shield.
 
 
 def test_yanci_scales_with_own_shield(engine_factory):
@@ -107,5 +106,5 @@ def test_yanci_scales_with_own_shield(engine_factory):
     cixiyi_logic._skill_yanci(engine, P1, cx, {"targetId": enemy.unique_id})
     dmg_with_shield = enemy_hp0 - enemy.current_hp
 
-    # 自伤 20% 物攻（=20）远小于 300 护盾，主段仍能吃到大部分护盾量
+    # The 20% attack self-hit is much smaller than the shield.
     assert dmg_with_shield > 0

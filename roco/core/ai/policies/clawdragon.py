@@ -75,13 +75,11 @@ class ClawdragonPolicy:
         if skill_id == "clawdragon_skill3":  # 过肩摔
             if not target:
                 return -50.0
-            score = 105.0 + (1.0 - F.hp_ratio(target)) * 65.0
+            if energy < 4:
+                return 20.0
+            score = (200.0 if danced else 120.0) + (1.0 - F.hp_ratio(target)) * 65.0
             if focus and target.unique_id == focus.unique_id:
                 score += 20.0
-            if danced:
-                score += 10.0
-            if energy < 4:
-                score -= 40.0
             return score
 
         return 0.0

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
-from .types import BattleSpirit
+from .types import BattleSpirit, EffectType
 
 if TYPE_CHECKING:
     from .engine import BattleEngine
@@ -30,6 +30,16 @@ class DamageEvent:
     target: BattleSpirit
     damage: int
     source: DamageSource = DamageSource.other
+    dot_kind: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class EffectAppliedEvent:
+    source: Optional[BattleSpirit]
+    target: BattleSpirit
+    effect_type: EffectType
+    effect_id: Optional[str] = None
+    prior_effect_types: frozenset[EffectType] = frozenset()
 
 
 def dispatch_damage(ctx: "BattleEngine", event: DamageEvent) -> None:
@@ -72,3 +82,19 @@ def dispatch_damage(ctx: "BattleEngine", event: DamageEvent) -> None:
 
     if not target.is_alive:
         ctx.notify_spirit_defeated(target)
+
+
+def dispatch_effect_applied(ctx: "BattleEngine", event: EffectAppliedEvent) -> None:
+    """Notify living observers after a negative effect was successfully applied."""
+    from ..spirits import get_spirit_logic
+    from .effect_meta import effect_category
+
+    if effect_category(event.effect_type) != "debuff":
+        return
+    for pid in ctx.player_ids:
+        for spirit in ctx.state.players[pid].spirits:
+            if not spirit.is_alive:
+                continue
+            logic = get_spirit_logic(spirit.template_id)
+            if logic:
+                logic.on_effect_applied(ctx, spirit, event)

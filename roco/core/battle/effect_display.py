@@ -10,6 +10,7 @@ from .types import BattleEffect, DamageType, EffectType
 # 文档约定可叠加；其余默认不可叠加（逐条罗列，不用 *）
 STACKABLE_BURN = EffectType.debuff_burn
 STACKABLE_POISON = EffectType.debuff_poison
+STACKABLE_TIANHUO = EffectType.debuff_tianhuo
 STACKABLE_PARASITE = EffectType.debuff_parasite
 STACKABLE_FREEZE = EffectType.debuff_freeze
 STACKABLE_WARMUP = EffectType.state_warmup
@@ -21,10 +22,8 @@ STACKABLE_JIANWU = EffectType.state_jianwu
 STACKABLE_HUOLI = EffectType.state_huoli
 
 _STAT_NAMES: Dict[str, str] = {
-    "atk": "物攻",
-    "magAtk": "魔攻",
-    "def": "物防",
-    "magDef": "魔防",
+    "attack": "攻击",
+    "defense": "防御",
     "speed": "速度",
     "hp": "HP",
 }
@@ -89,7 +88,7 @@ def _copy_suffix(eff: BattleEffect) -> str:
 
 
 def _format_stat_percent_body(eff: BattleEffect) -> str:
-    """物攻提升20%(3回合) — 不显示技能名。"""
+    """攻击提升20%(3回合) — 不显示技能名。"""
     stat = _STAT_NAMES.get(eff.stat_type.value if eff.stat_type else "", "属性")
     pct = abs(int((eff.value or 0) * 100))
     verb = "提升" if eff.type == EffectType.buff_stat_percent_boost else "降低"
@@ -133,7 +132,7 @@ def _format_taken_damage_boost_body(eff: BattleEffect) -> str:
 
 
 def _format_stat_flat_body(eff: BattleEffect) -> str:
-    """物攻降低12点(3回合) — 固定值版的 ``_format_stat_percent_body``。"""
+    """攻击降低12点(3回合) — 固定值版的 ``_format_stat_percent_body``。"""
     stat = _STAT_NAMES.get(eff.stat_type.value if eff.stat_type else "", "属性")
     amount = abs(eff.value or 0)
     verb = "提升" if eff.type == EffectType.buff_stat_flat_boost else "降低"
@@ -200,6 +199,10 @@ def _resolve_display_name(eff: BattleEffect) -> str:
         return "灼烧"
     if t == STACKABLE_POISON:
         return "中毒"
+    if t == STACKABLE_TIANHUO:
+        return "天火"
+    if t == EffectType.debuff_fanji:
+        return "燔祭"
     if t == STACKABLE_PARASITE:
         return "寄生"
     if t == STACKABLE_FREEZE:
@@ -269,8 +272,10 @@ def _stackable_group_key(
         return ("burn", eff.source_id)
     if eff.type == STACKABLE_PARASITE:
         return ("parasite", eff.source_id)
+    if eff.type == STACKABLE_TIANHUO:
+        return ("tianhuo", eff.source_id)
     if eff.type == STACKABLE_POISON:
-        return ("poison",)
+        return ("poison", eff.source_id)
     if eff.type == STACKABLE_FREEZE:
         return ("freeze",)
     if eff.type == STACKABLE_WARMUP:
@@ -303,7 +308,7 @@ def _format_stackable_group(
         mult = f" * {total}"
         return f"[{category}]{body}{mult}"
 
-    if eff.type == STACKABLE_PARASITE:
+    if eff.type in (STACKABLE_PARASITE, STACKABLE_TIANHUO):
         total = sum(stack_count(e) for e in effects)
         body = f"{_resolve_display_name(eff)} - {_burn_detail(eff, source_names)}"
         mult = f" * {total}"
@@ -316,8 +321,9 @@ def _format_stackable_group(
 
     if eff.type == STACKABLE_POISON:
         total = sum(stack_count(e) for e in effects)
+        body = f"{_resolve_display_name(eff)} - {_burn_detail(eff, source_names)}"
         mult = f" * {total}"
-        return f"[{category}]{_resolve_display_name(eff)}{mult}"
+        return f"[{category}]{body}{mult}"
 
     if eff.type == STACKABLE_FREEZE:
         total = sum(stack_count(e) for e in effects)
@@ -384,9 +390,13 @@ def _format_one(eff: BattleEffect, source_names: Dict[str, str]) -> str:
         mult = f" * {total}"
         return f"[{category}]{body}{mult}"
     if eff.type == STACKABLE_POISON:
+        body = f"{name} - {_burn_detail(eff, source_names)}"
         total = stack_count(eff)
         mult = f" * {total}"
-        return f"[{category}]{name}{mult}"
+        return f"[{category}]{body}{mult}"
+    if eff.type == STACKABLE_TIANHUO:
+        body = f"{name} - {_burn_detail(eff, source_names)}"
+        return f"[{category}]{body} * {stack_count(eff)}"
     if eff.type == STACKABLE_FREEZE:
         total = stack_count(eff)
         mult = f" * {total}"
@@ -411,7 +421,7 @@ def _format_one(eff: BattleEffect, source_names: Dict[str, str]) -> str:
 
     if eff.type in (EffectType.buff_laziji, EffectType.buff_shuizhuyu):
         pct = abs(int((eff.value or 0) * 100))
-        return f"[{category}]{name}：双攻+来源物攻{pct}%{turn if (turn := _turn_suffix(eff)) else ''}"
+        return f"[{category}]{name}：攻击+来源攻击{pct}%{turn if (turn := _turn_suffix(eff)) else ''}"
 
     turn = _turn_suffix(eff)
     if turn:

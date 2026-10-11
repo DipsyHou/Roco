@@ -12,9 +12,9 @@ from ..battle.effects import (
     get_freeze_stacks,
     purge_random_buffs,
 )
-from ..battle.types import BattleLogType, BattleSpirit, EffectType
+from ..battle.types import BattleLogType, BattleSpirit, DamageType, EffectType
 from ..battle.utils import make_effect
-from ._combat import deal_atk_ratio, target_enemy
+from ._combat import deal_attack_ratio, target_enemy
 from ..spirit_logic import BattleContext, SpiritLogic
 
 TEMPLATE_ID = "daermao"
@@ -40,12 +40,12 @@ class DaermaoLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             0.5,
-            lambda a: msg.physical_hit(actor.name, target.name, a),
+            lambda a: msg.attribute_hit(actor.name, target.name, a, DamageType.ice),
         )
         actor.last_attack_target_id = target.unique_id
         return True

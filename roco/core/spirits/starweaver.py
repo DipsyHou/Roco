@@ -12,7 +12,7 @@ from ..battle.types import (
     EffectType,
 )
 from ..battle.utils import make_effect, purge_debuffs
-from ._combat import deal_damage, deal_mag_ratio, grant_personal_energy
+from ._combat import deal_attack_ratio, deal_damage, grant_personal_energy
 from ..spirit_logic import BattleContext, DamageSource, SpiritLogic
 
 
@@ -87,7 +87,13 @@ class StarweaverLogic(SpiritLogic):
             target,
             40,
             DamageType.fixed,
-            lambda a: msg.skill_damage(observer.name, "共振", target.name, a, kind=msg.KIND_FIXED),
+            lambda a: msg.skill_damage(
+                observer.name,
+                "共振",
+                target.name,
+                a,
+                damage_type=DamageType.fixed,
+            ),
             source=DamageSource.additional,
         )
 
@@ -102,13 +108,13 @@ class StarweaverLogic(SpiritLogic):
         opponent_id = ctx.get_opponent_id(player_id)
         targets = list(ctx.get_active_spirits(opponent_id))
         for target in targets:
-            deal_mag_ratio(
+            deal_attack_ratio(
                 ctx,
                 actor,
                 target,
                 0.20,
                 lambda a, t=target: msg.skill_damage(
-                    actor.name, "汲取", t.name, a, kind=msg.KIND_MAGICAL
+                    actor.name, "汲取", t.name, a, damage_type=DamageType.dark
                 ),
                 source=DamageSource.skill,
             )
@@ -162,13 +168,13 @@ class StarweaverLogic(SpiritLogic):
         consumed = getattr(actor, "_consumed_energy", 0) or 0
         ratio = (40 + 5 * consumed) / 100.0
         for target in ctx.get_active_spirits(opponent_id):
-            deal_mag_ratio(
+            deal_attack_ratio(
                 ctx,
                 actor,
                 target,
                 ratio,
                 lambda a, t=target: msg.skill_damage(
-                    actor.name, "星爆", t.name, a, kind=msg.KIND_MAGICAL
+                    actor.name, "星爆", t.name, a, damage_type=DamageType.dark
                 ),
                 source=DamageSource.skill,
             )

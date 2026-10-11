@@ -9,7 +9,11 @@ from roco.core.battle.stats import bind_spirit_stat_engine
 from roco.core.battle.formation import living_slot_neighbors
 from roco.core.battle.utils import get_effective_stat
 from .client import BattleNetClient
-from .protocol import MSG_SUBMIT_ACTION, MSG_SYNC_TURN
+from .protocol import (
+    MSG_ADVANCE_PRESENTATION,
+    MSG_SUBMIT_ACTION,
+    MSG_SYNC_TURN,
+)
 from .serialize import state_from_dict
 
 
@@ -115,6 +119,17 @@ class RemoteBattleEngine:
         )
         return True
 
+    def advance_presentation(self, token: int) -> bool:
+        if not self._client.is_connected:
+            return False
+        self._client.send(
+            {
+                "type": MSG_ADVANCE_PRESENTATION,
+                "token": int(token),
+            }
+        )
+        return True
+
     def effective_skill_energy_cost(self, actor: BattleSpirit, skill) -> int:
         from roco.core.battle.energy import skill_team_energy_cost
 
@@ -122,7 +137,15 @@ class RemoteBattleEngine:
 
     def current_extra_slot(self):
         q = getattr(self.state, "extra_action_queue", None) or []
-        return q[0] if q else None
+        if not q:
+            return None
+        slot = q[0]
+        actor_id = getattr(slot, "actor_id", None)
+        if isinstance(slot, dict):
+            actor_id = slot.get("actorId") or slot.get("actor_id")
+        if self.state.active_actor_id != actor_id:
+            return None
+        return slot
 
     def is_my_turn(self) -> bool:
         actor_id = self.state.active_actor_id

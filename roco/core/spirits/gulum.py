@@ -15,7 +15,7 @@ from ..battle.types import (
 )
 from ..battle.utils import apply_heal, make_effect
 from ._combat import (
-    deal_atk_ratio,
+    deal_attack_ratio,
     grant_parasite,
     target_enemy,
 )
@@ -119,12 +119,14 @@ class GulumLogic(SpiritLogic):
         target = target_enemy(ctx, player_id, action.get("targetId"))
         if not target:
             return True
-        deal_atk_ratio(
+        deal_attack_ratio(
             ctx,
             actor,
             target,
             NORMAL_ATK_RATIO,
-            lambda a: msg.skill_damage(actor.name, "普通攻击", target.name, a),
+            lambda a: msg.skill_damage(
+                actor.name, "普通攻击", target.name, a, damage_type=DamageType.grass
+            ),
         )
         return True
 
